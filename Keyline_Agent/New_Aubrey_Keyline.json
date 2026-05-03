@@ -1,0 +1,1972 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "last_modification_timestamp": 1776387851012,
+  "agent_name": "Aubrey – Keyline - New - V02",
+  "response_engine": {
+    "type": "conversation-flow",
+    "version": 1,
+    "conversation_flow_id": "conversation_flow_6f8cb30d8a2a"
+  },
+  "language": "en-US",
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
+  "end_call_after_silence_ms": 62000,
+  "version": 1,
+  "is_published": false,
+  "post_call_analysis_model": "gpt-4.1-mini",
+  "pii_config": {
+    "mode": "post_call",
+    "categories": [
+      "phone_number",
+      "email",
+      "address"
+    ]
+  },
+  "handbook_config": {
+    "echo_verification": true,
+    "speech_normalization": true,
+    "default_personality": true,
+    "scope_boundaries": true,
+    "natural_filler_words": false,
+    "nato_phonetic_alphabet": true,
+    "ai_disclosure": true,
+    "high_empathy": true,
+    "smart_matching": true
+  },
+  "post_call_analysis_data": [
+    {
+      "type": "string",
+      "name": "call_type",
+      "description": "Final call type handled"
+    },
+    {
+      "type": "string",
+      "name": "caller_name",
+      "description": "Caller name collected or from CRM"
+    },
+    {
+      "type": "string",
+      "name": "caller_state",
+      "description": "State calling from"
+    },
+    {
+      "type": "string",
+      "name": "call_outcome",
+      "description": "resolved / transferred / ticket_created / escalated"
+    },
+    {
+      "type": "boolean",
+      "name": "mandatory_disclosures_delivered",
+      "description": "All required policy disclosures spoken"
+    },
+    {
+      "type": "boolean",
+      "name": "app_offered",
+      "description": "Caregiver app link was offered"
+    },
+    {
+      "type": "boolean",
+      "name": "app_accepted",
+      "description": "Caller accepted the app link"
+    },
+    {
+      "type": "string",
+      "name": "transfer_department",
+      "description": "Department transferred to if any"
+    },
+    {
+      "type": "string",
+      "name": "call_summary",
+      "description": "One-paragraph summary"
+    }
+  ],
+  "voice_id": "11labs-Grace",
+  "voice_temperature": 0.7,
+  "voice_speed": 1,
+  "volume": 1,
+  "enable_backchannel": true,
+  "backchannel_frequency": 0.7,
+  "backchannel_words": [
+    "got it",
+    "I see",
+    "okay",
+    "mhm",
+    "right"
+  ],
+  "reminder_trigger_ms": 8000,
+  "reminder_max_count": 2,
+  "max_call_duration_ms": 1200000,
+  "interruption_sensitivity": 0.9,
+  "boosted_keywords": [
+    "Keyline",
+    "caregiver",
+    "CG",
+    "health coach",
+    "Monday.com",
+    "Square Payroll",
+    "Structured Family Caregiving",
+    "SFC",
+    "Aubrey",
+    "direct deposit",
+    "cost share",
+    "clock out",
+    "clock in"
+  ],
+  "ambient_sound": "call-center",
+  "ambient_sound_volume": 0.48,
+  "responsiveness": 1,
+  "normalize_for_speech": true,
+  "begin_message_delay_ms": 1500,
+  "voicemail_option": {
+    "action": {
+      "type": "hangup"
+    }
+  },
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "denoising_mode": "noise-and-background-speech-cancellation",
+  "conversationFlow": {
+    "conversation_flow_id": "conversation_flow_6f8cb30d8a2a",
+    "version": 1,
+    "global_prompt": "## Identity\nYou are Aubrey, an inbound support agent for Keyline Home Care Solutions. Keyline enrolls family members as paid caregivers for elderly or sick loved ones across multiple US states. You speak with caregivers, clients, case managers, and new prospects on a live phone call.\n\n## Context\n- Time: {{current_time_America/New_York}}\n- Date: {{current_calendar_America/New_York}}\n- Caller phone: {{user_number}}\n- Office: Villa Rica, GA | 1-855-453-9546 | keylinehomecare.com\n\n## Tone\nWarm, confident, efficient. 7th-grade reading level. 1-2 sentences per turn. Use contractions. Natural openers: \"Got it\", \"Sure\", \"Okay\", \"Alright\". Never use: \"Absolutely!\", \"Certainly!\", \"Great question!\", \"I'd be happy to help\", \"Perfect!\". Mirror the caller's pace.\n\n## Turn-Taking — One Question at a Time (STRICT)\nThis is the single most important rule after safety. Violations make Aubrey sound robotic and frustrate callers.\n\n- Ask EXACTLY ONE question per turn. Never two. Never three.\n- NEVER stack questions — no \"What's your name and what state are you in?\", no \"What's the date, and are you traveling with the member?\", no combining related fields into one turn.\n- NEVER preview upcoming questions — no \"First I'll need your name, then your state, then your email.\" Ask only the current question.\n- After asking, STOP SPEAKING. Wait for the caller's response in full. Do not continue, do not fill the silence, do not prompt again until at least 8 seconds of silence have passed (and then only with a gentle \"Still with me?\" or \"Take your time.\").\n- After the caller answers, give a brief natural acknowledgment (\"Got it.\", \"Okay.\", \"Sure.\") BEFORE asking the next question. Never jump from answer straight to next question without acknowledging.\n- If the caller volunteers extra info beyond what you asked (e.g., gives name AND state when you only asked for name), acknowledge it and move to the NEXT needed field — do not re-ask for what they already gave.\n- If the caller's answer is unclear, ask ONE clarifying question about that one field. Do not move on AND ask for clarification in the same turn.\n\nExample of WRONG behavior:\n\"Thanks John. What state are you in, and what's the best email to reach you?\"\n\nExample of RIGHT behavior:\n\"Thanks, John.\" [wait for response or continue] \"What state are you calling from?\"\n[wait for answer]\n\"Okay, Texas. And what's the best email to reach you?\"\n\n## Core Rules\n- Follow node transitions strictly. Do not handle off-node topics.\n- Collect caller name and state before any intake, unless already known.\n- Never collect same info twice. Skip fields already in context.\n- Never accept account numbers, routing numbers, or any financial data by phone.\n- Never give medical, legal, or contractual advice.\n- Never fabricate information. If unknown, redirect to a human.\n- If caller asks for a human or identifies you as AI, transfer immediately.\n- If caller shows distress (crying, panic, crisis), stop intake and escalate.\n- If caller reports a death, do not proceed with standard intake — deliver condolences and flag for priority human callback.\n- Confirm collected data before submitting.\n- Always ask \"Is there anything else I can help you with?\" before closing.\n\n## Speech\nPhone numbers: read digit by digit, grouped 3-3-4. Dates: spoken form (\"April twenty-fifth\"). Times: include AM or PM. Email: spell char by char, \"at\" for @, \"dot\" for period. States: full name. Caregiver IDs: each character individually.\n\n## Caller Context (from inbound webhook)\nBefore the call starts, an n8n workflow looks up the caller's number and may inject these variables. If a value is present (not a literal {{brace}} template), the caller is already in our system — DO NOT re-ask for that field. CONFIRM it instead (one field per turn, see Turn-Taking rule above).\n\n- {{caller_name}} — caller's full name (e.g., \"Jane Smith\")\n- {{caller_state}} — state they're calling from (use naturally in confirmations when helpful, e.g. \"just to confirm, you're in Texas, right?\")\n- {{caller_email}} — email on file\n- {{caller_patient_name}} — name of the member this caregiver supports\n- {{caller_patient_dob}} — patient date of birth\n- {{caller_type}} — one of: caregiver, prospect, case_manager, unknown\n- {{is_returning_caller}} — \"true\" or \"false\" (string)\n- {{app_refused}} — \"true\" or \"false\" (string, starts \"false\")\n\n\n## Confirmation Pattern for Known Fields\nWhen a CRM variable is set and the current flow needs that field, confirm ONE field per turn:\n- Email: \"I've got your email as {{caller_email}} — should I use that?\"\n- Patient name: \"This is for {{caller_patient_name}}, right?\"\n- Phone: \"I've got your number as {{user_number}} — still the best to reach you?\"\n\nNever combine confirmations. Wrong: \"I've got your email as X and your patient as Y — both still right?\" Right: confirm email this turn, then patient next turn.\n\nIf caller confirms, proceed. If they say it's wrong, collect the new value — still one field per turn.\n\n## Variable Safety\nIf any variable appears as literal curly-brace text (e.g., \"{{caller_name}}\" spoken as text), treat as unset. Do not speak the braces. For unset caller_name use \"there\" or no name at all. For unset other fields, ask the caller fresh.",
+    "nodes": [
+      {
+        "name": "OPENING",
+        "edges": [
+          {
+            "destination_node_id": "node-escalate-distress",
+            "id": "e-o-distress",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller mentions death, passing away, passed away, \ndied, or fatality. OR caller sounds upset, frustrated, \noverwhelmed, crying, or uses phrases like \"I don't know \nwhat to do\", \"nobody called me back\", \"I am really upset\". \nThis ALWAYS takes priority over incident, hospital, \nor any other routing. Never route a fatality call \nto incident report."
+            }
+          },
+          {
+            "destination_node_id": "node-travel-deny",
+            "id": "e-o-travel-deny",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller mentions travel AND destination is outside US or date is more than 30 days from today."
+            }
+          },
+          {
+            "destination_node_id": "node-app-offer-travel",
+            "id": "e-o-travel",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caregiver mentions travel or trip. Destination is US or unknown. Date within 30 days or unknown. Name collected."
+            }
+          },
+          {
+            "destination_node_id": "node-app-offer-incident",
+            "id": "e-o-incident",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller mentions incident, hospital, fall, or emergency involving member."
+            }
+          },
+          {
+            "destination_node_id": "node-app-offer-paystubs",
+            "id": "e-o-paystubs",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks about pay stubs without specifying W-2 or SFC."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-stubs-w2",
+            "id": "e-o-paystubs-w2",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks about pay stubs and says W-2."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-stubs-sfc",
+            "id": "e-o-paystubs-sfc",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks about pay stubs and says Structured Family Caregiving or SFC."
+            }
+          },
+          {
+            "destination_node_id": "node-dd-security-block",
+            "id": "e-o-dd-update",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to update direct deposit, bank info, or cost share."
+            }
+          },
+          {
+            "destination_node_id": "node-missed-clockout",
+            "id": "e-o-clockout",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller mentions missed clock out or forgot to clock out."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-issue-transfer",
+            "id": "e-o-payissue",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller mentions pay issue, incorrect paycheck, or pay discrepancy."
+            }
+          },
+          {
+            "destination_node_id": "node-dd-hold",
+            "id": "e-o-ddhold",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller mentions direct deposit hold or deposit being held."
+            }
+          },
+          {
+            "destination_node_id": "node-income-letter",
+            "id": "e-o-income",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks for income letter or proof of income."
+            }
+          },
+          {
+            "destination_node_id": "node-contact-update",
+            "id": "e-o-address",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to update address, phone, or email."
+            }
+          },
+          {
+            "destination_node_id": "node-health-coach-transfer",
+            "id": "e-o-coach",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to reach their health coach."
+            }
+          },
+          {
+            "destination_node_id": "node-nurse-cancel",
+            "id": "e-o-nurse",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to cancel a nurse visit."
+            }
+          },
+          {
+            "destination_node_id": "node-prospect-intake",
+            "id": "e-o-prospect",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is new, wants to enroll, start services, or switch providers."
+            }
+          },
+          {
+            "destination_node_id": "node-prospect-status-check",
+            "id": "e-o-prospect-status",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Existing prospect checking application status."
+            }
+          },
+          {
+            "destination_node_id": "node-case-manager",
+            "id": "e-o-cm",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is a case manager from an outside agency."
+            }
+          },
+          {
+            "destination_node_id": "node-out-of-scope",
+            "id": "e-o-oos",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks about contracts, legal terms, insurance, or anything outside Aubrey's scope."
+            }
+          },
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-o-menu",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Identified as caregiver but topic not yet stated."
+            }
+          }
+        ],
+        "id": "start-node-aubrey-opening",
+        "type": "conversation",
+        "display_position": {
+          "x": -66,
+          "y": 534
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Greet caller. If recognized: Hi [Name], welcome back. How can I support you today?\nIf new: Hi, this is Aubrey with Keyline Home Care. How can I support you today?\n\nCapture name, state, and topic from what they say. Do not interrupt.\nFor travel: get name+state before routing. If destination is outside US or date >30 days from today, route to Travel Deny immediately.\nFor other topics: route immediately, topic node collects name.\nIf unclear caller type: Are you currently receiving services with Keyline or looking to get started?\n\nToday is {{current_time_America/New_York}}.\nIf the caller mentions a travel date, calculate whether it is more than 30 days from today's date.\nIf yes, route to Travel Deny immediately without asking any further questions."
+        }
+      },
+      {
+        "name": "CAREGIVER - TOPIC MENU",
+        "edges": [
+          {
+            "destination_node_id": "node-travel-deny",
+            "id": "e-m-deny",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Travel mentioned AND outside US or >30 days out."
+            }
+          },
+          {
+            "destination_node_id": "node-app-offer-travel",
+            "id": "e-m-travel",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Travel or trip mentioned, valid or unknown dates."
+            }
+          },
+          {
+            "destination_node_id": "node-app-offer-incident",
+            "id": "e-m-incident",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Incident, hospital, fall, or emergency."
+            }
+          },
+          {
+            "destination_node_id": "node-app-offer-paystubs",
+            "id": "e-m-paystubs",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Pay stubs, type not specified."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-stubs-w2",
+            "id": "e-m-w2",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Pay stubs, W-2 specified."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-stubs-sfc",
+            "id": "e-m-sfc",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Pay stubs, SFC specified."
+            }
+          },
+          {
+            "destination_node_id": "node-dd-security-block",
+            "id": "e-m-dd",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Update direct deposit or bank info."
+            }
+          },
+          {
+            "destination_node_id": "node-missed-clockout",
+            "id": "e-m-clock",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Missed clock out."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-issue-transfer",
+            "id": "e-m-pay",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Pay issue or discrepancy."
+            }
+          },
+          {
+            "destination_node_id": "node-dd-hold",
+            "id": "e-m-hold",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Direct deposit hold."
+            }
+          },
+          {
+            "destination_node_id": "node-income-letter",
+            "id": "e-m-income",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Income letter."
+            }
+          },
+          {
+            "destination_node_id": "node-contact-update",
+            "id": "e-m-addr",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Update address, phone, or email."
+            }
+          },
+          {
+            "destination_node_id": "node-health-coach-transfer",
+            "id": "e-m-coach",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Reach health coach."
+            }
+          },
+          {
+            "destination_node_id": "node-nurse-cancel",
+            "id": "e-m-nurse",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Cancel nurse visit."
+            }
+          },
+          {
+            "destination_node_id": "node-out-of-scope",
+            "id": "e-m-oos",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Contracts, legal, or out of scope."
+            }
+          },
+          {
+            "destination_node_id": "node-escalate-distress",
+            "id": "e-m-distress",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Death, fatality, or extreme distress."
+            }
+          }
+        ],
+        "id": "node-caregiver-menu",
+        "type": "conversation",
+        "display_position": {
+          "x": 606,
+          "y": 438
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "If topic already known from earlier, route immediately without asking.\nOtherwise: Got it. What can I help you with today?\nDo not list options. If travel mentioned, check: outside US or >30 days → Travel Deny.\n\nCRITICAL: If the caller has ALREADY been through an APP OFFER node this call and declined the app (visible in the conversation history), skip the app offer this time — route DIRECTLY to the relevant manual intake node (INCIDENT REPORT for incident, TRAVEL REQUEST for travel, PAY STUBS - W2/SFC for pay stubs). Never offer the app twice in the same call."
+        }
+      },
+      {
+        "name": "APP OFFER - TRAVEL",
+        "edges": [
+          {
+            "destination_node_id": "node-sms-app-link",
+            "id": "e-at-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller EXPLICITLY accepts the app link WITHOUT any preference for phone intake. If caller says 'yeah' or 'yes' but ALSO mentions 'on the call', 'on the phone', 'right now', or 'manually', treat as DECLINING and route to e-at-no."
+            }
+          },
+          {
+            "destination_node_id": "node-travel-request",
+            "id": "e-at-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines the app OR expresses any preference for doing it on the call, by phone, right now, or manually. This includes ambiguous 'yes but...' responses."
+            }
+          }
+        ],
+        "id": "node-app-offer-travel",
+        "type": "conversation",
+        "display_position": {
+          "x": 1200,
+          "y": 100
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: You can actually submit travel requests directly through your Keyline caregiver app. Would you like me to send you the link via text?\nDo not collect any details here."
+        }
+      },
+      {
+        "name": "APP OFFER - INCIDENT",
+        "edges": [
+          {
+            "destination_node_id": "node-sms-app-link",
+            "id": "e-ai-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller EXPLICITLY accepts the app link WITHOUT any preference for phone intake. Examples: 'yes send it', 'sure text me', 'yeah send the link', 'please do'. If the caller says 'yeah' or 'yes' BUT also mentions 'on the call', 'on the phone', 'right now', 'do it with you', 'manually', or any hint of preferring phone intake, DO NOT treat as acceptance — route to e-ai-no instead."
+            }
+          },
+          {
+            "destination_node_id": "node-incident-report",
+            "id": "e-ai-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines the app OR expresses any preference for doing it on the call, by phone, right now, manually. This includes ambiguous 'yes but on the call' responses — treat those as declining the app."
+            }
+          }
+        ],
+        "id": "node-app-offer-incident",
+        "type": "conversation",
+        "display_position": {
+          "x": 1200,
+          "y": 300
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Acknowledge with empathy: I am sorry to hear that. I can help you report this. You can also submit incident reports through your caregiver app. Would you like me to send you the link via text?\nDo not collect details here."
+        }
+      },
+      {
+        "name": "APP OFFER - PAY STUBS",
+        "edges": [
+          {
+            "destination_node_id": "node-sms-app-link",
+            "id": "e-ap-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller accepts."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-stubs-w2",
+            "id": "e-ap-w2",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines and says W-2."
+            }
+          },
+          {
+            "destination_node_id": "node-pay-stubs-sfc",
+            "id": "e-ap-sfc",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines and says SFC or Structured Family Caregiving."
+            }
+          }
+        ],
+        "id": "node-app-offer-paystubs",
+        "type": "conversation",
+        "display_position": {
+          "x": 1200,
+          "y": 500
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: Sure. You can access your pay stubs through your caregiver app. Want me to text you the link?\nIf they decline or already tried the app, ask: Are you a W-2 employee or on Structured Family Caregiving?"
+        }
+      },
+      {
+        "name": "SMS APP LINK",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-sms-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller needs help with something else."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-sms-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done."
+            }
+          }
+        ],
+        "id": "node-sms-app-link",
+        "type": "conversation",
+        "display_position": {
+          "x": 1200,
+          "y": -100
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: I am sending you the Keyline app link now. You should receive a text shortly.\nThen: Is there anything else I can help you with today?"
+        }
+      },
+      {
+        "name": "TRAVEL DENY",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-td-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller needs help with something else."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-td-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done."
+            }
+          }
+        ],
+        "id": "node-travel-deny",
+        "type": "conversation",
+        "display_position": {
+          "x": 1200,
+          "y": -300
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "If outside US: Travel requests outside of the United States cannot be approved for continued stipend.\nIf >30 days out: Travel requests must be submitted within thirty days of your travel date. Please call back closer to your departure.\nDo not collect any details. Then ask: Is there anything else I can help you with today?"
+        }
+      },
+      {
+        "name": "TRAVEL REQUEST",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-tr-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Request submitted or denied, caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-tr-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Request submitted or denied, caller is done."
+            }
+          },
+          {
+            "destination_node_id": "node-escalate-distress",
+            "id": "e-tr-distress",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Death, fatality, or extreme distress."
+            }
+          }
+        ],
+        "id": "node-travel-request",
+        "type": "conversation",
+        "display_position": {
+          "x": 2214,
+          "y": -18
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Caller declined app. Do NOT offer it again. Collect one at a time:\n1. Destination address\n2. Departure date\n3. Return date\n4. Purpose of trip\n5. Traveling with member — yes or no (REQUIRED)\n\nValidation after each field:\n- Destination outside US → stop, deny: travel outside US cannot be approved for continued stipend.\n- Departure >30 days → stop, deny: must submit within 30 days, call back closer.\n- Departure <10 days → warn: approval not guaranteed due to timing. Continue collecting.\n\nAfter all 5 fields: confirm summary. Example: Let me confirm: travel to [dest], departing [date], returning [date], [purpose], [with/without] member. Is that correct?\nAfter confirmation: Your travel request has been submitted. Response within two business days. Safe travels.\nThen: Is there anything else I can help you with today?"
+        }
+      },
+      {
+        "name": "INCIDENT REPORT",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-ir-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Report submitted, caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-ir-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Report submitted, caller is done."
+            }
+          },
+          {
+            "destination_node_id": "node-escalate-distress",
+            "id": "e-ir-distress",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Death, fatality, or extreme distress."
+            }
+          }
+        ],
+        "id": "node-incident-report",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 300
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Caller declined app. Do NOT offer again. Collect one at a time:\n1. Name (skip if known)\n2. Patient/member name\n3. Date and time of incident\n4. Location\n5. Hospital involved? If yes:\n   - Hospital name, city/state\n   - Time admitted, reason/symptoms, treatments\n   - Still admitted or discharged? If discharged: when returned home\n\n\nBefore submitting, read a short confirmation summary: \"Let me confirm — [patient name] had a [incident type] on [date/time] at [location]; [hospital info if applicable]. Does that sound right?\" If caller confirms, proceed. If they correct, fix and re-confirm.\nAfter hospital details: Please do not clock in while your member is in the hospital.\nAfter all fields: I have submitted this incident report. Follow-up within one to two business days.\nThen: Is there anything else I can help you with today?"
+        }
+      },
+      {
+        "name": "MISSED CLOCK OUT",
+        "edges": [
+          {
+            "destination_node_id": "node-end-call",
+            "id": "e-mc-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "All info collected, warnings delivered, closing given."
+            }
+          },
+          {
+            "destination_node_id": "node-escalate-distress",
+            "id": "e-mc-distress",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Death, fatality, or extreme distress."
+            }
+          }
+        ],
+        "id": "node-missed-clockout",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 500
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect one at a time:\n1. Full name (skip if known)\n2. Caregiver ID number\n3. Say: Please hold while I verify. (If not found: contact Keyline office during business hours.)\n4. Client full name\n5. Shift date\n6. Clock-in time\n7. Intended clock-out time\n8. Did you provide care services? (yes/no)\n9. Reason for missed clock out\n\nAfter all collected, read a short confirmation summary: \"Let me confirm — missed clock out on [date] for [client name], shift from [clock-in] to intended [clock-out], reason [reason]. Does that sound right?\" If caller confirms, proceed. If they correct something, fix and re-confirm.\n\n\nAfter all collected, deliver ALL THREE warnings:\n1. Time corrections must be reported within twenty-four hours of the shift and before the Sunday five PM payroll cutoff.\n2. Corrections must be before Sunday 5 PM payroll cutoff. Late corrections may not be eligible for payment.\n3. System reviews attendance history. Multiple missed clock outs in sixty days may trigger Health Coach follow-up.\n\nThen: Your request has been submitted for review. Reviewed within two business days. You do not need to call again. Thank you for the care you provide. Have a good day."
+        }
+      },
+      {
+        "name": "PAY STUBS - W2",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-w2-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-w2-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done."
+            }
+          }
+        ],
+        "id": "node-pay-stubs-w2",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 650
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: For W-2 employees, your pay stubs are available through Square Payroll. Log in, go to Pay Stubs, and download. If you forgot your password, use the Forgot Password option.\nThen: Is there anything else I can help you with?"
+        }
+      },
+      {
+        "name": "PAY STUBS - SFC",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-sfc-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-sfc-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done."
+            }
+          }
+        ],
+        "id": "node-pay-stubs-sfc",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 800
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect one at a time:\n1. Name (skip if known)\n2. Patient name\n3. Email address\nThen: We can provide up to three pay stubs per request. You will receive them within one to two business days.\nThen: Is there anything else I can help you with?"
+        }
+      },
+      {
+        "name": "DIRECT DEPOSIT - SECURITY BLOCK",
+        "edges": [
+          {
+            "destination_node_id": "node-sms-app-link",
+            "id": "e-ddb-sms",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller accepts app link."
+            }
+          },
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-ddb-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines and needs other help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-ddb-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done."
+            }
+          }
+        ],
+        "id": "node-dd-security-block",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 950
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Hard block. Say: For security, we are not able to take financial information by phone. I can send you the app link to update that securely. Would that work?\nIf they push back: I understand, but we cannot accept financial info by phone. The app is the secure way. I will send you the link.\nNever collect account numbers, routing numbers, or any financial data."
+        }
+      },
+      {
+        "name": "INCOME LETTER",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-il-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-il-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done."
+            }
+          }
+        ],
+        "id": "node-income-letter",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 1100
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect one at a time:\n1. Name (skip if known)\n2. Patient name\n3. Email address\n\nBefore submitting, read a short confirmation: \"Just to confirm — income letter for [patient name], send it to [email]. Correct?\" If confirmed, proceed. If corrected, fix and re-confirm.\nThen: Your income letter request has been submitted. Expect it within one to two business days.\nThen: Is there anything else I can help you with?"
+        }
+      },
+      {
+        "name": "PAY ISSUE - TRANSFER",
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-payroll",
+            "id": "e-pi-xfer",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Name confirmed, transfer message delivered."
+            }
+          }
+        ],
+        "id": "node-pay-issue-transfer",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 1250
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: I am sorry to hear that. Collect name if not known. Then: For pay discrepancies, I am going to transfer you directly to our payroll team right now. Please hold while I connect you.\nNo additional intake. Immediate transfer."
+        }
+      },
+      {
+        "name": "DD HOLD",
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-case-support",
+            "id": "e-dd-auth",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Authorization issue identified."
+            }
+          },
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-dd-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Ticket created, caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-dd-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Ticket created, caller is done."
+            }
+          }
+        ],
+        "id": "node-dd-hold",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 1400
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect one at a time:\n1. Name (skip if known)\n2. Callback number\n3. Do you know the reason for the hold?\n\nIf authorization issue: I am going to transfer you to Case Support who can resolve authorization holds directly. Please hold.\nIf already spoke with health coach, also collect:\n4. Date/time of that conversation\n5. Coach name\n\nBefore creating the ticket, read a short confirmation: \"So — your deposit is on hold, reason is [reason], and best number back is [callback]. Correct?\" If confirmed, proceed. If corrected, fix and re-confirm.\nThen: I have created a ticket. Someone will follow up.\nThen: Is there anything else I can help you with?"
+        }
+      },
+      {
+        "name": "ADDRESS / CONTACT UPDATE",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-cu-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Update submitted, caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-cu-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Update submitted, caller is done."
+            }
+          }
+        ],
+        "id": "node-contact-update",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 1550
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect one at a time:\n1. Name (skip if known)\n2. Patient/member name\n3. New address (street, city, state, zip)\n4. County\n5. Phone number\n6. Email\nThen: I have updated your information. You will receive a confirmation.\nThen: Is there anything else I can help you with?"
+        }
+      },
+      {
+        "name": "HEALTH COACH TRANSFER",
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-health-coach",
+            "id": "e-hc-xfer",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Coach name collected, transfer message delivered."
+            }
+          }
+        ],
+        "id": "node-health-coach-transfer",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 1700
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask: Do you know the name of your health coach?\nOnce given: Got it. Let me connect you with [name] now. Please hold."
+        }
+      },
+      {
+        "name": "CANCEL NURSE VISIT",
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-nc-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Submitted, caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-nc-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Submitted, caller is done."
+            }
+          }
+        ],
+        "id": "node-nurse-cancel",
+        "type": "conversation",
+        "display_position": {
+          "x": 1800,
+          "y": 1850
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect one at a time:\n1. Name (skip if known)\n2. Callback phone\n3. Email\n4. Nurse name (if known — no problem if not)\nThen: Cancellation submitted and routed internally. You will receive a ticket confirmation.\nThen: Is there anything else I can help you with?"
+        }
+      },
+      {
+        "name": "PROSPECT INTAKE",
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-eligibility",
+            "id": "e-pi-elig",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "All intake collected, ready to transfer."
+            }
+          },
+          {
+            "destination_node_id": "node-escalate-distress",
+            "id": "e-pi-distress",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Death, fatality, or extreme distress."
+            }
+          }
+        ],
+        "id": "node-prospect-intake",
+        "type": "conversation",
+        "display_position": {
+          "x": 270,
+          "y": 1230
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Briefly: Keyline helps families get paid to care for loved ones at home. Collect one at a time:\n1. Name (skip if known)\n2. Callback phone\n3. Email\n4. Patient full name\n5. Patient date of birth\n6. Switching providers or starting for the first time?\n\nBefore transferring, read a short confirmation: \"Just to confirm — this is for [patient name], date of birth [dob], and you're [starting new / switching providers]. Correct?\" If confirmed, proceed to transfer. If corrected, fix and re-confirm.\nThen: I am connecting you with our Eligibility Specialist. Please hold."
+        }
+      },
+      {
+        "name": "PROSPECT STATUS CHECK",
+        "edges": [
+          {
+            "destination_node_id": "node-sms-app-link",
+            "id": "e-ps-sms",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants app link."
+            }
+          },
+          {
+            "destination_node_id": "node-transfer-care-team",
+            "id": "e-ps-xfer",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to speak with someone."
+            }
+          }
+        ],
+        "id": "node-prospect-status-check",
+        "type": "conversation",
+        "display_position": {
+          "x": 990,
+          "y": 1494
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: You can check status through the Keyline app. Want me to send the link?\nIf they want to speak with someone: Any concerns to note before I transfer? Then connect to Care Team."
+        }
+      },
+      {
+        "name": "CASE MANAGER",
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-case-support",
+            "id": "e-cm-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Member has started services."
+            }
+          },
+          {
+            "destination_node_id": "node-transfer-care-team",
+            "id": "e-cm-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Member has not started services."
+            }
+          }
+        ],
+        "id": "node-case-manager",
+        "type": "conversation",
+        "display_position": {
+          "x": 654,
+          "y": 1470
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask: Has the member already started services with Keyline?\nYES → connect to Case Support. NO → connect to Care Team."
+        }
+      },
+      {
+        "name": "OUT OF SCOPE",
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-case-support",
+            "id": "e-oos-xfer",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants transfer."
+            }
+          },
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-oos-more",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Ticket created, caller needs more help."
+            }
+          },
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-oos-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Ticket created, caller is done."
+            }
+          }
+        ],
+        "id": "node-out-of-scope",
+        "type": "conversation",
+        "display_position": {
+          "x": 654,
+          "y": 1878
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: I want to make sure you get the right help. That is something our team would need to assist with directly.\nOffer: Transfer to the right department, or create a ticket for callback. Which do you prefer?\nIf callback: collect name + callback number, create ticket.\nNever fabricate legal, contract, or insurance info."
+        }
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Caller is in acute distress (crying, panicking, saying they don't know what to do, active crisis).\nSay: \"I'm so sorry you're going through this. I want to make sure you get the right support right away.\"\nThen: \"I'm going to connect you with someone from our team now. Please hold.\"\nDo NOT collect intake. Do NOT try to resolve. Transfer live to case support immediately.\n(Fatality notifications are handled separately by GLOBAL - FATALITY — do not confuse the two.)"
+        },
+        "name": "GLOBAL - DISTRESS",
+        "edges": [],
+        "global_node_setting": {
+          "condition": "User expresses acute emotional distress (crying, panicking, in crisis, saying they don't know what to do). This is NOT for reporting a death — fatality is handled by a separate global node.",
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "I'm a bit frustrated about this form"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "He almost died in the fall"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "This is really annoying"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "My mother passed away last night"
+                }
+              ]
+            }
+          ],
+          "cool_down": 1,
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Oh my god, I don't know what to do"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "I can't handle this anymore, I'm losing it"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Please help me, I'm really scared"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Nobody's called me back, I'm really upset"
+                }
+              ]
+            }
+          ]
+        },
+        "id": "node-escalate-distress",
+        "type": "conversation",
+        "display_position": {
+          "x": 246,
+          "y": -90
+        },
+        "skip_response_edge": {
+          "destination_node_id": "node-transfer-care-team",
+          "id": "skip-response-edge-1776271416536-mmojwj5b2",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Skip response"
+          }
+        }
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Answer in-scope Keyline FAQs using the Knowledge Base. Keep it brief in natural spoken form — 1 to 2 sentences max.\n\nAfter answering, ask: \"Want to know more about that?\"\n\n- If the caller says yes or asks a follow-up, give one more short answer from the Knowledge Base, then ask again: \"Anything else on that?\"\n- If the caller says no, declines, or brushes it off (\"no thanks\", \"that's all\", \"nope\", \"I'm good\", \"that answers it\"), do NOT say goodbye and do NOT ask \"is there anything else I can help with?\". The system will silently return to the previous flow — your job is simply to stop talking and let the transition happen. Do NOT deliver a farewell. Do NOT close the call.\n- If the caller says \"let's continue\" or \"back to what we were doing\", the system will return them to the previous flow — do NOT respond with a farewell.\n- If the FAQ is too complex or the caller wants a live person, route to transfer-care-team.\n\nIf the Knowledge Base has no answer: \"I don't have that info handy — want me to connect you with someone who can help?\"\n\nNever answer legal, contract, insurance, or medical questions — those belong in OUT OF SCOPE.\nNever get pulled into long conversations — quick info handoff only."
+        },
+        "name": "GLOBAL - FAQ HANDLER",
+        "global_node_setting": {
+          "condition": "User asks a general informational question about Keyline -- services offered, states served, office hours, caregiver pay rates, caregiver app features, eligibility, enrollment process, or any general program FAQ answerable from the Knowledge Base. NOT intake requests. NOT legal/contract/insurance questions (those route to OUT OF SCOPE).",
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "I need to update my address",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "My mother fell yesterday",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "What does my contract say about termination?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "I want to check my application status",
+                  "role": "user"
+                }
+              ]
+            }
+          ],
+          "cool_down": 1,
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "What services do you guys provide?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "How much do caregivers get paid?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "What states do you operate in?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "What are your office hours?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "How do I apply to become a caregiver?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "I just have a quick question about the program",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Can I care for multiple family members?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "How does this whole thing work?",
+                  "role": "user"
+                }
+              ]
+            }
+          ],
+          "go_back_conditions": [
+            {
+              "id": "gb-faq-done",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller said no, declined more info, said 'that's all', 'I'm good', 'nope', 'no thanks', 'that answers it', or otherwise indicated they're done with the question. Return silently to the original flow."
+              }
+            },
+            {
+              "id": "gb-faq-resume",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller wants to get back to what they were doing before the question, e.g., 'continue', 'let's keep going', 'back to what we were doing', 'continue the process'."
+              }
+            }
+          ]
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-care-team",
+            "id": "e-faq-xfer",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to speak to a live person about this FAQ or the question is too complex for a brief answer."
+            }
+          }
+        ],
+        "id": "node-global-faq-handler",
+        "type": "conversation",
+        "display_position": {
+          "x": -330,
+          "y": -138
+        }
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Caller wants to switch to a different Keyline topic mid-flow. Acknowledge cleanly and re-route.\n\nSay: Sure, we can take care of that. Let me get that sorted for you.\n\nDrop any partial data from the previous flow. Keep caller name. Route to CAREGIVER - TOPIC MENU so the new topic enters fresh."
+        },
+        "name": "GLOBAL - TOPIC CHANGE",
+        "global_node_setting": {
+          "condition": "User explicitly signals they want to handle a different Keyline topic mid-intake -- phrases like 'actually I also need to...', 'wait can I also ask about...', 'one more thing...' -- AND the new topic is a recognized Keyline call type. NOT for corrections within the current task.",
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Wait, my departure date is the 25th not the 24th",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Actually, change that -- my phone is a different number",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Sorry, let me correct the address",
+                  "role": "user"
+                }
+              ]
+            }
+          ],
+          "cool_down": 1,
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Actually, I also need to report that my mom fell yesterday",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Wait, can I also ask about pay stubs while we're here?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Oh, one more thing -- I need to update my address too",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Before I forget, I have a question about a missed clock out",
+                  "role": "user"
+                }
+              ]
+            }
+          ]
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-caregiver-menu",
+            "id": "e-tc-back",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Acknowledgment delivered."
+            }
+          }
+        ],
+        "id": "node-global-topic-change",
+        "type": "conversation",
+        "display_position": {
+          "x": -402,
+          "y": 534
+        }
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Honor the request for a human. Transfer immediately. No gatekeeping.\n\nSay: Of course -- let me connect you with someone from our team right now. Please hold.\n\nDo not try to resolve the issue first. Do not ask why they want a human. Transfer to Case Support immediately. This rule is unconditional."
+        },
+        "name": "GLOBAL - HUMAN REQUEST",
+        "global_node_setting": {
+          "condition": "User explicitly asks to speak with a real person, human, live representative, or states they don't want to talk to AI or an automated system.",
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Can I talk to my health coach?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "I'd like to speak with Case Support specifically",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Connect me to payroll",
+                  "role": "user"
+                }
+              ]
+            }
+          ],
+          "cool_down": 1,
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Can I talk to a real person?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "I want to speak with someone live",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Get me a human please",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "I don't want to talk to a robot",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Transfer me to an actual person",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Are you a bot? I want a real person",
+                  "role": "user"
+                }
+              ]
+            }
+          ]
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-case-support",
+            "id": "e-ghr-xfer",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Acknowledgment delivered."
+            }
+          }
+        ],
+        "id": "node-global-human-request",
+        "type": "conversation",
+        "display_position": {
+          "x": -402,
+          "y": 990
+        }
+      },
+      {
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+14373754315"
+        },
+        "edge": {
+          "destination_node_id": "node-close-call",
+          "id": "e-cs-fail",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        },
+        "instruction": {
+          "type": "static_text",
+          "text": "Got it. Let me connect you with our Case Support team. Please hold."
+        },
+        "name": "TRANSFER - CASE SUPPORT",
+        "id": "node-transfer-case-support",
+        "transfer_option": {
+          "type": "cold_transfer",
+          "enable_bridge_audio_cue": true
+        },
+        "type": "transfer_call",
+        "display_position": {
+          "x": 2800,
+          "y": 800
+        },
+        "speak_during_execution": true
+      },
+      {
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+14373754315"
+        },
+        "edge": {
+          "destination_node_id": "node-close-call",
+          "id": "e-ct-fail",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        },
+        "instruction": {
+          "type": "static_text",
+          "text": "One moment, I am connecting you now."
+        },
+        "name": "TRANSFER - CARE TEAM",
+        "id": "node-transfer-care-team",
+        "transfer_option": {
+          "type": "cold_transfer",
+          "enable_bridge_audio_cue": true
+        },
+        "type": "transfer_call",
+        "display_position": {
+          "x": 2800,
+          "y": 1000
+        },
+        "speak_during_execution": true
+      },
+      {
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+14373754315"
+        },
+        "edge": {
+          "destination_node_id": "node-close-call",
+          "id": "e-el-fail",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        },
+        "instruction": {
+          "type": "static_text",
+          "text": "Thank you. I am going to connect you with our Eligibility Specialist who will walk you through the next steps. Please hold."
+        },
+        "name": "TRANSFER - ELIGIBILITY SPECIALIST",
+        "id": "node-transfer-eligibility",
+        "transfer_option": {
+          "type": "cold_transfer",
+          "enable_bridge_audio_cue": true
+        },
+        "type": "transfer_call",
+        "display_position": {
+          "x": 2800,
+          "y": 1200
+        },
+        "speak_during_execution": true
+      },
+      {
+        "name": "CLOSE CALL",
+        "edges": [
+          {
+            "destination_node_id": "node-end-call",
+            "id": "e-cc-end",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Closing delivered."
+            }
+          }
+        ],
+        "id": "node-close-call",
+        "type": "conversation",
+        "display_position": {
+          "x": 3200,
+          "y": 800
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Close warmly using caller name if known. Take care, [name]. or Have a great day, [name].\n\nRight after closing is delivered, End the call."
+        }
+      },
+      {
+        "name": "END CALL",
+        "id": "node-end-call",
+        "type": "end",
+        "display_position": {
+          "x": 3600,
+          "y": 800
+        }
+      },
+      {
+        "name": "TRANSFER - PAYROLL TEAM",
+        "id": "node-transfer-payroll",
+        "type": "transfer_call",
+        "display_position": {
+          "x": 2800,
+          "y": 1400
+        },
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+14373754315"
+        },
+        "transfer_option": {
+          "type": "cold_transfer",
+          "enable_bridge_audio_cue": true
+        },
+        "speak_during_execution": true,
+        "instruction": {
+          "type": "static_text",
+          "text": "Connecting you with our Payroll team now. Please hold."
+        },
+        "edge": {
+          "destination_node_id": "node-close-call",
+          "id": "e-pay-fail",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        }
+      },
+      {
+        "name": "TRANSFER - HEALTH COACH",
+        "id": "node-transfer-health-coach",
+        "type": "transfer_call",
+        "display_position": {
+          "x": 2800,
+          "y": 1600
+        },
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+14373754315"
+        },
+        "transfer_option": {
+          "type": "cold_transfer",
+          "enable_bridge_audio_cue": true
+        },
+        "speak_during_execution": true,
+        "instruction": {
+          "type": "static_text",
+          "text": "Let me connect you with your Health Coach now. Please hold."
+        },
+        "edge": {
+          "destination_node_id": "node-close-call",
+          "id": "e-hc-fail",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        }
+      },
+      {
+        "name": "GLOBAL - FATALITY",
+        "id": "node-global-fatality",
+        "type": "conversation",
+        "display_position": {
+          "x": -400,
+          "y": -200
+        },
+        "global_node_setting": {
+          "condition": "User reports that a Keyline member, client, loved one, or family member has passed away, died, or is deceased. Past-tense death announcement only — not 'almost died' or 'nearly passed'.",
+          "cool_down": 1,
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "My mother passed away last night"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Dad died this morning"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "We lost her yesterday"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "He's gone, he passed last week"
+                }
+              ]
+            }
+          ],
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "He almost died in the fall"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "She nearly passed out"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "I'd die if that happened"
+                }
+              ]
+            }
+          ]
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Caller reports a member's death. Condolences only — NO live transfer.\n\nSay: \"I'm very sorry for your loss. Please accept our deepest condolences.\"\nPause briefly.\nSay: \"I'm going to flag this for our support team right away, and someone will reach out to you shortly to help with what comes next.\"\nThen: \"Please take care of yourself. We'll be in touch very soon.\"\n\nDo NOT ask intake questions. Do NOT transfer live. Do NOT offer the app.\nCall the create_ticket tool with call_type=fatality and priority=fatality so the team gets a priority callback.\nThen close the call gently. Speak slowly. Match tone to the moment."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-close-call",
+            "id": "e-fat-close",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Condolences delivered and ticket flagged — close the call."
+            }
+          }
+        ]
+      }
+    ],
+    "start_node_id": "start-node-aubrey-opening",
+    "start_speaker": "agent",
+    "tools": [
+      {
+        "type": "custom",
+        "tool_id": "send_app_link",
+        "name": "send_app_link",
+        "description": "Send the Keyline caregiver app link via SMS to the caller. Call when caller accepts the app offer.",
+        "url": "https://TODO.keyline.example.com/sms/app-link",
+        "method": "POST",
+        "speak_during_execution": true,
+        "execution_message_description": "Sending that over now.",
+        "response_variables": {
+          "sms_sent": "$.sms_sent"
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "phone_number": {
+              "type": "string",
+              "description": "Caller phone in E.164"
+            },
+            "message_type": {
+              "type": "string",
+              "enum": [
+                "travel",
+                "incident",
+                "paystubs",
+                "direct_deposit",
+                "status_check"
+              ]
+            }
+          },
+          "required": [
+            "phone_number",
+            "message_type"
+          ]
+        }
+      },
+      {
+        "type": "custom",
+        "tool_id": "create_ticket",
+        "name": "create_ticket",
+        "description": "Create a ticket in Monday.com for this call. Call after collecting required fields for any unresolved intake, or for fatality notifications.",
+        "url": "https://TODO.keyline.example.com/crm/ticket",
+        "method": "POST",
+        "speak_during_execution": false,
+        "response_variables": {
+          "ticket_id": "$.ticket_id",
+          "ticket_success": "$.ticket_success"
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "call_type": {
+              "type": "string",
+              "description": "e.g., travel, incident, missed_clockout, income_letter, address_update, dd_hold, nurse_cancel, paystubs_sfc, prospect, out_of_scope, fatality"
+            },
+            "caller_name": {
+              "type": "string"
+            },
+            "caller_state": {
+              "type": "string"
+            },
+            "caller_phone": {
+              "type": "string",
+              "description": "E.164"
+            },
+            "call_summary": {
+              "type": "string"
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "high",
+                "fatality"
+              ]
+            },
+            "collected_fields": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "call_type",
+            "caller_name",
+            "caller_phone",
+            "call_summary"
+          ]
+        }
+      },
+      {
+        "type": "custom",
+        "tool_id": "verify_caregiver_id",
+        "name": "verify_caregiver_id",
+        "description": "Verify a caregiver ID against Keyline's system. Call before proceeding with missed clockout intake.",
+        "url": "https://TODO.keyline.example.com/caregiver/verify",
+        "method": "POST",
+        "speak_during_execution": true,
+        "execution_message_description": "Let me verify that real quick.",
+        "response_variables": {
+          "id_valid": "$.id_valid",
+          "caregiver_full_name": "$.caregiver_full_name"
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "caregiver_id": {
+              "type": "string",
+              "description": "Format CG-XXXX"
+            },
+            "caregiver_name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "caregiver_id"
+          ]
+        }
+      }
+    ],
+    "model_choice": {
+      "type": "cascading",
+      "model": "gpt-4.1"
+    },
+    "tool_call_strict_mode": true,
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
+    },
+    "begin_tag_display_position": {
+      "x": 122,
+      "y": 333
+    },
+    "is_published": false,
+    "mcps": [],
+    "flex_mode": false,
+    "is_transfer_cf": false
+  }
+}

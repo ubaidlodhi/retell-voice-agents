@@ -1,0 +1,4621 @@
+{
+  "name": "Retell AI ↔ Wix Bookings | Production v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "retell-wix",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "94b69c86-e2df-4b22-8eaf-245197a3fbb0",
+      "name": "Webhook — Retell Tool Call",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        2432
+      ],
+      "webhookId": "retell-wix-prod-v2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Retell tool-call webhook normalizer\n//\n// With `args_at_root: true` (the production-validated default), Retell sends\n// LLM-extracted args SPREAD AT THE BODY ROOT — there is no `body.args` wrapper\n// and no `body.call` object. Tool routing is via the `tool` HTTP header.\n//\n// This parser is defensive: it also still handles the older `args_at_root: false`\n// shape (`body = { args: {...}, call: {...}, name: \"...\" }`) so flipping the\n// tool flag back doesn't break anything.\n\nconst data = $input.first().json;\nconst headers = data.headers || {};\nconst body = data.body || {};\n\n// Tool name — header-routed (preferred), fall back to body.name for legacy shape\nconst tool = headers.tool || body.name || '';\n\n// Args — nested under body.args (args_at_root: false) OR spread at body root (args_at_root: true)\nlet args;\nif (body.args && typeof body.args === 'object' && !Array.isArray(body.args)) {\n    args = body.args;\n} else {\n    // Strip Retell-internal envelope fields; everything else is an arg.\n    const { call, name, ...rootArgs } = body;\n    args = rootArgs;\n}\n\n// Call context — only present when args_at_root: false. Otherwise unavailable\n// at the webhook level; the LLM must pass any needed call info as an arg\n// (e.g., the system prompt instructs Aria to populate `phone` from {{user_number}}).\nconst callObj = body.call || {};\nconst callId = callObj.call_id || 'unknown';\nconst callerPhone =\n    callObj.from_number ||\n    callObj.to_number ||\n    args.callerPhone ||\n    args.phone ||\n    null;\n\nif (!tool) {\n    return [{\n        json: {\n            tool: '',\n            args: {},\n            callId,\n            callerPhone,\n            _parseError: 'No tool name found. Expected the `tool` HTTP header (set per-tool in the Retell agent config), or body.name for legacy webhook shape.'\n        }\n    }];\n}\n\nreturn [{ json: { tool, args, callId, callerPhone } }];\n"
+      },
+      "id": "b4321f5a-2712-41e7-8f0d-e400a58475a1",
+      "name": "Parse Retell Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        2432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.first().json;\nconst { args } = inputJson;\nconst errors = [];\n\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss\nfunction formatForWix(dateStr, isEnd = false) {\n    if (!dateStr) return dateStr;\n    let cleanStr = String(dateStr).replace('Z', '');\n    cleanStr = cleanStr.replace(/[+-]\\d{2}:\\d{2}$/, '');\n    if (cleanStr.length === 10) {\n        cleanStr += isEnd ? 'T23:59:59.000' : 'T00:00:00.000';\n    }\n    return cleanStr;\n}\n\nif (args.startDate) {\n    if (isNaN(Date.parse(args.startDate))) {\n        errors.push('startDate is not a valid date');\n    } else {\n        args.startDate = formatForWix(args.startDate, false);\n    }\n}\n\nif (args.endDate) {\n    if (isNaN(Date.parse(args.endDate))) {\n        errors.push('endDate is not a valid date');\n    } else {\n        args.endDate = formatForWix(args.endDate, true);\n    }\n}\n\n// --- NEW: Normalize optional filter args ---\n\n// staffId: trim or null\nif (args.staffId === '' || args.staffId === undefined) {\n    args.staffId = null;\n} else if (args.staffId) {\n    args.staffId = String(args.staffId).trim();\n}\n\n// timeOfDay: lowercase one of morning/afternoon/evening/any (default any)\nconst validTOD = ['morning', 'afternoon', 'evening', 'any'];\nif (args.timeOfDay) {\n    const tod = String(args.timeOfDay).toLowerCase().trim();\n    args.timeOfDay = validTOD.includes(tod) ? tod : 'any';\n} else {\n    args.timeOfDay = 'any';\n}\n\n// earliestFirst: coerce to boolean\nif (args.earliestFirst === true || String(args.earliestFirst).toLowerCase() === 'true') {\n    args.earliestFirst = true;\n} else {\n    args.earliestFirst = false;\n}\n\n// limit: integer 1..50, default 6 (3 if earliestFirst and not set)\nif (args.limit !== undefined && args.limit !== null && args.limit !== '') {\n    const n = parseInt(args.limit, 10);\n    if (!isNaN(n) && n >= 1 && n <= 50) {\n        args.limit = n;\n    } else {\n        args.limit = args.earliestFirst ? 3 : 6;\n    }\n} else {\n    args.limit = args.earliestFirst ? 3 : 6;\n}\n\nreturn [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+      },
+      "id": "a6d9c927-fe7f-4258-955c-c6e903214b4c",
+      "name": "Validate: Slots Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "d2b0e39e-7904-4f1a-a226-9ff4fd5d2328",
+      "name": "IF: Slots Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/availability-calendar/v1/availability/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      \"serviceId\": [\"{{ $json.args.serviceId }}\"],\n      \"startDate\": \"{{ $json.args.startDate }}\",\n      \"endDate\": \"{{ $json.args.endDate }}\"\n      {{ $json.args.staffId ? ',\"resourceId\": [\"' + $json.args.staffId + '\"]' : '' }}\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "d03ee52d-bc67-4da6-9f40-06440afd0e6e",
+      "name": "Wix: Query Time Slots",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        1184
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst { args } = $('Parse Retell Payload').first().json;\n\nif (data.message || data.details) {\n    return [{ json: { success: false, error: data.message || 'Failed to retrieve slots' } }];\n}\n\nconst TZ = \"America/Los_Angeles\";\nconst entries = data.availabilityEntries || [];\n\n// Filter parameters from the validator\nconst staffFilter = args.staffId || null;\nconst timeOfDay = (args.timeOfDay || 'any').toLowerCase();\nconst earliestFirst = args.earliestFirst === true;\nconst limit = (typeof args.limit === 'number' && args.limit > 0) ? args.limit : (earliestFirst ? 3 : 6);\n\n// Hour-band predicate (10 AM – 8 PM open hours)\nfunction inBand(hour, band) {\n    if (band === 'morning')   return hour >= 10 && hour < 12;\n    if (band === 'afternoon') return hour >= 12 && hour < 17;\n    if (band === 'evening')   return hour >= 17 && hour < 20;\n    return hour >= 10 && hour < 20; // 'any'\n}\n\nfunction bandOf(hour) {\n    if (hour >= 10 && hour < 12) return 'morning';\n    if (hour >= 12 && hour < 17) return 'afternoon';\n    if (hour >= 17 && hour < 20) return 'evening';\n    return null;\n}\n\n// 1. Map UTC slots to California-local with hour + band\nlet slots = entries.filter(e => e.bookable === true).map(e => {\n    const utcDate = new Date(e.slot.startDate);\n    const localDate = utcDate.toLocaleDateString(\"en-CA\", { timeZone: TZ });\n    const localHour = parseInt(utcDate.toLocaleString(\"en-GB\", { hour: '2-digit', hour12: false, timeZone: TZ }), 10);\n    const timeLabel = utcDate.toLocaleTimeString(\"en-US\", { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: TZ });\n    return {\n        localDate,\n        time: timeLabel,\n        hour: localHour,\n        startDate: e.slot.startDate,\n        endDate: e.slot.endDate,\n        staffName: e.slot.resource?.name || 'Therapist',\n        staffId: e.slot.resource?.id || null,\n        scheduleId: e.slot.scheduleId\n    };\n});\n\n// 2. Apply staff filter (if provided)\nif (staffFilter) {\n    slots = slots.filter(s => s.staffId === staffFilter);\n}\n\n// 3. Apply time-of-day filter (always — 'any' keeps 10 AM – 8 PM)\nslots = slots.filter(s => inBand(s.hour, timeOfDay));\n\nconst filterApplied = { staffId: staffFilter, timeOfDay, earliestFirst, limit };\n\n// 4a. EARLIEST-FIRST mode: flatten, sort, dedup same date+time, cap at limit\nif (earliestFirst) {\n    const sorted = slots.slice().sort((a, b) => new Date(a.startDate) - new Date(b.startDate));\n    const seen = new Map(); // key -> aggregated slot\n    const order = [];\n    for (const s of sorted) {\n        const key = `${s.localDate}|${s.time}`;\n        if (seen.has(key)) {\n            const agg = seen.get(key);\n            if (!agg.availableTherapists.includes(s.staffName)) {\n                agg.availableTherapists.push(s.staffName);\n            }\n        } else {\n            const agg = {\n                localDate: s.localDate,\n                time: s.time,\n                startDate: s.startDate,\n                endDate: s.endDate,\n                staffId: s.staffId,\n                scheduleId: s.scheduleId,\n                availableTherapists: [s.staffName]\n            };\n            seen.set(key, agg);\n            order.push(agg);\n            if (order.length >= limit) break;\n        }\n    }\n    return [{ json: {\n        success: true,\n        mode: 'earliest_first',\n        count: order.length,\n        filterApplied,\n        slots: order\n    } }];\n}\n\n// 4b. GROUPED mode: by date → morning/afternoon/evening, dedup same time across staff\nconst availabilityByDay = {};\nslots.forEach(s => {\n    const band = bandOf(s.hour);\n    if (!band) return;\n    if (!availabilityByDay[s.localDate]) {\n        availabilityByDay[s.localDate] = { morning: [], afternoon: [], evening: [] };\n    }\n    const day = availabilityByDay[s.localDate];\n    const existing = [...day.morning, ...day.afternoon, ...day.evening].find(x => x.time === s.time);\n    if (existing) {\n        if (!existing.availableTherapists.includes(s.staffName)) {\n            existing.availableTherapists.push(s.staffName);\n        }\n    } else {\n        day[band].push({\n            time: s.time,\n            startDate: s.startDate,\n            endDate: s.endDate,\n            staffId: s.staffId,\n            scheduleId: s.scheduleId,\n            availableTherapists: [s.staffName]\n        });\n    }\n});\n\n// Cap slots per band so the agent doesn't get a wall of options.\n// Distribute limit roughly evenly across active bands per day.\nlet totalReturned = 0;\nconst sortedDates = Object.keys(availabilityByDay).sort();\nfor (const date of sortedDates) {\n    const day = availabilityByDay[date];\n    const activeBands = ['morning', 'afternoon', 'evening'].filter(b => day[b].length > 0);\n    const perBand = activeBands.length === 0 ? 0 : Math.max(2, Math.ceil(limit / Math.max(1, activeBands.length)));\n    for (const band of ['morning', 'afternoon', 'evening']) {\n        // Sort each band by time\n        day[band].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));\n        if (day[band].length > perBand) {\n            day[band] = day[band].slice(0, perBand);\n        }\n        totalReturned += day[band].length;\n    }\n}\n\nreturn [{ json: {\n    success: true,\n    mode: 'grouped',\n    count: totalReturned,\n    filterApplied,\n    availabilityByDay\n} }];\n"
+      },
+      "id": "7bada78e-e2f0-4114-9a0b-943e0b595ca8",
+      "name": "Format: Time Slots Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "164b15eb-7fcd-4f18-bfc1-05e48280ad53",
+      "name": "Respond: Slots Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        112,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v1/staff-members/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": {\n    \"paging\": { \"limit\": 50 }\n  }\n}",
+        "options": {}
+      },
+      "id": "dae73b9a-cce9-4d56-ac35-62c0006cc764",
+      "name": "Wix: Query Staff Members",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -336,
+        1664
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details || !data.staffMembers) {\n  return [{ json: { success: false, error: data.message || 'Failed to retrieve staff members' } }];\n}\n\nconst staff = (data.staffMembers || []).map(s => ({\n  id: s.id,\n  resourceId: s.resourceId,\n  name: s.name,\n  // description: s.description ?? null,\n  // phone: s.phone ?? null,\n  email: s.email ?? null\n}));\n\nreturn [{ json: { success: true, count: staff.length, staff } }];"
+      },
+      "id": "331f8152-42c8-4085-95b0-efe9e9996d35",
+      "name": "Format: Staff Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Slot Context\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.staffId) errors.push('staffId is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.email) errors.push('email is required');\nif (!args.phone) errors.push('phone is required');\nif (!args.variantId) errors.push('variantId is required for this service');\n\n// Date & Array formatting checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\nif (args.addOnIds && !Array.isArray(args.addOnIds)) errors.push('addOnIds must be an array');\n\nreturn [{ json: { ...$input.first().json, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"
+      },
+      "id": "c88a739d-e846-48ce-92ec-38916fc2fcc3",
+      "name": "Validate: Booking Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1952
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "66d24395-4e67-4570-8ad9-840d14bbef3a",
+      "name": "IF: Booking Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        1952
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/bookings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      \"variantId\": \"{{ $('IF: Booking Args Valid').item.json.args.variantId }}\",\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n\"timezone\": \"America/Los_Angeles\",\n        \"resource\": {\n          \"id\": \"{{ $('IF: Booking Args Valid').item.json.args.staffId }}\"\n        },\n        \"location\": {\n          \"locationType\": \"OWNER_BUSINESS\",\n          \"id\": \"a345d3c7-2a89-4816-ad3a-277ea40730a7\"\n        }\n      }\n    },\n    \"contactDetails\": {\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      \"email\": \"{{ $('IF: Booking Args Valid').item.json.args.email || \"contact@aiemply.com\" }}\",\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1\n    {{ $('IF: Booking Args Valid').item.json.args.notes ? ',\"additionalFields\": { \"fields\": [{ \"fieldId\": \"field:note\", \"value\": { \"stringValue\": \"' + $json.args.notes + '\" } }] }' : '' }}\n    {{ $('IF: Booking Args Valid').item.json.args.addOnIds && $json.args.addOnIds.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($json.args.addOnIds.map(id => ({ \"addOnId\": id }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
+        "options": {}
+      },
+      "id": "92147fa9-0bbb-4e12-b90f-61579b06ef87",
+      "name": "Wix: Create Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1232,
+        1792
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.booking?.id ?? '' }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "296b38ce-5092-49f8-b429-4daa6be5a190",
+      "name": "IF: Booking Created OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        1712
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.wixapis.com/bookings/v2/bookings/{{ $json.booking.id }}/confirm",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  },\n  \"revision\": {{ $json.booking.revision }}\n}",
+        "options": {}
+      },
+      "id": "297151dc-100d-42b8-a8ae-608608ff728e",
+      "name": "Wix: Confirm Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1680,
+        1648
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const confirmData = $input.first().json;\n// Fallback to the create booking data if confirm had issues\nconst createData = $('Wix: Create Booking').first().json;\n\nconst booking = confirmData.booking || createData.booking || {};\nconst isConfirmed = confirmData.booking?.status === 'CONFIRMED';\n\nif (!booking.id) {\n  return [{ json: { success: false, error: confirmData.message || 'Booking confirmation failed' } }];\n}\n\nreturn [{ json: {\n  success: true,\n  confirmed: isConfirmed,\n  bookingId: booking.id,\n  status: booking.status,\n  startDate: booking.bookedEntity?.slot?.startDate,\n  endDate: booking.bookedEntity?.slot?.endDate,\n  serviceId: booking.bookedEntity?.slot?.serviceId,\n  contact: {\n    firstName: booking.contactDetails?.firstName,\n    lastName: booking.contactDetails?.lastName,\n    phone: booking.contactDetails?.phone,\n    email: booking.contactDetails?.email ?? null\n  },\n  message: `Appointment booked for ${booking.contactDetails?.firstName} ${booking.contactDetails?.lastName} on ${booking.bookedEntity?.slot?.startDate}`\n} }];"
+      },
+      "id": "7fadcdf7-b3e6-4e57-a3c5-9b81fb4f22f3",
+      "name": "Format: Booking Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        1600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "02919583-91f4-47e4-90da-23227a0b0525",
+      "name": "Respond: Booking Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        112,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\nif (!args.bookingId) errors.push('bookingId is required');\n\nreturn [{ json: { ...$input.first().json, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"
+      },
+      "id": "34ac8e70-e709-47b2-b2f2-c26056fe6bf6",
+      "name": "Validate: Cancel Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "27466947-0c66-45dc-a6b2-5e8940da36ab",
+      "name": "IF: Cancel Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.wixapis.com/bookings/v2/bookings/{{ $json.args.bookingId }}/cancel",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"revision\": \"{{ $json.args.revision }}\",\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
+        "options": {}
+      },
+      "id": "0c8c7525-385b-4ec8-bb52-bc7a7dd00a6f",
+      "name": "Wix: Cancel Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        2240
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Wix cancel returns 200 with booking object on success\n// It returns message+details on error\nif (data.message && data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to cancel booking. It may have already been cancelled or the cancellation policy prevents it.' } }];\n}\n\nreturn [{ json: {\n  success: true,\n  message: 'Booking has been successfully cancelled.',\n  bookingId: data.booking?.id ?? $('Validate: Cancel Args').first().json.args.bookingId,\n  status: data.booking?.status ?? 'CANCELED'\n} }];"
+      },
+      "id": "bbf82b68-f58b-411b-8751-6e9ab9869719",
+      "name": "Format: Cancel Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        2128
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "7b62b31c-b4af-4c86-a8a9-09ad5a3cedc1",
+      "name": "Respond: Cancel Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        112,
+        2432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Existing Booking Identifiers\nif (!args.bookingId) errors.push('bookingId is required');\n// Note: checking strictly for undefined because revision can technically be 0\nif (args.revision === undefined || args.revision === null) errors.push('revision is required'); \n\n// 2. New Slot Context (Required by Wix V2 API)\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\nif (!args.staffId) errors.push('staffId is required');\n\n// 3. New Dates\nif (!args.startDate) errors.push('startDate is required (new slot start time)');\nif (!args.endDate) errors.push('endDate is required (new slot end time)');\n\n// Date formatting checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\nreturn [{ json: { ...$input.first().json, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"
+      },
+      "id": "ebd2dd0c-b140-4a75-9130-869f8ccee006",
+      "name": "Validate: Reschedule Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "989ae4c6-adc7-488a-92f1-b87f0ee26879",
+      "name": "IF: Reschedule Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.wixapis.com/bookings/v2/bookings/{{ $json.args.bookingId }}/reschedule",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"slot\": {\n    \"serviceId\": \"{{ $json.args.serviceId }}\",\n    \"scheduleId\": \"{{ $json.args.scheduleId }}\",\n    \"startDate\": \"{{ $json.args.startDate }}\",\n    \"endDate\": \"{{ $json.args.endDate }}\",\n    \"timezone\": \"America/Los_Angeles\",\n    \"resource\": {\n      \"id\": \"{{ $json.args.staffId }}\"\n    },\n    \"location\": {\n      \"locationType\": \"OWNER_BUSINESS\",\n      \"id\": \"a345d3c7-2a89-4816-ad3a-277ea40730a7\"\n    }\n  },\n  \"revision\": {{ $json.args.revision }},\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
+        "options": {}
+      },
+      "id": "20853341-7334-4536-9b73-d30f3414791c",
+      "name": "Wix: Reschedule Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        2624
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || !data.booking) {\n  return [{ json: { success: false, error: data.message || 'Failed to reschedule the booking. The new slot may not be available or rescheduling is not permitted by the service policy.' } }];\n}\n\nconst booking = data.booking;\nreturn [{ json: {\n  success: true,\n  message: 'Booking successfully rescheduled.',\n  bookingId: booking.id,\n  newStartDate: booking.bookedEntity?.slot?.startDate,\n  newEndDate: booking.bookedEntity?.slot?.endDate,\n  status: booking.status\n} }];"
+      },
+      "id": "6a2fc000-454d-4166-abfc-64df1995e39c",
+      "name": "Format: Reschedule Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "67160151-7cc7-451f-bff0-d289bf354622",
+      "name": "Respond: Reschedule Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        112,
+        2816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\n// Resolve inputs\nconst phoneToSearch = args.phone || callerPhone || null;\nconst emailToSearch = args.email || null;\nconst bookingId = args.bookingId || null;\n\n// Determine lookup mode (Email is now Priority #1)\nlet lookupMode = '';\nif (emailToSearch) lookupMode = 'by-email';\nelse if (bookingId) lookupMode = 'by-id';\nelse if (phoneToSearch) lookupMode = 'by-phone';\nelse errors.push('Either bookingId, email, or phone number is required');\n\nreturn [{ json: {\n  ...$input.first().json,\n  args: { ...args, _resolvedPhone: phoneToSearch, _resolvedEmail: emailToSearch, _resolvedBookingId: bookingId },\n  _valid: errors.length === 0,\n  _validationError: errors.join('; '),\n  _lookupMode: lookupMode\n} }];"
+      },
+      "id": "2fc79410-a151-45be-bb68-b8e13e05520d",
+      "name": "Validate: Get Booking Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        3104
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "30fed0a0-5f62-45cb-b3c8-b06c4e2923af",
+      "name": "IF: Get Booking Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        3104
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/bookings/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      {{ \n        $json._lookupMode === 'by-id' ? '\"id\": { \"$in\": [\"' + $json.args._resolvedBookingId + '\"]}' : \n        $json._lookupMode === 'by-email' ? '\"contactDetails.email\": \"' + $json.args._resolvedEmail + '\"' : \n        '\"contactDetails.phone\": \"' + $json.args._resolvedPhone + '\"' \n      }},\n      \"status\": { \"$in\": [\"CONFIRMED\", \"PENDING_APPROVAL\", \"CREATED\", \"PENDING\"] }\n    },\n    \"sort\": [{ \"fieldName\": \"createdDate\", \"order\": \"DESC\" }],\n    \"paging\": { \"limit\": 5 }\n  }\n}",
+        "options": {}
+      },
+      "id": "a1574b30-a2da-4b59-ab92-165f730aecff",
+      "name": "Wix: Get Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        3008
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to retrieve booking' } }];\n}\n\nconst bookings = (data.bookings || []).map(b => ({\n  bookingId: b.id,\n  status: b.status,\n  revision: b.revision, // <-- Crucial for Rescheduling\n  serviceId: b.bookedEntity?.slot?.serviceId,\n  scheduleId: b.bookedEntity?.slot?.scheduleId, // <-- Crucial for Rescheduling\n  staffId: b.bookedEntity?.slot?.resource?.id, // <-- Crucial for Rescheduling\n  timezone: b.bookedEntity?.slot?.timezone,\n  locationId: b.bookedEntity?.slot?.location?.id,\n  locationType: b.bookedEntity?.slot?.location?.locationType,\n  startDate: b.bookedEntity?.slot?.startDate,\n  endDate: b.bookedEntity?.slot?.endDate,\n  firstName: b.contactDetails?.firstName,\n  lastName: b.contactDetails?.lastName,\n  phone: b.contactDetails?.phone,\n  email: b.contactDetails?.email ?? null,\n  createdDate: b.createdDate\n}));\n\nif (bookings.length === 0) {\n  return [{ json: { success: true, count: 0, bookings: [], message: 'No active bookings found for this customer' } }];\n}\n\nreturn [{ json: { success: true, count: bookings.length, bookings } }];"
+      },
+      "id": "b598847d-2e55-4b34-a64b-b0f7fc4c1ce6",
+      "name": "Format: Get Booking Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        2912
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "8eb994c8-b15b-4a8e-bf02-254ce810f9c1",
+      "name": "Respond: Get Booking Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        112,
+        3200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Unknown tool: \"' + $json.tool + '\". Valid tools are: get-services, get-slots, get-staff, book-appointment, cancel-booking, reschedule-booking, get-booking' } }}",
+        "options": {}
+      },
+      "id": "9968bf83-9c7a-4132-b4d9-706b12fb0a90",
+      "name": "Respond: Unknown Tool Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting slots\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        1472
+      ],
+      "id": "aedc8560-252d-4952-a2df-30cd9a86c63f",
+      "name": "Error: Get Slots"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting staff\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -112,
+        1760
+      ],
+      "id": "feab7fbb-0ba7-487d-a37d-208f821c0992",
+      "name": "Error: Get Staff"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error booking service\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1904,
+        1952
+      ],
+      "id": "3a60778a-71e0-4547-aa70-34d2c639c8e9",
+      "name": "Error: Create Booking"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error cancelling booking\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        2336
+      ],
+      "id": "7d7031af-99a6-42a5-a5fc-390c170b58ab",
+      "name": "Error: Cancel Booking"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error rescheduling booking\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        2720
+      ],
+      "id": "1d65943a-0ebc-4ebb-aaac-566de2bc4b86",
+      "name": "Error: Rescheduling"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting booking\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        3104
+      ],
+      "id": "ca519a9d-42fe-493e-aed6-8c1f1868ad11",
+      "name": "Error: Getting Booking"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "dcc8b7bf-473c-4447-baa0-5db1b60e5484",
+      "name": "Respond: Get Slots",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "cf490d9b-e137-4bb0-903d-87299ec3817a",
+      "name": "Respond: Get Staff",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        112,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "ca79636f-ca8a-4805-b42f-75f0e584d173",
+      "name": "Respond: Cancel Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        2128
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "6c7829f1-3998-43ee-bbd2-a262fa979a20",
+      "name": "Respond: Book Appointment",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        1600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "b279f7c8-a482-41a8-91f0-b4f702546867",
+      "name": "Respond: Reschedule Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "c78cfd09-b42d-4d4e-b9b1-406ca27b4a57",
+      "name": "Respond: Get Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        2912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\nconst reason = (args.reason || '').toString().trim();\nif (!reason) errors.push('reason is required');\n\nconst callerName = (args.callerName || '').toString().trim() || 'Unknown';\nconst phoneToContact = (args.callerPhone || '').toString().trim() || callerPhone || 'Unknown';\nconst questionDetail = (args.questionDetail || '').toString().trim();\n\nconst subject = `New callback request from ${callerName} (${phoneToContact})`;\n\nconst lines = [\n    `A caller asked Aria for a callback. Please follow up.`,\n    ``,\n    `Caller name: ${callerName}`,\n    `Phone:       ${phoneToContact}`,\n    `Reason:      ${reason}`,\n];\nif (questionDetail) {\n    lines.push(``);\n    lines.push(`Question / detail:`);\n    lines.push(questionDetail);\n}\nlines.push(``);\nlines.push(`— Sent automatically by the Sage & Willow Spa AI receptionist`);\n\nconst body = lines.join('\\n');\n\nreturn [{ json: {\n    ...$input.first().json,\n    args,\n    _valid: errors.length === 0,\n    _validationError: errors.join('; '),\n    _emailSubject: subject,\n    _emailBody: body,\n    _callerName: callerName,\n    _callerPhone: phoneToContact,\n    _reason: reason\n} }];\n"
+      },
+      "id": "e9e6e40d-a4fc-4cf1-a399-b6ec9b9cf683",
+      "name": "Validate: Flag Callback Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        3488
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "cb6a23c8-80d3-478d-9de4-d4451fb36b43",
+      "name": "IF: Flag Callback Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        3488
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "Aria <contact@aiemply.com>",
+        "toEmail": "engineering@aiemply.com",
+        "subject": "={{ $json._emailSubject }}",
+        "emailFormat": "text",
+        "text": "={{ $json._emailBody }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "contact@aiemply.com"
+        }
+      },
+      "id": "bc0b90f5-15c9-4577-aa29-3819525f7d92",
+      "name": "Send Email: Flag Callback",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        3392
+      ],
+      "webhookId": "5150134c-78d0-4ce5-88ba-462e0f47c642",
+      "credentials": {
+        "smtp": {
+          "id": "m0mbibKf6il36id5",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const v = $('Validate: Flag Callback Args').first().json;\nreturn [{ json: {\n    success: true,\n    flagged: true,\n    message: 'Callback request sent to the team — they will follow up with the caller.',\n    callerName: v._callerName,\n    callerPhone: v._callerPhone,\n    reason: v._reason\n} }];\n"
+      },
+      "id": "b6b6f0e4-e105-4123-838b-f848a80f769d",
+      "name": "Format: Flag Callback Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        3296
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "df2338a4-1ad1-4d11-ab57-0a56a4ba317a",
+      "name": "Respond: Flag Callback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        3296
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "7d575fe5-ac86-454b-a454-3525fccba194",
+      "name": "Respond: Flag Callback Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        112,
+        3584
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Failed to send callback notification email\"\n}",
+        "options": {}
+      },
+      "id": "0d5263b0-d090-4411-957b-fd19f27159ac",
+      "name": "Error: Flag Callback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        3488
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\nconst phone = args?.phone || callerPhone || null;\nconst email = args?.email || null;\n\nif (!phone && !email) {\n  errors.push('Either phone or email is required to look up a contact');\n}\n\nreturn [{ json: {\n  ...$input.first().json,\n  args: { ...args, _resolvedPhone: phone, _resolvedEmail: email },\n  _valid: errors.length === 0,\n  _validationError: errors.join('; ')\n} }];"
+      },
+      "id": "d4d5a1c0-6b83-425a-a990-34f13c18114c",
+      "name": "Validate: Get Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        3856
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "7e1b678a-cbf9-45c2-b868-8dbf817c9460",
+      "name": "IF: Contact Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        3856
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/contacts/v4/contacts/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      {{ $json.args._resolvedEmail ? '\"info.emails.email\": \"' + $json.args._resolvedEmail + '\"' : '\"info.phones.phone\": \"' + $json.args._resolvedPhone + '\"' }}\n    },\n    \"paging\": {\n      \"limit\": 1\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "d3fa7782-be37-44fc-bc9a-c265cdb90c44",
+      "name": "Wix: Search Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        3776
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to query contact' } }];\n}\n\nconst contacts = data.contacts || [];\n\nif (contacts.length === 0) {\n  return [{ json: { success: true, found: false, message: 'No contact found with this information.' } }];\n}\n\nconst c = contacts[0];\n\n// Use the root primaryInfo that Wix automatically generates for us\nconst primaryEmail = c.primaryInfo?.email || c.primaryEmail?.email || null;\nconst primaryPhone = c.primaryInfo?.phone || c.primaryPhone?.phone || null;\n\nreturn [{ json: { \n  success: true, \n  found: true,\n  contact: {\n    contactId: c.id,\n    firstName: c.info?.name?.first || null,\n    lastName: c.info?.name?.last || null,\n    email: primaryEmail,\n    phone: primaryPhone\n  }\n} }];"
+      },
+      "id": "f8c8bbe9-fd23-494e-9e42-483711da19f0",
+      "name": "Format: Contact Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        3680
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "eeb17ee6-a652-4fbf-9ac7-b75224aadfda",
+      "name": "Respond: Get Contact",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        3680
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "f6c79b73-a9fe-4d36-9394-ebdc629edeb9",
+      "name": "Respond: Contact Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        336,
+        3952
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/contacts/v4/contacts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"info\": {\n    \"name\": {\n      \"first\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"last\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName || '' }}\"\n    },\n    \"emails\": {\n      \"items\": [\n        {\n          \"tag\": \"MAIN\",\n          \"email\": \"{{ $('IF: Booking Args Valid').item.json.args.email }}\"\n        }\n      ]\n    },\n    \"phones\": {\n      \"items\": [\n        {\n          \"tag\": \"MAIN\",\n          \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n        }\n      ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "141d941a-bedd-4d43-8c8a-b3cd2e6a855c",
+      "name": "Wix: Create Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        784,
+        1936
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to create contact' } }];\n}\n\nreturn [{ json: { success: true, contactId: data.contact.id, message: 'Contact created successfully' } }];"
+      },
+      "id": "71ad43db-cffc-410d-b5e3-7a6c94c18e58",
+      "name": "Format: Create Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        1856
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/contacts/v4/contacts/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      {{ $json.args.email ? '\"info.emails.email\": \"' + $json.args.email + '\"' : '\"info.phones.phone\": \"' + $json.args.phone + '\"' }}\n    },\n    \"paging\": {\n      \"limit\": 1\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "4df6cf38-224e-435f-8f30-b5066422d198",
+      "name": "Wix: Search Contact1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        1856
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to query contact' } }];\n}\n\nconst contacts = data.contacts || [];\n\nif (contacts.length === 0) {\n  return [{ json: { success: true, found: false, message: 'No contact found with this information.' } }];\n}\n\nconst c = contacts[0];\n\n// Use the root primaryInfo that Wix automatically generates for us\nconst primaryEmail = c.primaryInfo?.email || c.primaryEmail?.email || null;\nconst primaryPhone = c.primaryInfo?.phone || c.primaryPhone?.phone || null;\n\nreturn [{ json: { \n  success: true, \n  found: true,\n  contact: {\n    contactId: c.id,\n    firstName: c.info?.name?.first || null,\n    lastName: c.info?.name?.last || null,\n    email: primaryEmail,\n    phone: primaryPhone\n  }\n} }];"
+      },
+      "id": "ebc87cc0-9916-4e3f-82e9-4567ab69e26c",
+      "name": "Format: Contact Response1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        1664
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6f49af7b-0308-4dad-90b9-d80823256087",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        1664
+      ],
+      "id": "34809b74-0242-468b-8838-ac0165acaba1",
+      "name": "If: Contact Found"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/services/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "b3926a2b-decc-4341-ace2-3d5cbc09f0d4",
+      "name": "Wix: Query Services",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -336,
+        736
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Wix: Query Services').first().json;\nif (!data.services) return [{ json: { hasVaried: false, serviceId: null } }];\n\nconst varied = data.services.filter(s => s.payment?.rateType === 'VARIED');\nif (varied.length === 0) return [{ json: { hasVaried: false, serviceId: null } }];\n\nreturn varied.map(s => ({ json: { hasVaried: true, serviceId: s.id } }));"
+      },
+      "id": "b4732cca-e6c9-4ae2-8d96-7b21c9003c3d",
+      "name": "Extract Pricing IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasVaried }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "83fdf50c-d729-48d9-98c2-32d1a7334044",
+      "name": "IF: Has Varied",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        112,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.wixapis.com/bookings/v1/serviceOptionsAndVariants/service_id/{{ $json.serviceId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "options": {}
+      },
+      "id": "c60cf19a-3075-470b-a407-ed27475c5917",
+      "name": "Wix: Get Pricing Variants",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        336,
+        560
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Wix: Query Services').first().json;\nif (!data.services) {\n  return [{ json: { hasAddOns: false, addOnId: null } }];\n}\n\nconst addOnIds = new Set();\ndata.services.forEach(s => {\n  if (s.addOnGroups) {\n    s.addOnGroups.forEach(group => {\n      if (group.addOnIds) group.addOnIds.forEach(id => addOnIds.add(id));\n    });\n  }\n});\n\nconst uniqueIds = Array.from(addOnIds);\nif (uniqueIds.length === 0) {\n  return [{ json: { hasAddOns: false, addOnId: null } }];\n}\n\nreturn uniqueIds.map(id => ({ json: { hasAddOns: true, addOnId: id } }));"
+      },
+      "id": "1ffb7fe3-cc4a-4f66-9835-d51d3d3e88d3",
+      "name": "Extract Add-on IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasAddOns }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "2d09bdd6-3114-47c3-9169-1a52b620513d",
+      "name": "IF: Has Add-ons",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        784,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://manage.wix.com/_api/add-ons-service/v1/add-ons/{{ $json.addOnId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "options": {}
+      },
+      "id": "476da336-a5fa-4554-870b-d2de6fe19303",
+      "name": "Wix: Get Add-ons",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1008,
+        560
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const servicesData = $('Wix: Query Services').first().json;\n\nif (servicesData.message || servicesData.details || !servicesData.services) {\n  return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];\n}\n\nconst services = servicesData.services || [];\n\n// 1. Map Pricing Variants (Merged Currency)\nconst pricingLookup = {};\ntry {\n  const pricingItems = $('Wix: Get Pricing Variants').all();\n  pricingItems.forEach(item => {\n    const sv = item.json.serviceVariants || item.json;\n    if (sv && sv.serviceId && sv.variants && sv.variants.values) {\n      pricingLookup[sv.serviceId] = sv.variants.values.map(v => ({\n        id: v.id,\n        duration: v.choices?.[0]?.duration?.minutes + \" min\",\n        price: \"USD \" + (v.price?.value || 0)\n      }));\n    }\n  });\n} catch(e) {}\n\n// 2. Map Add-ons (Merged Currency)\nconst addOnLookup = {};\ntry {\n  const addonItems = $('Wix: Get Add-ons').all();\n  addonItems.forEach(item => {\n    const addon = item.json.addOn || item.json;\n    if (addon && addon.id) {\n      addOnLookup[addon.id] = {\n        name: addon.name,\n        price: \"USD \" + (addon.price?.value || 0),\n        duration: (addon.durationInMinutes || 0) + \" min\"\n      };\n    }\n  });\n} catch(e) {}\n\n// 3. Final Lean Mapping\nconst formattedServices = services.map(s => {\n  let availableAddOns = [];\n  if (s.addOnGroups && s.addOnGroups.length > 0) {\n    const allIds = s.addOnGroups.flatMap(group => group.addOnIds || []);\n    const uniqueIds = [...new Set(allIds)];\n    availableAddOns = uniqueIds.map(id => {\n      const details = addOnLookup[id] || { name: \"Unknown\", price: \"USD 0\", duration: \"0 min\" };\n      return { id, name: details.name, price: details.price, duration: details.duration };\n    });\n  }\n\n  const isVaried = s.payment?.rateType === 'VARIED';\n  const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;\n  \n  // If Fixed, we provide a single price field. If Varied, the AI uses pricingVariants.\n  const fixedPrice = !isVaried && s.payment?.fixed?.price?.value ? \"USD \" + s.payment.fixed.price.value : undefined;\n\n  return {\n    id: s.id,\n    name: s.name,\n    description: s.description,\n    price: fixedPrice, // Only populated for fixed-rate services\n    pricingVariants: pricingVariants,\n    availableAddOns: availableAddOns.length > 0 ? availableAddOns : undefined\n  };\n});\n\nreturn [{ json: { success: true, services: formattedServices } }];"
+      },
+      "id": "820a4f89-97e3-4bd3-abaf-4a8e74d58fe1",
+      "name": "Format: Services Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting services\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        560,
+        832
+      ],
+      "id": "c332aad5-c95c-4c08-ae6c-1e9389002040",
+      "name": "Error: Get Services"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "c4c0b787-e230-42c3-a284-7de3fd05f2e3",
+      "name": "Respond: Get Services",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-services",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-services",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Services"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-slots",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-slots",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Slots"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-staff",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-staff",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Staff"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-book-appointment",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "book-appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Book Appointment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-cancel-booking",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "cancel-booking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancel Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-reschedule-booking",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "reschedule-booking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reschedule Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-booking",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-booking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-flag-callback",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "flag-callback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Flag Callback"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0138ed3c-4efc-4ce4-a7a9-cef8e1fc01de",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-contact",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Contact"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Fallback"
+        }
+      },
+      "id": "8b45db04-3569-4f78-85a2-88189414330d",
+      "name": "Route by Tool",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -560,
+        2304
+      ]
+    }
+  ],
+  "pinData": {
+    "Wix: Query Staff Members": [
+      {
+        "json": {
+          "staffMembers": [
+            {
+              "id": "c3e20114-bc68-46d7-af19-b297c221ba53",
+              "name": "Wahaj Niggah",
+              "email": "wahajkhan108@gmail.com",
+              "resourceId": "f159185f-2f73-420c-b04a-65b1e9aae701",
+              "associatedWixIdentity": {
+                "identificationData": {
+                  "contactId": "4c931d1f-4054-4a01-be86-66b51ddfd537",
+                  "identityType": "WIX_USER",
+                  "wixUserId": "bfebeb7e-368c-40ee-9a62-909700e06cf2"
+                },
+                "connectionStatus": "UNKNOWN"
+              },
+              "default": true,
+              "revision": "6",
+              "createdDate": "2026-05-01T17:24:26.222Z",
+              "updatedDate": "2026-05-01T19:50:33.482Z",
+              "gender": "UNKNOWN_GENDER"
+            },
+            {
+              "id": "fefe2e5b-4eed-4bcf-a41e-485646da13b4",
+              "name": "Ubaid Niggahh",
+              "email": "ubaidlodhi2667@gmail.com",
+              "resourceId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+              "associatedWixIdentity": {
+                "identificationData": {
+                  "contactId": "fdabe871-eaf8-4883-ab71-68791956f930",
+                  "identityType": "WIX_USER",
+                  "wixUserId": "d754ecf5-bfe4-4724-85cf-3a1b253429c6"
+                },
+                "connectionStatus": "UNKNOWN"
+              },
+              "default": false,
+              "revision": "3",
+              "createdDate": "2026-05-01T21:52:45.394Z",
+              "updatedDate": "2026-05-01T22:01:54.212Z",
+              "gender": "UNKNOWN_GENDER"
+            }
+          ],
+          "pagingMetadata": {
+            "count": 2,
+            "cursors": {},
+            "hasNext": false
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Format: Staff Response": [
+      {
+        "json": {
+          "success": true,
+          "count": 2,
+          "staff": [
+            {
+              "id": "c3e20114-bc68-46d7-af19-b297c221ba53",
+              "resourceId": "f159185f-2f73-420c-b04a-65b1e9aae701",
+              "name": "Wahaj Niggah",
+              "email": "wahajkhan108@gmail.com"
+            },
+            {
+              "id": "fefe2e5b-4eed-4bcf-a41e-485646da13b4",
+              "resourceId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+              "name": "Ubaid Niggahh",
+              "email": "ubaidlodhi2667@gmail.com"
+            }
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Wix: Query Time Slots": [
+      {
+        "json": {
+          "availabilityEntries": [
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T18:45:00.000Z",
+                "endDate": "2026-05-02T20:15:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T19:15:00.000Z",
+                "endDate": "2026-05-02T20:45:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T19:45:00.000Z",
+                "endDate": "2026-05-02T21:15:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T20:15:00.000Z",
+                "endDate": "2026-05-02T21:45:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T20:45:00.000Z",
+                "endDate": "2026-05-02T22:15:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T21:15:00.000Z",
+                "endDate": "2026-05-02T22:45:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T21:45:00.000Z",
+                "endDate": "2026-05-02T23:15:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T22:15:00.000Z",
+                "endDate": "2026-05-02T23:45:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T22:45:00.000Z",
+                "endDate": "2026-05-03T00:15:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T23:15:00.000Z",
+                "endDate": "2026-05-03T00:45:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-02T23:45:00.000Z",
+                "endDate": "2026-05-03T01:15:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T00:15:00.000Z",
+                "endDate": "2026-05-03T01:45:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T00:45:00.000Z",
+                "endDate": "2026-05-03T02:15:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T01:15:00.000Z",
+                "endDate": "2026-05-03T02:45:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T17:00:00.000Z",
+                "endDate": "2026-05-03T18:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T17:30:00.000Z",
+                "endDate": "2026-05-03T19:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T18:00:00.000Z",
+                "endDate": "2026-05-03T19:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T18:30:00.000Z",
+                "endDate": "2026-05-03T20:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T19:00:00.000Z",
+                "endDate": "2026-05-03T20:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T19:30:00.000Z",
+                "endDate": "2026-05-03T21:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T20:00:00.000Z",
+                "endDate": "2026-05-03T21:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T20:30:00.000Z",
+                "endDate": "2026-05-03T22:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T21:00:00.000Z",
+                "endDate": "2026-05-03T22:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T21:30:00.000Z",
+                "endDate": "2026-05-03T23:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T22:00:00.000Z",
+                "endDate": "2026-05-03T23:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T22:30:00.000Z",
+                "endDate": "2026-05-04T00:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T23:00:00.000Z",
+                "endDate": "2026-05-04T00:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-03T23:30:00.000Z",
+                "endDate": "2026-05-04T01:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T00:00:00.000Z",
+                "endDate": "2026-05-04T01:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T00:30:00.000Z",
+                "endDate": "2026-05-04T02:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T01:00:00.000Z",
+                "endDate": "2026-05-04T02:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T01:30:00.000Z",
+                "endDate": "2026-05-04T03:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T17:00:00.000Z",
+                "endDate": "2026-05-04T18:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T17:30:00.000Z",
+                "endDate": "2026-05-04T19:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T18:00:00.000Z",
+                "endDate": "2026-05-04T19:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T18:30:00.000Z",
+                "endDate": "2026-05-04T20:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T19:00:00.000Z",
+                "endDate": "2026-05-04T20:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T19:30:00.000Z",
+                "endDate": "2026-05-04T21:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T20:00:00.000Z",
+                "endDate": "2026-05-04T21:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T20:30:00.000Z",
+                "endDate": "2026-05-04T22:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T21:00:00.000Z",
+                "endDate": "2026-05-04T22:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T21:30:00.000Z",
+                "endDate": "2026-05-04T23:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T22:00:00.000Z",
+                "endDate": "2026-05-04T23:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T22:30:00.000Z",
+                "endDate": "2026-05-05T00:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T23:00:00.000Z",
+                "endDate": "2026-05-05T00:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-04T23:30:00.000Z",
+                "endDate": "2026-05-05T01:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T00:00:00.000Z",
+                "endDate": "2026-05-05T01:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T00:30:00.000Z",
+                "endDate": "2026-05-05T02:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T01:00:00.000Z",
+                "endDate": "2026-05-05T02:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T01:30:00.000Z",
+                "endDate": "2026-05-05T03:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T17:00:00.000Z",
+                "endDate": "2026-05-05T18:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T17:30:00.000Z",
+                "endDate": "2026-05-05T19:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T18:00:00.000Z",
+                "endDate": "2026-05-05T19:30:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            },
+            {
+              "slot": {
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "startDate": "2026-05-05T18:30:00.000Z",
+                "endDate": "2026-05-05T20:00:00.000Z",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                }
+              },
+              "bookable": true,
+              "totalSpots": 1,
+              "openSpots": 1,
+              "bookingPolicyViolations": {
+                "tooEarlyToBook": false,
+                "tooLateToBook": false,
+                "bookOnlineDisabled": false
+              },
+              "isFromV2": true,
+              "nestedSlots": []
+            }
+          ],
+          "pagingMetadata": {
+            "count": 54,
+            "cursors": {}
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Format: Time Slots Response": [
+      {
+        "json": {
+          "success": true,
+          "business_timezone": "America/Los_Angeles",
+          "available_days": [
+            "2026-05-02",
+            "2026-05-03",
+            "2026-05-04",
+            "2026-05-05"
+          ],
+          "availability": {
+            "2026-05-02": {
+              "morning": [
+                {
+                  "time": "11:45 AM",
+                  "startDate": "2026-05-02T18:45:00.000Z",
+                  "endDate": "2026-05-02T20:15:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ],
+              "afternoon": [
+                {
+                  "time": "12:15 PM",
+                  "startDate": "2026-05-02T19:15:00.000Z",
+                  "endDate": "2026-05-02T20:45:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "12:45 PM",
+                  "startDate": "2026-05-02T19:45:00.000Z",
+                  "endDate": "2026-05-02T21:15:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "1:15 PM",
+                  "startDate": "2026-05-02T20:15:00.000Z",
+                  "endDate": "2026-05-02T21:45:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "1:45 PM",
+                  "startDate": "2026-05-02T20:45:00.000Z",
+                  "endDate": "2026-05-02T22:15:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "2:15 PM",
+                  "startDate": "2026-05-02T21:15:00.000Z",
+                  "endDate": "2026-05-02T22:45:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ],
+              "evening": [
+                {
+                  "time": "5:15 PM",
+                  "startDate": "2026-05-03T00:15:00.000Z",
+                  "endDate": "2026-05-03T01:45:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "5:45 PM",
+                  "startDate": "2026-05-03T00:45:00.000Z",
+                  "endDate": "2026-05-03T02:15:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "6:15 PM",
+                  "startDate": "2026-05-03T01:15:00.000Z",
+                  "endDate": "2026-05-03T02:45:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ]
+            },
+            "2026-05-03": {
+              "morning": [
+                {
+                  "time": "10:00 AM",
+                  "startDate": "2026-05-03T17:00:00.000Z",
+                  "endDate": "2026-05-03T18:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "10:30 AM",
+                  "startDate": "2026-05-03T17:30:00.000Z",
+                  "endDate": "2026-05-03T19:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "11:00 AM",
+                  "startDate": "2026-05-03T18:00:00.000Z",
+                  "endDate": "2026-05-03T19:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "11:30 AM",
+                  "startDate": "2026-05-03T18:30:00.000Z",
+                  "endDate": "2026-05-03T20:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ],
+              "afternoon": [
+                {
+                  "time": "12:00 PM",
+                  "startDate": "2026-05-03T19:00:00.000Z",
+                  "endDate": "2026-05-03T20:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "12:30 PM",
+                  "startDate": "2026-05-03T19:30:00.000Z",
+                  "endDate": "2026-05-03T21:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "1:00 PM",
+                  "startDate": "2026-05-03T20:00:00.000Z",
+                  "endDate": "2026-05-03T21:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "1:30 PM",
+                  "startDate": "2026-05-03T20:30:00.000Z",
+                  "endDate": "2026-05-03T22:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "2:00 PM",
+                  "startDate": "2026-05-03T21:00:00.000Z",
+                  "endDate": "2026-05-03T22:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ],
+              "evening": [
+                {
+                  "time": "5:00 PM",
+                  "startDate": "2026-05-04T00:00:00.000Z",
+                  "endDate": "2026-05-04T01:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "5:30 PM",
+                  "startDate": "2026-05-04T00:30:00.000Z",
+                  "endDate": "2026-05-04T02:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "6:00 PM",
+                  "startDate": "2026-05-04T01:00:00.000Z",
+                  "endDate": "2026-05-04T02:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "6:30 PM",
+                  "startDate": "2026-05-04T01:30:00.000Z",
+                  "endDate": "2026-05-04T03:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ]
+            },
+            "2026-05-04": {
+              "morning": [
+                {
+                  "time": "10:00 AM",
+                  "startDate": "2026-05-04T17:00:00.000Z",
+                  "endDate": "2026-05-04T18:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "10:30 AM",
+                  "startDate": "2026-05-04T17:30:00.000Z",
+                  "endDate": "2026-05-04T19:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "11:00 AM",
+                  "startDate": "2026-05-04T18:00:00.000Z",
+                  "endDate": "2026-05-04T19:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "11:30 AM",
+                  "startDate": "2026-05-04T18:30:00.000Z",
+                  "endDate": "2026-05-04T20:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ],
+              "afternoon": [
+                {
+                  "time": "12:00 PM",
+                  "startDate": "2026-05-04T19:00:00.000Z",
+                  "endDate": "2026-05-04T20:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "12:30 PM",
+                  "startDate": "2026-05-04T19:30:00.000Z",
+                  "endDate": "2026-05-04T21:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "1:00 PM",
+                  "startDate": "2026-05-04T20:00:00.000Z",
+                  "endDate": "2026-05-04T21:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "1:30 PM",
+                  "startDate": "2026-05-04T20:30:00.000Z",
+                  "endDate": "2026-05-04T22:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "2:00 PM",
+                  "startDate": "2026-05-04T21:00:00.000Z",
+                  "endDate": "2026-05-04T22:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ],
+              "evening": [
+                {
+                  "time": "5:00 PM",
+                  "startDate": "2026-05-05T00:00:00.000Z",
+                  "endDate": "2026-05-05T01:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "5:30 PM",
+                  "startDate": "2026-05-05T00:30:00.000Z",
+                  "endDate": "2026-05-05T02:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "6:00 PM",
+                  "startDate": "2026-05-05T01:00:00.000Z",
+                  "endDate": "2026-05-05T02:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "6:30 PM",
+                  "startDate": "2026-05-05T01:30:00.000Z",
+                  "endDate": "2026-05-05T03:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ]
+            },
+            "2026-05-05": {
+              "morning": [
+                {
+                  "time": "10:00 AM",
+                  "startDate": "2026-05-05T17:00:00.000Z",
+                  "endDate": "2026-05-05T18:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "10:30 AM",
+                  "startDate": "2026-05-05T17:30:00.000Z",
+                  "endDate": "2026-05-05T19:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "11:00 AM",
+                  "startDate": "2026-05-05T18:00:00.000Z",
+                  "endDate": "2026-05-05T19:30:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                },
+                {
+                  "time": "11:30 AM",
+                  "startDate": "2026-05-05T18:30:00.000Z",
+                  "endDate": "2026-05-05T20:00:00.000Z",
+                  "availableTherapists": [
+                    "Ubaid Niggahh"
+                  ],
+                  "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b"
+                }
+              ],
+              "afternoon": [],
+              "evening": []
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Format: Get Booking Response": [
+      {
+        "json": {
+          "success": true,
+          "count": 1,
+          "bookings": [
+            {
+              "bookingId": "5a9082e7-6b2c-4f3e-b734-371353281ded",
+              "status": "CONFIRMED",
+              "revision": "3",
+              "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+              "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+              "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+              "timezone": "America/Los_Angeles",
+              "locationId": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "locationType": "OWNER_BUSINESS",
+              "startDate": "2026-05-02T10:00:00.000-07:00",
+              "endDate": "2026-05-02T11:30:00.000-07:00",
+              "firstName": "Harami",
+              "lastName": "Niggah",
+              "phone": "1234567890",
+              "email": "wahajkhan108@gmail.com",
+              "createdDate": "2026-05-01T23:34:34.303Z"
+            }
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Wix: Reschedule Booking": [
+      {
+        "json": {
+          "booking": {
+            "id": "5a9082e7-6b2c-4f3e-b734-371353281ded",
+            "bookedEntity": {
+              "slot": {
+                "sessionId": "2mmoW0vwKcSFyxtOfCdKTeqoU19Ut0zWC7ve4DWOMVsuU5013PoI00LDaTOOJuZVqww3pZeXX0Fi4jgQ3K7tHBUefQQWtyBKuc17",
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "eventId": "5a96f3a2-2e61-4b4c-a9fc-8703f9ef023b",
+                "startDate": "2026-05-02T12:45:00.000-07:00",
+                "endDate": "2026-05-02T14:15:00.000-07:00",
+                "timezone": "America/Los_Angeles",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh",
+                  "nameTranslated": "Ubaid Niggahh",
+                  "email": "ubaidlodhi2667@gmail.com",
+                  "scheduleId": "50964d5e-e88a-41b3-90d8-17b208146729",
+                  "explicitlyRequested": true,
+                  "type": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
+                  "transparency": "UNKNOWN_TRANSPARENCY"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "formattedAddressTranslated": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                },
+                "additionalResources": [],
+                "resourceSelections": [
+                  {
+                    "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
+                    "selectionMethod": "SPECIFIC_RESOURCE"
+                  }
+                ],
+                "allDay": false
+              },
+              "title": "Deep Tissue Massage",
+              "titleTranslated": "Deep Tissue Massage",
+              "tags": [
+                "INDIVIDUAL"
+              ]
+            },
+            "contactDetails": {
+              "firstName": "Harami",
+              "lastName": "Niggah",
+              "email": "wahajkhan108@gmail.com",
+              "phone": "1234567890"
+            },
+            "additionalFields": [],
+            "numberOfParticipants": 1,
+            "status": "CONFIRMED",
+            "paymentStatus": "UNDEFINED",
+            "selectedPaymentOption": "UNDEFINED",
+            "createdDate": "2026-05-01T23:34:34.303Z",
+            "participantNotification": {
+              "notifyParticipants": true,
+              "metadata": {}
+            },
+            "revision": "4",
+            "createdBy": {
+              "identityType": "APP",
+              "appId": "d75be48a-33bc-475b-bfef-c5794482949b"
+            },
+            "startDate": "2026-05-02T19:45:00Z",
+            "endDate": "2026-05-02T21:15:00Z",
+            "flowControlSettings": {
+              "ignoreBookingWindow": false,
+              "skipAvailabilityValidation": false,
+              "skipBusinessConfirmation": false,
+              "skipSelectedPaymentOptionValidation": false,
+              "withRefund": false,
+              "skipAddOnValidation": false,
+              "skipOrderConfirmation": false
+            },
+            "updatedDate": "2026-05-02T00:13:02.685Z",
+            "totalParticipants": 1,
+            "v2Availability": false,
+            "formId": "00000000-0000-0000-0000-000000000000",
+            "bookedAddOns": [],
+            "appId": "13d21c63-b5ec-5912-8397-c3a5ddb27a97",
+            "createdByAppId": "d75be48a-33bc-475b-bfef-c5794482949b"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Wix: Cancel Booking": [
+      {
+        "json": {
+          "booking": {
+            "id": "5a9082e7-6b2c-4f3e-b734-371353281ded",
+            "bookedEntity": {
+              "slot": {
+                "sessionId": "2mmoW0vwKcSFyxtOfCdKTeqoU19Ut0zWC7ve4DWOMVsuU5013PoI00LDaTOOJuZVqww3pZeXX0Fi4jgQ3K7tHBUefQQWtyBKuc17",
+                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+                "eventId": "5a96f3a2-2e61-4b4c-a9fc-8703f9ef023b",
+                "startDate": "2026-05-02T12:45:00.000-07:00",
+                "endDate": "2026-05-02T14:15:00.000-07:00",
+                "timezone": "America/Los_Angeles",
+                "resource": {
+                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+                  "name": "Ubaid Niggahh",
+                  "nameTranslated": "Ubaid Niggahh",
+                  "email": "ubaidlodhi2667@gmail.com",
+                  "scheduleId": "50964d5e-e88a-41b3-90d8-17b208146729",
+                  "explicitlyRequested": true,
+                  "type": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
+                  "transparency": "UNKNOWN_TRANSPARENCY"
+                },
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "formattedAddressTranslated": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "OWNER_BUSINESS"
+                },
+                "additionalResources": [],
+                "resourceSelections": [
+                  {
+                    "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
+                    "selectionMethod": "SPECIFIC_RESOURCE"
+                  }
+                ],
+                "allDay": false
+              },
+              "title": "Deep Tissue Massage",
+              "titleTranslated": "Deep Tissue Massage",
+              "tags": [
+                "INDIVIDUAL"
+              ]
+            },
+            "contactDetails": {
+              "firstName": "Harami",
+              "lastName": "Niggah",
+              "email": "wahajkhan108@gmail.com",
+              "phone": "1234567890"
+            },
+            "additionalFields": [],
+            "numberOfParticipants": 1,
+            "status": "CANCELED",
+            "paymentStatus": "UNDEFINED",
+            "selectedPaymentOption": "UNDEFINED",
+            "createdDate": "2026-05-01T23:34:34.303Z",
+            "participantNotification": {
+              "notifyParticipants": true,
+              "metadata": {}
+            },
+            "revision": "5",
+            "createdBy": {
+              "identityType": "APP",
+              "appId": "d75be48a-33bc-475b-bfef-c5794482949b"
+            },
+            "startDate": "2026-05-02T19:45:00Z",
+            "endDate": "2026-05-02T21:15:00Z",
+            "flowControlSettings": {
+              "ignoreBookingWindow": false,
+              "skipAvailabilityValidation": false,
+              "skipBusinessConfirmation": false,
+              "skipSelectedPaymentOptionValidation": false,
+              "withRefund": false,
+              "skipAddOnValidation": false,
+              "skipOrderConfirmation": false
+            },
+            "updatedDate": "2026-05-02T00:17:35.341Z",
+            "totalParticipants": 1,
+            "v2Availability": false,
+            "canceledDate": "2026-05-02T00:17:35.338Z",
+            "formId": "00000000-0000-0000-0000-000000000000",
+            "bookedAddOns": [],
+            "appId": "13d21c63-b5ec-5912-8397-c3a5ddb27a97",
+            "createdByAppId": "d75be48a-33bc-475b-bfef-c5794482949b"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Format: Cancel Response": [
+      {
+        "json": {
+          "success": true,
+          "message": "Booking has been successfully cancelled.",
+          "bookingId": "5a9082e7-6b2c-4f3e-b734-371353281ded",
+          "status": "CANCELED"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook — Retell Tool Call": [
+      {
+        "json": {
+          "headers": {
+            "content-type": "application/json",
+            "tool": "book-appointment"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "args": {
+              "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+              "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
+              "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
+              "variantId": "f787bfa5-e37d-48e8-86c6-82bdb961ae31",
+              "startDate": "2026-05-04T19:45:00.000Z",
+              "endDate": "2026-05-04T21:15:00.000Z",
+              "firstName": "Test",
+              "lastName": "contact",
+              "email": "contact@aiemply.com",
+              "phone": "1234567890",
+              "bookingId": "5a9082e7-6b2c-4f3e-b734-371353281ded",
+              "revision": 3,
+              "location": {
+                "locationType": "OWNER_BUSINESS",
+                "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7"
+              }
+            },
+            "call": {
+              "call_id": "call_123abc456def",
+              "from_number": "+14155552671",
+              "to_number": "+18005551234"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook — Retell Tool Call": {
+      "main": [
+        [
+          {
+            "node": "Parse Retell Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Retell Payload": {
+      "main": [
+        [
+          {
+            "node": "Route by Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Slots Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Slots Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Slots Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Query Time Slots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Slots Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Query Time Slots": {
+      "main": [
+        [
+          {
+            "node": "Format: Time Slots Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Time Slots Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Query Staff Members": {
+      "main": [
+        [
+          {
+            "node": "Format: Staff Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Staff Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Booking Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Booking Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Booking Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Search Contact1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Booking Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Create Booking": {
+      "main": [
+        [
+          {
+            "node": "IF: Booking Created OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Booking Created OK": {
+      "main": [
+        [
+          {
+            "node": "Wix: Confirm Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Confirm Booking": {
+      "main": [
+        [
+          {
+            "node": "Format: Booking Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Booking Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Respond: Book Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Cancel Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Cancel Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Cancel Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Cancel Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Cancel Booking": {
+      "main": [
+        [
+          {
+            "node": "Format: Cancel Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Cancel Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Reschedule Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Reschedule Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Reschedule Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Reschedule Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Reschedule Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Reschedule Booking": {
+      "main": [
+        [
+          {
+            "node": "Format: Reschedule Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Rescheduling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Reschedule Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Reschedule Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Get Booking Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Get Booking Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Get Booking Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Get Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Get Booking Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Get Booking": {
+      "main": [
+        [
+          {
+            "node": "Format: Get Booking Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Getting Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Get Booking Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Flag Callback Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Flag Callback Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Flag Callback Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Send Email: Flag Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Flag Callback Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email: Flag Callback": {
+      "main": [
+        [
+          {
+            "node": "Format: Flag Callback Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Flag Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Flag Callback Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Flag Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Get Contact": {
+      "main": [
+        [
+          {
+            "node": "IF: Contact Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Contact Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Search Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Contact Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Search Contact": {
+      "main": [
+        [
+          {
+            "node": "Format: Contact Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Contact Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Contact Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Format: Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Wix: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Search Contact1": {
+      "main": [
+        [
+          {
+            "node": "Format: Contact Response1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wix: Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Contact Response1": {
+      "main": [
+        [
+          {
+            "node": "If: Contact Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Contact Found": {
+      "main": [
+        [
+          {
+            "node": "Wix: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wix: Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Query Services": {
+      "main": [
+        [
+          {
+            "node": "Extract Pricing IDs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Pricing IDs": {
+      "main": [
+        [
+          {
+            "node": "IF: Has Varied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has Varied": {
+      "main": [
+        [
+          {
+            "node": "Wix: Get Pricing Variants",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Add-on IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Get Pricing Variants": {
+      "main": [
+        [
+          {
+            "node": "Extract Add-on IDs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Add-on IDs": {
+      "main": [
+        [
+          {
+            "node": "IF: Has Add-ons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has Add-ons": {
+      "main": [
+        [
+          {
+            "node": "Wix: Get Add-ons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format: Services Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Get Add-ons": {
+      "main": [
+        [
+          {
+            "node": "Format: Services Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Services Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tool": {
+      "main": [
+        [
+          {
+            "node": "Wix: Query Services",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Slots Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wix: Query Staff Members",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Booking Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Cancel Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Reschedule Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Get Booking Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Flag Callback Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Get Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Unknown Tool Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Los_Angeles",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "a5b9fa26-95d5-4c4e-9d11-111fe06a0aaa",
+  "meta": {
+    "instanceId": "ac196cde23a3d6ef70e5e219252c1746cd31eed638b30f72c27ae62726c49a9f"
+  },
+  "id": "s5dWZOMRl0X7PV65",
+  "tags": []
+}

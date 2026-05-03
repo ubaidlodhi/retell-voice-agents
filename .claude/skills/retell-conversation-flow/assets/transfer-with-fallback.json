@@ -1,0 +1,59 @@
+{
+  "_comment": "Transfer with Fallback pattern. Wire node-transfer-XXX from your routing logic. The fallback path catches dial failures and gracefully creates a callback ticket.",
+  "nodes_to_add_to_flow": [
+    {
+      "id": "node-transfer-XXX",
+      "type": "transfer_call",
+      "name": "Transfer to XXX Department",
+      "instruction": {
+        "type": "prompt",
+        "text": "say \"Got it, let me connect you to our [department name] team. Please hold.\""
+      },
+      "transfer_destination": {
+        "type": "predefined",
+        "number": "REPLACE_WITH_E164_NUMBER"
+      },
+      "transfer_option": {
+        "_comment": "Choose ONE: cold_transfer (drop and disconnect, fastest) | warm_transfer (detect human, allow whisper, 30s default) | agentic_warm_transfer (transfer agent has 2-way convo with destination)",
+        "type": "cold_transfer",
+        "show_transferee_as_caller": true,
+        "enable_bridge_audio_cue": true
+      },
+      "edge": {
+        "_comment": "Singular edge — fires only on the magic string 'Transfer failed'",
+        "id": "edge-transfer-XXX-failed",
+        "transition_condition": { "type": "prompt", "prompt": "Transfer failed" },
+        "destination_node_id": "node-transfer-fallback-XXX"
+      },
+      "display_position": { "x": 800, "y": 200 }
+    },
+    {
+      "id": "node-transfer-fallback-XXX",
+      "type": "conversation",
+      "name": "Transfer Failed Fallback",
+      "instruction": {
+        "type": "prompt",
+        "text": "say \"I wasn't able to connect you right now — looks like our team is tied up. Let me create a ticket and someone will reach back out within 1 to 2 business days. Sound good?\""
+      },
+      "edges": [
+        {
+          "id": "edge-fallback-XXX-yes",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller agreed to a callback ticket"
+          },
+          "destination_node_id": "node-create-callback-ticket"
+        },
+        {
+          "id": "edge-fallback-XXX-no",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller declined a callback or wants to try again later"
+          },
+          "destination_node_id": "node-close-call"
+        }
+      ],
+      "display_position": { "x": 800, "y": 500 }
+    }
+  ]
+}

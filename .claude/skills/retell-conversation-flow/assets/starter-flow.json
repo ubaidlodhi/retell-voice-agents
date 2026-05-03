@@ -1,0 +1,92 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "agent_name": "REPLACE_WITH_AGENT_NAME",
+  "language": "en-US",
+  "voice_id": "retell-Cimo",
+  "max_call_duration_ms": 1800000,
+  "interruption_sensitivity": 0.9,
+  "normalize_for_speech": true,
+  "stt_mode": "accurate",
+  "denoising_mode": "noise-and-background-speech-cancellation",
+  "data_storage_setting": "everything",
+  "post_call_analysis_model": "gpt-4.1",
+  "is_published": false,
+  "handbook_config": {
+    "echo_verification": false,
+    "speech_normalization": true,
+    "default_personality": false,
+    "scope_boundaries": false,
+    "natural_filler_words": true,
+    "nato_phonetic_alphabet": true,
+    "high_empathy": false,
+    "ai_disclosure": true,
+    "smart_matching": true
+  },
+  "post_call_analysis_data": [
+    {
+      "name": "Caller intent",
+      "type": "string",
+      "description": "Primary purpose of the call in one short phrase"
+    },
+    {
+      "name": "Resolution status",
+      "type": "enum",
+      "choices": ["resolved", "transferred", "ticket_created", "abandoned"]
+    },
+    {
+      "name": "Call summary",
+      "type": "string",
+      "description": "Two-sentence summary of what happened"
+    }
+  ],
+  "response_engine": {
+    "type": "conversation-flow",
+    "version": 1,
+    "conversation_flow_id": ""
+  },
+  "conversationFlow": {
+    "conversation_flow_id": "",
+    "version": 1,
+    "global_prompt": "REPLACE WITH GLOBAL PROMPT — see references/global-prompt-template.md",
+    "start_node_id": "node-greeting",
+    "start_speaker": "agent",
+    "model_choice": { "type": "cascading", "model": "gpt-4.1" },
+    "knowledge_base_ids": [],
+    "tools": [],
+    "nodes": [
+      {
+        "id": "node-greeting",
+        "type": "conversation",
+        "name": "Greeting",
+        "instruction": {
+          "type": "prompt",
+          "text": "say \"Hi, this is [Agent Name] with [Company]. How can I help you today?\""
+        },
+        "edges": [
+          {
+            "id": "edge-greeting-to-end",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has stated their reason for calling and conversation can wrap up"
+            },
+            "destination_node_id": "node-close-call"
+          }
+        ],
+        "start_speaker": "agent",
+        "display_position": { "x": 200, "y": 200 }
+      },
+      {
+        "id": "node-close-call",
+        "type": "end",
+        "name": "Close Call",
+        "instruction": {
+          "type": "prompt",
+          "text": "say \"Thanks so much for calling. Have a great day!\""
+        },
+        "speak_during_execution": true,
+        "display_position": { "x": 600, "y": 200 }
+      }
+    ]
+  }
+}

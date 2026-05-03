@@ -1,0 +1,121 @@
+{
+  "_comment": "Code → Extract → Branch pattern. Pure deterministic mid-call routing — no agent turn, no LLM inference for the routing decision. Use when you need to compute then route on a derived value (age tier, eligibility flag, distance, time-of-day branching, etc.).",
+  "nodes_to_add_to_flow": [
+    {
+      "id": "node-collect-input",
+      "type": "conversation",
+      "name": "Collect Raw Input",
+      "instruction": {
+        "type": "prompt",
+        "text": "say \"What's your date of birth? Just month, day, and year is fine.\""
+      },
+      "edges": [
+        {
+          "id": "edge-input-collected",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller has provided a date of birth"
+          },
+          "destination_node_id": "node-extract-dob"
+        }
+      ],
+      "display_position": { "x": 200, "y": 200 }
+    },
+    {
+      "id": "node-extract-dob",
+      "type": "extract_dynamic_variables",
+      "name": "Extract DOB",
+      "variables": [
+        {
+          "name": "dob_iso",
+          "type": "string",
+          "description": "Date of birth in ISO format (YYYY-MM-DD). Convert from caller's spoken date."
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-extract-success",
+          "transition_condition": { "type": "prompt", "prompt": "Always" },
+          "destination_node_id": "node-compute-age"
+        }
+      ],
+      "else_edge": {
+        "id": "edge-extract-fail",
+        "transition_condition": { "type": "prompt", "prompt": "Else" },
+        "destination_node_id": "node-reprompt-dob"
+      },
+      "display_position": { "x": 600, "y": 200 }
+    },
+    {
+      "id": "node-compute-age",
+      "type": "code",
+      "name": "Compute Age",
+      "code": "const dob = new Date('{{dob_iso}}');\nif (isNaN(dob.getTime())) { return { error: 'invalid_date' }; }\nconst ageMs = Date.now() - dob.getTime();\nconst age = Math.floor(ageMs / (365.25 * 24 * 60 * 60 * 1000));\nreturn { age };",
+      "wait_for_result": true,
+      "speak_during_execution": false,
+      "enable_typing_sound": false,
+      "edges": [
+        {
+          "id": "edge-compute-success",
+          "transition_condition": { "type": "prompt", "prompt": "Always" },
+          "destination_node_id": "node-route-by-age"
+        }
+      ],
+      "else_edge": {
+        "id": "edge-compute-fail",
+        "transition_condition": { "type": "prompt", "prompt": "Else" },
+        "destination_node_id": "node-reprompt-dob"
+      },
+      "display_position": { "x": 1000, "y": 200 }
+    },
+    {
+      "id": "node-route-by-age",
+      "type": "branch",
+      "name": "Route by Age Tier",
+      "edges": [
+        {
+          "id": "edge-route-senior",
+          "transition_condition": {
+            "type": "equation",
+            "equations": [{ "left": "{{age}}", "operator": ">=", "right": "65" }]
+          },
+          "destination_node_id": "node-senior-path"
+        },
+        {
+          "id": "edge-route-adult",
+          "transition_condition": {
+            "type": "equation",
+            "equations": [{ "left": "{{age}}", "operator": ">=", "right": "18" }]
+          },
+          "destination_node_id": "node-adult-path"
+        }
+      ],
+      "else_edge": {
+        "id": "edge-route-minor",
+        "transition_condition": { "type": "prompt", "prompt": "Else" },
+        "destination_node_id": "node-minor-path"
+      },
+      "display_position": { "x": 1400, "y": 200 }
+    },
+    {
+      "id": "node-reprompt-dob",
+      "type": "conversation",
+      "name": "Reprompt DOB",
+      "instruction": {
+        "type": "prompt",
+        "text": "say \"Sorry, I didn't catch the date — could you say it as month, day, year?\""
+      },
+      "edges": [
+        {
+          "id": "edge-reprompt-back",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller has provided a date of birth"
+          },
+          "destination_node_id": "node-extract-dob"
+        }
+      ],
+      "display_position": { "x": 600, "y": 500 }
+    }
+  ]
+}

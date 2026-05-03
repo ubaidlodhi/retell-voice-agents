@@ -1,0 +1,149 @@
+{
+  "_comment": "Standard Collection Pattern: COLLECTION → SUBMIT → TOOL → CONFIRMATION. Use as a sub-graph inside a larger flow. Wire node-collection-XXX from your topic-menu node, and confirmation's edges to your close/topic-menu/transfer destinations.",
+  "tools_to_add_to_flow": [
+    {
+      "tool_id": "create_record",
+      "name": "create_record",
+      "type": "custom",
+      "description": "Create a record in the backend. Call after collecting required fields.",
+      "method": "POST",
+      "url": "REPLACE_WITH_REAL_URL",
+      "args_at_root": true,
+      "parameter_type": "form",
+      "headers": {},
+      "query_params": {},
+      "timeout_ms": 120000,
+      "speak_during_execution": true,
+      "execution_message_description": "Just a moment please, this will only take a second.",
+      "parameters": {
+        "type": "object",
+        "required": ["caller_name", "summary"],
+        "properties": {
+          "caller_name": { "type": "string", "description": "Caller full name" },
+          "summary": { "type": "string", "description": "Call summary" },
+          "collected_fields": { "type": "object", "description": "All collected fields as key-value pairs" }
+        }
+      },
+      "response_variables": {
+        "ticket_id": "$.ticket_id",
+        "ticket_success": "$.ticket_success"
+      }
+    }
+  ],
+  "nodes_to_add_to_flow": [
+    {
+      "id": "node-collect-XXX",
+      "type": "conversation",
+      "name": "Collect XXX Fields",
+      "instruction": {
+        "type": "prompt",
+        "text": "Collect these fields ONE PER TURN, acknowledging each before asking the next:\n\n1. [Field 1] — [how to ask + confirm rule]\n2. [Field 2] — ...\n3. [Field 3] — ...\n\nAfter the last field, say EXACTLY: \"Got it — one moment.\" Then stop. The system transitions automatically.\n\nGUARDRAILS:\n- One question per turn\n- Confirm any value already on file from {{caller_name}} etc — don't re-collect\n- Never use brackets [ ] in your response\n- Never deliver a closing — the SUBMIT node handles that"
+      },
+      "edges": [
+        {
+          "id": "edge-collected-XXX-already-exists",
+          "_comment": "Anti-duplicate gate — fires before any prompt edge if a record was already created in this call",
+          "transition_condition": {
+            "type": "equation",
+            "equations": [{ "left": "{{ticket_id}}", "operator": "exists" }]
+          },
+          "destination_node_id": "node-already-submitted"
+        },
+        {
+          "id": "edge-collected-XXX-done",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "All required fields have been collected and the caller has confirmed them, OR Aubrey has just said \"Got it — one moment.\""
+          },
+          "destination_node_id": "node-submit-XXX"
+        }
+      ],
+      "display_position": { "x": 400, "y": 200 }
+    },
+    {
+      "id": "node-submit-XXX",
+      "type": "conversation",
+      "name": "Submit XXX",
+      "instruction": {
+        "type": "prompt",
+        "text": "say \"I'm submitting your request now.\""
+      },
+      "edges": [],
+      "skip_response_edge": {
+        "id": "skip-submit-XXX",
+        "transition_condition": { "type": "prompt", "prompt": "Skip response" },
+        "destination_node_id": "node-create-record-XXX"
+      },
+      "display_position": { "x": 800, "y": 200 }
+    },
+    {
+      "id": "node-create-record-XXX",
+      "type": "function",
+      "name": "Create Record (XXX)",
+      "tool_id": "create_record",
+      "edges": [],
+      "always_edge": {
+        "id": "edge-after-create-XXX",
+        "transition_condition": { "type": "prompt", "prompt": "Always" },
+        "destination_node_id": "node-confirmation-XXX"
+      },
+      "display_position": { "x": 1200, "y": 200 }
+    },
+    {
+      "id": "node-confirmation-XXX",
+      "type": "conversation",
+      "name": "Confirmation (XXX)",
+      "instruction": {
+        "type": "prompt",
+        "text": "FIRST action when entering this node: read the reference number ONCE.\n\nsay \"Your reference number is [ticket_id]. We'll review and follow up within 1 to 2 business days. Is there anything else I can help you with today?\"\n\nNEVER re-read the reference number. If the caller asks for it again, refer back briefly: \"As I mentioned, your reference is [number].\"\n\nNEVER fabricate specifics about the request you weren't told."
+      },
+      "edges": [
+        {
+          "id": "edge-confirmation-XXX-close",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller indicated they are done — said 'no', 'no thanks', 'that's all', 'goodbye', or similar after hearing 'Is there anything else?'"
+          },
+          "destination_node_id": "node-close-call"
+        },
+        {
+          "id": "edge-confirmation-XXX-more",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller has explicitly raised a DIFFERENT new topic from what was just submitted (NOT a follow-up question about the just-submitted record)"
+          },
+          "destination_node_id": "node-topic-menu"
+        }
+      ],
+      "display_position": { "x": 1600, "y": 200 }
+    },
+    {
+      "id": "node-already-submitted",
+      "type": "conversation",
+      "name": "Already Submitted",
+      "instruction": {
+        "type": "prompt",
+        "text": "say \"Your request for that has already been submitted in this call. Is there anything else I can help you with today?\""
+      },
+      "edges": [
+        {
+          "id": "edge-already-close",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller said no, that's all, or similar"
+          },
+          "destination_node_id": "node-close-call"
+        },
+        {
+          "id": "edge-already-more",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Caller raised a different new topic"
+          },
+          "destination_node_id": "node-topic-menu"
+        }
+      ],
+      "display_position": { "x": 400, "y": 500 }
+    }
+  ]
+}
