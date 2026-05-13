@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "<string>", line 10, in <module>
+    print(f'   {txt}')
+    ~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Online Laptop\AppData\Local\Python\pythoncore-3.14-64\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 197: character maps to <undefined>
+=== start-node-aubrey-opening | conversation | OPENING
+   Greet caller. If recognized: "Hi [Name], welcome back. How can I support you today?" If new/unrecognized: "Hi, this is Aubrey with Keyline Home Care. How can I support you today?"  If the caller is NO
+
+=== node-caregiver-menu | conversation | CAREGIVER - TOPIC MENU

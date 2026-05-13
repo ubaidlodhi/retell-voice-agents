@@ -67,7 +67,14 @@ Speak digit-by-digit grouped 3-3-4 with pauses:
 - Dates: "January fifteenth" not "1/15"; "Saturday, March third" not "3/3."
 
 ### Numbers & currency
-- Naturally: "one hundred thirty dollars" not "$130." "One hour" not "60 minutes" when reading a session length. "Ninety minutes" not "1.5 hours."
+- Currency naturally: "one hundred thirty dollars" not "$130."
+- **Session durations always in HOUR form, not minutes:**
+  - 60 min → "one hour"
+  - 90 min → "an hour and a half"
+  - 120 min → "two hours"
+  - 30 min → "thirty minutes" (under an hour, use minutes)
+  - 45 min → "forty-five minutes" (under an hour, use minutes)
+  - Never say "sixty minutes" or "ninety minutes" — always the hour form.
 - Addresses: "four hundred Rowland Boulevard."
 
 ---

@@ -17,7 +17,6 @@ from pathlib import Path
 OUT_PATH = Path(__file__).parent / "sage_willow_inbound_agent.json"
 PROMPT_PATH = Path(__file__).parent / "system_prompt.md"
 N8N_BASE_URL = "https://automation.aiemply.com/webhook/retell-wix"
-SPA_FALLBACK_EMAIL = "sagewillowspa@gmail.com"
 SPA_PHONE = "+16286828010"
 ESCALATION_EMAIL = "sagewillowspa@gmail.com"
 
@@ -104,32 +103,29 @@ TOOLS = [
     tool(
         "get_services",
         "get-services",
-        "Fetch the live list of spa services with their pricing variants and "
-        "add-ons. Each service may have a single fixed `price` field OR a "
-        "`pricingVariants` array (each variant has {id, duration, price} — for "
-        "example: 60-min for $90, 90-min for $130, 120-min for $180). When the "
-        "service has pricingVariants, you MUST present the duration options to "
-        "the caller, get their pick, and pass the chosen variant.id as variantId "
-        "to book_appointment. Each service also has availableAddOns with id, "
-        "name, price, duration. Takes no arguments.",
+        "Live spa service catalog. Returns services[] with id, name, description, "
+        "plus EITHER `price` (fixed) OR `pricingVariants[{id, duration, price}]` "
+        "(per-duration pricing — caller picks one duration, pass that variant.id "
+        "as variantId to book_appointment). Each service may have "
+        "`availableAddOns[{id, name, price, duration, groupIds[]}]`. No arguments.",
         {"type": "object", "properties": {}, "required": []},
     ),
     tool(
         "get_staff",
         "get-staff",
-        "Fetch the live list of therapists. Call only when the caller asks about a "
-        "specific therapist by name or wants to choose. Takes no arguments.",
+        "Live therapist roster. Returns staff[] with id, resourceId, name, email. "
+        "Use `resourceId` as the staffId for get_slots and book_appointment. "
+        "Names may include gender in parens (e.g. \"Lily (Female)\"). No arguments.",
         {"type": "object", "properties": {}, "required": []},
     ),
     tool(
         "get_contact",
         "get-contact",
-        "Look up an existing customer contact by phone OR email. Use this when "
-        "the caller says they're a returning client. Try phone first (default to "
-        "{{user_number}}); if not found, ask for the email they booked under and "
-        "try again. When found, the response populates contact_first_name, "
+        "Look up a returning customer by phone or email. Try phone first "
+        "(defaults to {{user_number}}); if not found, ask for the email they "
+        "booked under and call again. When found, populates contact_first_name, "
         "contact_last_name, contact_email, contact_phone — use these to skip "
-        "re-asking those during booking. Set `found: true` when matched.",
+        "re-asking during booking.",
         {
             "type": "object",
             "properties": {
@@ -150,32 +146,35 @@ TOOLS = [
     tool(
         "get_slots",
         "get-slots",
-        "Fetch available time slots for a service across a date window. Returns slots "
-        "grouped by morning/afternoon/evening, each carrying staffId and scheduleId "
-        "(needed for booking). Times are Pacific (10 AM – 8 PM). To keep responses "
-        "small, ALWAYS narrow by the caller's preferences before calling: pass "
-        "`staffId` if they have a preferred therapist, `timeOfDay` if they have a "
-        "preferred part of the day, `earliestFirst: true` if they want the soonest "
-        "available, and use `limit` to cap how many slots come back.",
+        "Available time slots for a service. Pacific time, 10 AM – 8 PM. ALWAYS "
+        "narrow by caller prefs before calling: `staffId` for a specific "
+        "therapist (smallest response), `timeOfDay` for part-of-day, "
+        "`earliestFirst:true` for soonest, `limit` to cap count. Response varies "
+        "by `mode`: 'grouped' = `availabilityByDay[date].{morning,afternoon,"
+        "evening}[]`; 'earliest_first' = flat `slots[]`. Each slot has "
+        "startDate, endDate, scheduleId, plus `availableTherapists` array of "
+        "`{name, staffId}` (names from Wix, may include gender). Use the chosen "
+        "entry's staffId for book_appointment when caller picks a specific "
+        "therapist; omit staffId for 'no preference' (Wix auto-assigns).",
         {
             "type": "object",
             "properties": {
                 "serviceId": {"type": "string", "description": "Wix service ID from get_services."},
                 "startDate": {"type": "string", "description": "ISO local start, e.g. 2026-05-10 or 2026-05-10T00:00:00."},
                 "endDate":   {"type": "string", "description": "ISO local end, e.g. 2026-05-12 or 2026-05-12T23:59:59."},
-                "staffId":   {"type": "string", "description": "Optional. Wix staff/resource ID from get_staff. If set, only that therapist's slots are returned. Omit for 'no preference'."},
+                "staffId":   {"type": "string", "description": "Optional. resourceId from get_staff to filter to one therapist."},
                 "timeOfDay": {
                     "type": "string",
                     "enum": ["morning", "afternoon", "evening", "any"],
-                    "description": "Optional. Filter to a part of the day. Morning=10AM–12PM, afternoon=12PM–5PM, evening=5PM–8PM. Use 'any' or omit when caller has no preference.",
+                    "description": "Optional. morning=10AM-12PM, afternoon=12PM-5PM, evening=5PM-8PM.",
                 },
                 "earliestFirst": {
                     "type": "boolean",
-                    "description": "Optional. When true, slots are flattened across days, sorted ascending by start time, and capped to `limit`. Use this when the caller says 'earliest available', 'anytime', 'soonest', 'first opening'.",
+                    "description": "Optional. True for 'earliest/soonest/anytime' — flattens, sorts ascending, capped at `limit`.",
                 },
                 "limit": {
                     "type": "number",
-                    "description": "Optional. Max slots to return (default 6). Use 3 for 'earliest available' calls, 6–9 for browsing.",
+                    "description": "Optional. Max slots (default 6, 3 if earliestFirst).",
                 },
             },
             "required": ["serviceId", "startDate", "endDate"],
@@ -184,27 +183,42 @@ TOOLS = [
     tool(
         "book_appointment",
         "book-appointment",
-        "Create a booking. Requires the slot's serviceId, staffId, scheduleId, "
-        "startDate, endDate, the caller's chosen pricing variantId (from "
-        "get_services pricingVariants — the duration the caller picked), plus "
-        "contact details. Optional addOnIds array. Email is required by Wix; "
-        "if the caller declines to share, fall back to sagewillowspa@gmail.com.",
+        "Create a booking. REQUIRED: serviceId, variantId (the chosen "
+        "pricingVariants[].id from get_services), scheduleId, startDate, "
+        "endDate, firstName, lastName, email, phone. Email is mandatory — "
+        "Wix uses it for the confirmation AND it's the only key for "
+        "reschedule/cancel lookups. NEVER pass a synthesized, default, or "
+        "spa-owned email. OPTIONAL: `staffId` — pass when caller picked a "
+        "specific therapist, OMIT for 'no preference' (Wix auto-assigns); "
+        "`addOns` — array of `{id, groupId}` objects, both required per "
+        "entry, use groupIds[0] from the SAME service get_services returned.",
         {
             "type": "object",
             "properties": {
                 "serviceId":  {"type": "string"},
-                "variantId":  {"type": "string", "description": "Pricing variant ID from get_services.pricingVariants[].id — represents the duration/price the caller selected (e.g., 60-min vs 90-min vs 120-min)."},
-                "staffId":    {"type": "string"},
+                "variantId":  {"type": "string", "description": "pricingVariants[].id from get_services for the chosen duration."},
+                "staffId":    {"type": "string", "description": "Optional. Pass for specific therapist; omit for 'no preference'."},
                 "scheduleId": {"type": "string"},
-                "startDate":  {"type": "string", "description": "ISO local start of slot."},
-                "endDate":    {"type": "string", "description": "ISO local end of slot."},
+                "startDate":  {"type": "string", "description": "ISO local start."},
+                "endDate":    {"type": "string", "description": "ISO local end."},
                 "firstName":  {"type": "string"},
                 "lastName":   {"type": "string"},
-                "email":      {"type": "string", "description": f"Caller's email or fallback {SPA_FALLBACK_EMAIL}."},
-                "phone":      {"type": "string", "description": "E.164 phone number."},
-                "addOnIds":   {"type": "array", "items": {"type": "string"}, "description": "Optional add-on IDs."},
+                "email":      {"type": "string"},
+                "phone":      {"type": "string", "description": "E.164."},
+                "addOns":     {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id":      {"type": "string"},
+                            "groupId": {"type": "string", "description": "Use groupIds[0] from the same service."},
+                        },
+                        "required": ["id", "groupId"],
+                    },
+                    "description": "Optional. Each entry requires id + groupId only.",
+                },
             },
-            "required": ["serviceId", "variantId", "staffId", "scheduleId",
+            "required": ["serviceId", "variantId", "scheduleId",
                          "startDate", "endDate", "firstName", "lastName",
                          "email", "phone"],
         },
@@ -225,7 +239,11 @@ TOOLS = [
             "properties": {"bookingId": {"type": "string"}},
             "required": ["bookingId"],
         },
-        response_variables={"cancel_success": "$.success", "cancel_status": "$.status"},
+        response_variables={
+            "cancel_success_flag": "$.cancelFlag",
+            "cancel_success":      "$.success",
+            "cancel_status":       "$.status",
+        },
     ),
     tool(
         "reschedule_booking",
@@ -247,19 +265,21 @@ TOOLS = [
                          "startDate", "endDate"],
         },
         response_variables={
-            "reschedule_success": "$.success",
-            "new_start":          "$.newStartDate",
-            "new_end":            "$.newEndDate",
+            "reschedule_success_flag": "$.rescheduleFlag",
+            "reschedule_success":      "$.success",
+            "new_start":               "$.newStartDate",
+            "new_end":                 "$.newEndDate",
+            "new_day_of_week":         "$.newDayOfWeek",
         },
     ),
     tool(
         "get_booking",
         "get-booking",
-        "Look up an existing booking by bookingId OR by email. Email is the primary "
-        "lookup key — ask the caller for the email address they used to book and read "
-        "it back to confirm before calling. Returns up to 5 bookings with bookingId, "
-        "revision, serviceId, scheduleId, staffId, startDate, endDate, and contact "
-        "details — these populate variables for downstream cancel/reschedule.",
+        "Look up an existing booking by email (primary) or bookingId. Ask the "
+        "caller for the email they booked under, read it back to confirm, then "
+        "call. Returns up to 5 bookings with bookingId, revision, serviceId, "
+        "scheduleId, staffId, startDate, endDate, plus contact fields — these "
+        "populate variables for downstream cancel/reschedule.",
         {
             "type": "object",
             "properties": {
@@ -269,26 +289,32 @@ TOOLS = [
             "required": [],
         },
         response_variables={
-            "bookings_count":     "$.count",
-            "booking_id":         "$.bookings[0].bookingId",
-            "booking_revision":   "$.bookings[0].revision",
-            "booking_service_id": "$.bookings[0].serviceId",
-            "booking_schedule_id":"$.bookings[0].scheduleId",
-            "booking_staff_id":   "$.bookings[0].staffId",
-            "booking_start":      "$.bookings[0].startDate",
-            "booking_end":        "$.bookings[0].endDate",
-            "booking_first_name": "$.bookings[0].firstName",
-            "booking_last_name":  "$.bookings[0].lastName",
-            "booking_phone":      "$.bookings[0].phone",
+            "lookup_found_flag":      "$.foundFlag",
+            "bookings_count":         "$.count",
+            "booking_id":             "$.bookings[0].bookingId",
+            "booking_revision":       "$.bookings[0].revision",
+            "booking_service_id":     "$.bookings[0].serviceId",
+            "booking_service_name":   "$.bookings[0].serviceName",
+            "booking_schedule_id":    "$.bookings[0].scheduleId",
+            "booking_staff_id":       "$.bookings[0].staffId",
+            "booking_staff_name":     "$.bookings[0].staffName",
+            "booking_start":          "$.bookings[0].startDate",
+            "booking_end":            "$.bookings[0].endDate",
+            "booking_day_of_week":    "$.bookings[0].dayOfWeek",
+            "booking_duration_min":   "$.bookings[0].durationMinutes",
+            "booking_within_24h_flag":"$.bookings[0].withinCancellationWindowFlag",
+            "booking_first_name":     "$.bookings[0].firstName",
+            "booking_last_name":      "$.bookings[0].lastName",
+            "booking_phone":          "$.bookings[0].phone",
         },
     ),
     tool(
         "flag_callback",
         "flag-callback",
-        "Send Nicky an email + SMS when the agent cannot answer a question or the caller "
-        "insists on a human. Use this instead of warm-transferring (Nicky is in session and "
-        "cannot pick up). Always include a short reason summary so she can call back prepared. "
-        "NOTE: this route must be added to the n8n workflow before launch.",
+        "Send Nicky an email when the agent can't answer or the caller insists "
+        "on a human. Use this instead of warm-transferring (Nicky is in session "
+        "and can't pick up). Always include a short reason summary so she can "
+        "call back prepared.",
         {
             "type": "object",
             "properties": {
@@ -354,22 +380,15 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "FIRST TURN ONLY — say warmly, in ONE breath, with a soft natural tone:\n"
+            "FIRST TURN ONLY — warmly, in ONE breath:\n"
             "\"Hi, this is Aria from Sage and Willow Spa. Just to let you know, "
-            "this call is recorded for quality purpose. How can I help you today?\"\n\n"
-            "AFTER THE FIRST TURN — if the caller's reply is unclear, ambiguous, "
-            "off-topic in a way the globals didn't catch, or just doesn't fit any "
-            "obvious intent (book / manage / FAQ / callback), DO NOT REPEAT THE "
-            "GREETING. Instead, gently re-ask in a SHORT, varied phrasing:\n"
-            "  \"Sorry, just to make sure I help you the right way — are you "
-            "calling to book, change an appointment, or is there something else "
-            "I can help with?\"\n"
-            "or:\n"
-            "  \"Got it — could you tell me a bit more about what you'd like help "
-            "with today?\"\n\n"
-            "NEVER repeat the recording-consent disclosure (already said once at "
-            "the start). NEVER re-deliver the full greeting verbatim. Use natural, "
-            "varied re-prompts so the caller never hears the same line twice."
+            "this call is recorded for quality purpose. How can I help you "
+            "today?\"\n\n"
+            "If the caller's reply doesn't fit an obvious intent (book / "
+            "manage / FAQ / callback), do NOT repeat the greeting or recording "
+            "disclosure. Re-prompt SHORT and varied — e.g. \"Sorry, just to "
+            "make sure — are you calling to book, change an appointment, or "
+            "something else?\""
         ),
     },
     "edges": intent_route_edges("start") + [
@@ -406,44 +425,22 @@ add({
 add({
     "id": "book-collect",
     "type": "conversation",
-    "name": "Book — Collect Preliminary",
+    "name": "Book — Service Question",
     "instruction": {
         "type": "prompt",
         "text": (
-            "Goal: collect THREE pieces of information ONE PER TURN, acknowledging "
-            "each before moving on. Do not stack questions. DO NOT ask for the "
-            "caller's name here — name handling happens later in the booking "
-            "subagent (it's looked up automatically for returning clients, only "
-            "asked for new clients who couldn't be found).\n\n"
-            "1. Whether they're a NEW client or have visited Sage and Willow Spa "
-            "   BEFORE. Ask warmly: \"Have you been to Sage and Willow Spa before, "
-            "   or is this your first visit?\"\n"
-            "2. What kind of massage they're interested in — Signature, Swedish, "
-            "   Deep Tissue, Hot Stone, Prenatal, Lymphatic Drainage, or "
-            "   thirty-minute Focus. If they're not sure, briefly describe a few "
-            "   in one sentence each and let them pick.\n"
-            "3. Their preferred day and a rough time window. Ask conversationally — "
-            "   for example, \"What day were you thinking, and roughly what time?\" — "
-            "   and accept whatever phrasing they use.\n\n"
-            "Q3 STYLE RULE: do NOT read example phrases aloud (no \"like 'Saturday "
-            "afternoon' or 'tomorrow around three PM'\"). Just ask the question plainly.\n\n"
-            "Q3 \"EARLIEST AVAILABLE\" BYPASS: if the caller answers Q3 with any of:\n"
-            "  - \"earliest available\" / \"soonest\" / \"asap\" / \"as soon as possible\"\n"
-            "  - \"today\" / \"today if possible\" / \"whatever's open today\"\n"
-            "  - \"whenever you have time\" / \"any time\" / \"open to anything\"\n"
-            "TREAT Q3 AS COMPLETE — do not ask for a specific day or time-of-day. "
-            "The book-subagent will handle the search appropriately (with "
-            "earliestFirst: true starting from today). Acknowledge briefly "
-            "(\"Got it, I'll find the soonest available\") and proceed.\n\n"
-            "After all three are collected, say EXACTLY:\n"
-            "\"Got it — let me check what we have.\"\n"
-            "Then stop. The system handles the next step.\n\n"
-            "GUARDRAILS:\n"
-            "- One question per turn.\n"
-            "- Don't ask for the caller's NAME here — book-subagent handles it.\n"
-            "- Don't ask for phone or email here — those come after we pick a slot.\n"
-            "- Never read brackets [ ] aloud.\n"
-            "- Don't deliver any closing line — that's not your job here."
+            "Ask the caller which type of massage they're interested in. Read the "
+            "menu in ONE breath:\n\n"
+            "\"What type of massage are you interested in? We offer Signature, "
+            "Swedish, Deep Tissue, Hot Stone, Prenatal, Lymphatic Drainage, and a "
+            "thirty-minute Focus session. If you're not sure, I can describe a few "
+            "for you.\"\n\n"
+            "If the caller asks for descriptions, give a one-sentence description "
+            "of two or three relevant options based on what they hint at (stress, "
+            "back pain, pregnancy, etc.) and let them pick.\n\n"
+            "DO NOT call any tool here. DO NOT ask about date, add-ons, name, "
+            "returning vs new, or anything else — that all happens after they "
+            "name a service."
         ),
     },
     "edges": [
@@ -453,33 +450,15 @@ add({
             "post-task",
         ),
         edge(
-            "e-book-collect-done",
-            "Aria has just said \"Got it — let me check what we have.\" OR all three fields "
-            "(new/returning, service interest, preferred day/time OR an "
-            "earliest-available bypass) have been collected.",
+            "e-book-collect-picked",
+            "Caller has named a specific service (Swedish, Deep Tissue, Hot Stone, "
+            "Signature, Prenatal, Lymphatic Drainage, Focus, Couples, or any other "
+            "spa service from the menu).",
             "book-subagent",
-            examples=[
-                {"id": "fe-bcoll-done-1", "destination_node_id": "book-subagent",
-                 "transcript": [
-                    {"role": "user", "content": "Monday around 10 AM"},
-                    {"role": "agent", "content": "Got it — let me check what we have."}]},
-                {"id": "fe-bcoll-done-2", "destination_node_id": "book-subagent",
-                 "transcript": [
-                    {"role": "user", "content": "Earliest available"},
-                    {"role": "agent", "content": "Got it, I'll find the soonest available."}]},
-                {"id": "fe-bcoll-done-3", "destination_node_id": "book-subagent",
-                 "transcript": [
-                    {"role": "user", "content": "Today if possible"},
-                    {"role": "agent", "content": "Got it — let me check what we have."}]},
-                {"id": "fe-bcoll-done-4", "destination_node_id": "book-subagent",
-                 "transcript": [
-                    {"role": "agent", "content": "Got it — let me check what we have."},
-                    {"role": "user", "content": "Sounds good"}]},
-            ],
         ),
         edge(
             "e-book-collect-cancel",
-            "Caller changed their mind and said they don't want to book after all.",
+            "Caller changed their mind and no longer wants to book.",
             "post-task",
         ),
     ],
@@ -493,124 +472,93 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "You're helping the caller book a massage at Sage & Willow Spa. Use the "
-            "attached tools fluidly — narrate naturally between calls. Speak times in "
-            "natural form (\"three thirty PM\"), prices naturally (\"one hundred thirty "
-            "dollars\"), and durations naturally (\"ninety minutes\"). Pacific time only "
-            "(ten AM to eight PM, every day except Christmas Day and Thanksgiving Day).\n\n"
-            "Sequence:\n\n"
-            "STEP 0 — Contact lookup (returning clients only).\n"
-            "  This step ONLY runs if the caller said in book-collect that they've "
-            "  visited before. SKIP entirely for new clients.\n"
-            "  a) Call get_contact with phone={{user_number}}. Don't announce — "
-            "     this is a quiet lookup.\n"
-            "  b) If contact_found is true after that call, greet the caller by "
-            "     first name to confirm: \"Welcome back, {{contact_first_name}}! \" "
-            "     and proceed. The contact's first/last name, email, and phone are "
-            "     now stored — DO NOT re-ask for any of those later in STEP 5.\n"
-            "  c) If contact_found is false, ask for the email they used at the "
-            "     spa: \"No worries — what email did you use when you booked "
-            "     before? I'll find your file.\" Then call get_contact again with "
-            "     that email.\n"
-            "    - If found this time, greet by first name as in (b).\n"
-            "    - If still not found, treat the caller as new for this booking — "
-            "      apologize briefly (\"Hmm, I'm not finding you in the system, "
-            "      but no problem — we'll get you set up\") and proceed. You'll "
-            "      need to collect first/last name + email manually in STEP 5.\n"
-            "  Do NOT skip new-client cases through this step. Do NOT make a "
-            "  returning caller repeat their name, email, or phone if get_contact "
-            "  found them.\n\n"
-            "STEP 1 — Confirm service + pick a duration variant.\n"
-            "  Call get_services. Look up the service the caller picked.\n"
-            "  - If the service has a single fixed `price` (no pricingVariants), "
-            "    confirm in one sentence: \"Got it — that's [price] for [duration].\"\n"
-            "  - If the service has `pricingVariants` (an array of {id, duration, "
-            "    price} options), READ THE OPTIONS to the caller naturally and "
-            "    ask which one they want. Example for Deep Tissue:\n"
-            "      \"Deep Tissue comes in three lengths — sixty minutes for "
-            "      ninety dollars, ninety minutes for one hundred thirty "
-            "      dollars, or two hours for one hundred eighty dollars. "
-            "      Which would you like?\"\n"
-            "    Capture the pricingVariants[].id of the option they pick — "
-            "    you'll pass it as variantId to book_appointment in STEP 6.\n"
-            "  Do NOT mention add-ons here. STOP after confirming service + variant.\n\n"
-            "STEP 2 — Gather slot preferences (BEFORE calling get_slots).\n"
-            "  Ask these in order, ONE PER TURN, to narrow the search. Each answer "
-            "  becomes a get_slots argument:\n"
-            "    a) Therapist preference: \"Any preference on therapist, or no preference?\"\n"
-            "       - If they name someone → call get_staff to resolve the staffId for that "
-            "         person; you'll pass it to get_slots.\n"
-            "       - If \"no preference\" / \"whoever's available\" → omit staffId.\n"
-            "    b) Time-of-day preference: \"Morning, afternoon, or evening work better — "
-            "       or do you want the earliest available?\"\n"
-            "       - \"morning\" / \"afternoon\" / \"evening\" → pass that as timeOfDay.\n"
-            "       - \"earliest\" / \"anytime\" / \"soonest\" / \"first available\" → pass "
-            "         earliestFirst: true and limit: 3 (skip the time-of-day filter).\n"
-            "       - If they're flexible → pass timeOfDay: \"any\" with limit: 6.\n\n"
-            "STEP 3 — Fetch and offer slots.\n"
-            "  Call get_slots with serviceId, a 3–5 day window around the caller's "
-            "  preferred day, plus the preference filters from Step 2. Read back two or "
-            "  three viable times naturally; let the caller pick.\n"
-            "  - If get_slots returns nothing in the requested filter, widen ONCE: drop "
-            "    timeOfDay (or staffId) and re-call. If still empty, offer a callback via "
-            "    flag_callback.\n"
-            "  - If the caller asked for a specific therapist who has no availability, say "
-            "    so plainly and ask if any therapist is okay; if yes, re-call without "
-            "    staffId.\n\n"
-            "STEP 4 — Confirm slot + add-ons.\n"
-            "  Confirm the picked slot. Then ask if they'd like any add-ons.\n\n"
-            "STEP 5 — Collect contact info (CONDITIONAL based on STEP 0).\n"
-            "  IF the contact lookup in STEP 0 succeeded ({{contact_found}} is "
-            "  true), DO NOT ask for first name, last name, email, or phone. "
-            "  You already have all of them as variables. Just confirm in ONE "
-            "  short sentence:\n"
-            "    \"I have you on file as {{contact_first_name}} "
-            "    {{contact_last_name}}, with email {{contact_email}} and phone "
-            "    [read {{contact_phone}} grouped 3-3-4]. Use those for the "
-            "    booking, or want to update something?\"\n"
-            "  - If they say yes/use those: skip ahead to STEP 6.\n"
-            "  - If they want to update one field, ask only for that field, "
-            "    confirm, and proceed.\n\n"
-            "  IF the contact lookup in STEP 0 failed OR the caller is new "
-            "  (contact_found is false or unset), collect manually ONE PER TURN:\n"
-            "    a) First and last name (only if not already known from "
-            "       earlier in the call).\n"
-            "    b) Phone number — default to {{user_number}}; confirm it's "
-            "       the best one. Read back grouped 3-3-4.\n"
-            "    c) Email — ASK PLAINLY: \"What's the best email for the booking?\"\n"
-            "       Do NOT pre-offer a \"spa email on file\" as an option. That is "
-            "       a SILENT internal fallback only — never present it as a choice.\n"
-            "       Read back to confirm: spell the LOCAL part letter by letter, "
-            "       common domains spoken naturally (\"at gmail dot com\").\n"
-            f"       ONLY if the caller refuses to share, quietly use {SPA_FALLBACK_EMAIL} "
-            "       without reading it aloud (\"no problem, we'll keep email off "
-            "       the booking\").\n\n"
-            "STEP 6 — Final readback + book.\n"
-            "  Read back the FULL booking once: service, duration (in minutes), "
-            "  day and date, time, therapist name, total price (base + add-ons), "
-            "  contact info. Mention the cancellation policy ONCE here: \"We ask "
-            "  for twenty-four hours' notice for cancellations.\" Then ask them "
-            "  to confirm. After they say yes, call book_appointment with these "
-            "  required fields:\n"
-            "    - serviceId (from STEP 1's get_services)\n"
-            "    - variantId (the pricingVariants[].id the caller picked — REQUIRED)\n"
-            "    - staffId, scheduleId, startDate, endDate (from STEP 3's get_slots)\n"
-            "    - firstName, lastName, email, phone (from STEP 0 lookup OR STEP 5 collection)\n"
-            "    - addOnIds (optional array, from STEP 4)\n"
-            "  WITHOUT variantId the booking will be rejected — never skip it.\n\n"
-            "If something fails or the caller wants a human, call flag_callback with a "
-            "short reason and end this branch.\n\n"
-            "INLINE FAQ HANDLING (important): if the caller asks a brief spa-related "
-            "question mid-flow — location, hours, parking, payment methods, gratuity, "
-            "what to wear, intake forms, pet policy, cancellation policy, late-arrival "
-            "rules, etc. — answer in 1–2 sentences using the attached knowledge base, "
-            "THEN return immediately to where the booking left off. Do NOT route to "
-            "the FAQ handler. Do NOT abandon the booking. Do NOT make the caller "
-            "repeat anything they already gave you.\n"
-            "Off-topic, non-spa questions are handled by the global off-topic redirect "
-            "automatically — don't engage with them.\n\n"
-            "When book_appointment returns success, stop talking and let the next node "
-            "deliver the confirmation. Do not read the bookingId aloud."
+            "Handle a NEW booking. Caller just named a service. Pacific time, "
+            "open 10 AM–8 PM daily (closed Christmas + Thanksgiving).\n\n"
+            "STEP 1 — Service + variant.\n"
+            "  Call get_services. Find the named service.\n"
+            "  • Has `pricingVariants` → read durations in ONE sentence (e.g. "
+            "\"Swedish comes in three lengths — one hour for ninety dollars, an "
+            "hour and a half for one hundred forty, or two hours for two hundred. "
+            "Which would you like?\"). Capture chosen variant.id as variantId.\n"
+            "  • Single `price` → confirm: \"Got it — that's [price] for "
+            "[duration].\"\n"
+            "  No add-ons here.\n\n"
+            "STEP 2 — Add-on offer (one soft turn).\n"
+            "  If service has no `availableAddOns`, SKIP silently.\n"
+            "  Otherwise frame as additions (never \"we offer\"): \"Would you "
+            "like to add aromatherapy for fifty dollars, a hot towel and foot "
+            "scrub for forty, or CBD muscle recovery for forty — or skip "
+            "add-ons?\"\n"
+            "  Capture each chosen add-on as `{id, groupId}`. groupId = "
+            "groupIds[0] from this service's availableAddOns (same id has "
+            "different groupIds per service — never mix). One re-prompt max, "
+            "then move on.\n\n"
+            "STEP 3 — Availability + slot pick.\n"
+            "  Ask ONE PER TURN, in this order:\n"
+            "    a) THERAPIST: \"Any preference on therapist — male, female, or "
+            "no preference?\"\n"
+            "       - Name (\"Lily\") → get_staff to resolve staffId, pass to "
+            "get_slots.\n"
+            "       - Gender, ONE match → use that staffId.\n"
+            "       - Gender, MULTIPLE matches → ask which by name.\n"
+            "       - No preference → omit staffId entirely.\n"
+            "    b) DAY: \"What day were you thinking?\"\n"
+            "    c) TIME OF DAY (only if more narrowing needed): "
+            "\"Morning, afternoon, or evening — or earliest available?\" → pass "
+            "timeOfDay, or earliestFirst:true + limit:3.\n\n"
+            "  Call get_slots. DATE WINDOW:\n"
+            "    • Specific day → startDate = endDate = that day.\n"
+            "    • \"Earliest\" with no day → today + 5 days, earliestFirst:true.\n"
+            "    • Range (\"this weekend\") → 3–5 day window.\n"
+            "  Each slot has `dayOfWeek`, `localDate`, `time`, and "
+            "`availableTherapists: [{name, staffId}]`. ALWAYS use the slot's "
+            "`dayOfWeek` field for the weekday — never compute it yourself. "
+            "Read back two or three times:\n"
+            "    • Empty → read time only.\n"
+            "    • One entry → mention by name (\"ten thirty AM with Lily\").\n"
+            "    • Multiple → offer the times, then ask preference once "
+            "(\"I have ten thirty AM, eleven AM, or eleven thirty AM. We have "
+            "Rocky and Lily working — any preference?\").\n"
+            "  Empty result → widen ONCE (drop staffId, then timeOfDay). Still "
+            "empty → offer flag_callback.\n\n"
+            "  When caller picks a slot AND a specific therapist (by name or "
+            "gender-resolved), capture that entry's staffId from "
+            "availableTherapists for STEP 5. \"No preference\" → omit staffId; "
+            "Wix auto-assigns.\n\n"
+            "STEP 4 — Contact.\n"
+            "  Ask: \"Have you been to Sage and Willow Spa before, or is this "
+            "your first visit?\"\n"
+            "  RETURNING → silently call get_contact with phone={{user_number}}.\n"
+            "    • Found → \"Great, I found your record on file — "
+            "{{contact_first_name}} {{contact_last_name}}, email "
+            "{{contact_email}}. Use that for the booking?\" (jump to PHONE on "
+            "yes; update only the field they want to change otherwise).\n"
+            "    • Not found → DON'T mention it; fall through to NEW.\n"
+            "  NEW (or not-found): one per turn — first+last name, then "
+            "email. Email is REQUIRED (Wix sends the confirmation there and "
+            "we look up by email for any future changes — phone lookup isn't "
+            "supported). If caller hesitates, say so briefly and re-ask. If "
+            "they truly refuse, route to a callback instead of inventing or "
+            "using a spa-owned address.\n"
+            "  PHONE (always): \"Can we use the number you're calling from, or "
+            "another preferred number?\" Default to {{user_number}}.\n\n"
+            "STEP 5 — Readback + book (MANDATORY).\n"
+            "  Read in one breath: service + duration, day/date/time, therapist "
+            "(if any), add-ons (or \"no add-ons\"), total price, email, phone, "
+            "and one-time policy line \"We ask for twenty-four hours' notice if "
+            "you need to cancel or reschedule.\" Then ask: \"Should I go ahead "
+            "and book it?\"\n"
+            "  WAIT for explicit yes. Then call book_appointment. variantId is "
+            "REQUIRED — never skip. Pass staffId only when caller picked a "
+            "specific therapist; omit for no-preference. Pass addOns as the "
+            "captured array from STEP 2.\n\n"
+            "GENERAL\n"
+            "Failure or caller wants a human → call flag_callback.\n"
+            "Inline FAQ (location, hours, parking, what to wear) → answer in 1–2 "
+            "sentences from KB, then return to where you were. Don't make caller "
+            "repeat anything.\n"
+            "On book_appointment success → stop talking, next node delivers "
+            "confirmation. Never read the bookingId."
         ),
     },
     "tool_ids": ["get_contact", "get_services", "get_staff", "get_slots", "book_appointment", "flag_callback"],
@@ -666,24 +614,14 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "Caller wants to cancel, reschedule, or check an existing booking. Goal: "
-            "get the email address the booking was made under so we can look it up.\n\n"
-            "Say:\n"
-            "\"Sure — I can help with that. What email address did you use when you "
-            "booked?\"\n\n"
-            "When they give it, READ IT BACK to confirm:\n"
-            "- Spell the LOCAL part (before the @) letter by letter, with phonetic "
-            "  alphabet on any ambiguous letter (\"M as in Mike, A as in Alpha\").\n"
-            "- For common domains (gmail dot com, yahoo dot com, outlook dot com, "
-            "  hotmail dot com, icloud dot com, aol dot com), speak the domain "
-            "  naturally — do NOT spell it letter by letter.\n"
-            "- For uncommon domains, spell the whole address.\n\n"
-            "After they confirm the email is right, say:\n"
+            "Caller wants to cancel, reschedule, or check an existing booking. "
+            "Get the email used at booking — that's our lookup key.\n\n"
+            "Ask: \"Sure — I can help with that. What email did you use when "
+            "you booked?\"\n"
+            "Read it back per the global email pronunciation rules, then say "
             "\"Got it — let me pull that up.\"\n\n"
-            "GUARDRAILS:\n"
-            "- Do not ask for phone here — email is the lookup key.\n"
-            "- Don't ask for name; get_booking returns contact details.\n"
-            "- Don't ask for booking ID unless the caller volunteers one."
+            "Don't ask for phone, name, or booking ID (get_booking returns "
+            "contact details from the email lookup)."
         ),
     },
     "edges": [
@@ -711,25 +649,47 @@ add({
 
 add({
     "id": "manage-router",
-    "type": "branch",
-    "name": "Manage — Found vs Not Found",
+    "type": "conversation",
+    "name": "Manage — Lookup Result",
+    # Was a `branch` node — but Retell branch nodes evaluate equations against a
+    # context that doesn't yet include the prior tool's response_variables, so
+    # the equation always failed even when the response clearly had the
+    # expected value. A conversation node has an LLM turn which DOES load
+    # response_variables into context, and the prompt-based edges below
+    # evaluate AFTER the LLM speaks — by then the variable is in context.
+    "instruction": {
+        "type": "prompt",
+        "text": (
+            "Speak ONE line based on {{lookup_found_flag}} and {{bookings_count}}:\n"
+            "• No bookings: \"Hmm, I'm not finding any upcoming appointments under that email.\"\n"
+            "• One booking: \"Got it — I found your booking.\" (next node reads details)\n"
+            "• Multiple: list each by service + staff + day/date/time. Use each "
+            "booking's `dayOfWeek` for the weekday (NEVER compute it yourself), "
+            "and read the calendar date from `startDate`. e.g.\n"
+            "  \"I see two — your Deep Tissue with Rocky on Friday, May fifteenth "
+            "at ten AM, and your Swedish with Lily on Monday, May eighteenth at "
+            "one PM. Which one?\"\n"
+            "  If a booking has no staffName, drop the \"with X\" part.\n\n"
+            "Never read booking IDs."
+        ),
+    },
     "edges": [
-        # Robust "found" check: bookings_count must exist AND be non-zero AND non-empty.
-        # Earlier we relied on {{booking_id}} exists, but production calls showed that
-        # equation failing even when the lookup returned a booking. bookings_count is
-        # always set by the n8n format-response (to "0" or "N"), so it's the safer key.
-        equation_edge(
+        edge(
             "e-manage-router-found",
-            [
-                {"left": "{{bookings_count}}", "operator": "exists"},
-                {"left": "{{bookings_count}}", "operator": "!=", "right": "0"},
-                {"left": "{{bookings_count}}", "operator": "!=", "right": ""},
-            ],
+            "EITHER (a) Aria's previous turn confirmed finding a single booking "
+            "(\"Got it, found your booking\" etc.), OR (b) Aria listed multiple "
+            "bookings AND the caller has identified which one they want to "
+            "manage (by date, time, or order — e.g., 'the May 15th one', 'the "
+            "morning one', 'the second one', 'the one at three PM').",
             "manage-action-prompt",
-            op="&&",
+        ),
+        edge(
+            "e-manage-router-not-found",
+            "Aria's previous turn said no booking was found — \"I'm not "
+            "finding any\", \"no active appointments\", or similar.",
+            "manage-not-found",
         ),
     ],
-    "else_edge": else_edge("e-manage-router-not-found", "manage-not-found"),
     "display_position": {"x": 1300, "y": 400},
 })
 
@@ -766,20 +726,32 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "Read back the existing booking found, then ask what they want to do.\n\n"
-            "Say something like:\n"
-            "\"Okay — I see your booking on [day and date] at [time]. What would you "
-            "like to do — cancel, reschedule, or something else?\"\n\n"
-            "Use the values from {{booking_start}} for date/time. Speak the date "
-            "naturally (e.g., \"Saturday, May ninth at three PM\"). Don't read the "
-            "raw ISO timestamp aloud. Don't read the booking ID aloud."
+            "Read back the SELECTED booking as a descriptor — e.g. \"your "
+            "one-hour Deep Tissue Massage with Lily on Friday, May fifteenth "
+            "at ten thirty AM\" — using {{booking_service_name}}, "
+            "{{booking_duration_min}}, {{booking_staff_name}}, "
+            "{{booking_day_of_week}}, and the calendar date/time from "
+            "{{booking_start}}. NEVER compute the weekday yourself — always "
+            "use the dayOfWeek field. Drop the \"with X\" part if staff name "
+            "is empty. For multi-booking, use the SELECTED booking's fields "
+            "from the get_booking context (the response_variables above "
+            "default to most-recent — for any other selection, read from "
+            "the tool's bookings[] array).\n\n"
+            "If caller stated their action earlier (reschedule/cancel/check) → "
+            "CONFIRM: \"Got it — [descriptor]. [action-specific follow-up]?\" "
+            "Otherwise ASK: \"[descriptor] — cancel, reschedule, or something "
+            "else?\"\n\n"
+            "Always phrase the appointment as a DESCRIPTOR (\"your Wednesday "
+            "appointment\"), never \"reschedule your appointment on Wednesday\" "
+            "(sounds like moving TO Wednesday). Don't repeat \"I found your "
+            "booking\"."
         ),
     },
     "edges": [
         edge(
             "e-manage-action-cancel",
             "Caller wants to CANCEL the appointment.",
-            "cancel-confirm",
+            "cancel-reason",
         ),
         edge(
             "e-manage-action-reschedule",
@@ -798,35 +770,173 @@ add({
 # --- Cancel ---
 
 add({
-    "id": "cancel-confirm",
+    "id": "cancel-reason",
     "type": "conversation",
-    "name": "Cancel — Confirm Intent",
+    "name": "Cancel — Ask Reason + Offer Reschedule",
     "instruction": {
         "type": "prompt",
         "text": (
-            "Confirm the cancellation explicitly before submitting.\n\n"
-            "Say:\n"
-            "\"Just to confirm — you'd like me to cancel the appointment on [day, date] "
-            "at [time]? Heads up, we ask for twenty-four hours' notice as a courtesy — "
-            "should I go ahead?\"\n\n"
-            "Use the booking's start date/time from variables. If they say yes, move on. "
-            "If they hesitate or change their mind, route to reschedule or back out."
+            "TWO-TURN flow — DO NOT transition after only Turn 1.\n\n"
+            "TURN 1 (first time here) — ask the reason:\n"
+            "  \"Got it — mind if I ask what came up?\"\n\n"
+            "TURN 2 (after caller answers) — based on their reason, ALWAYS "
+            "give them a binary choice. Pick ONE phrasing:\n"
+            "  • TIMING reason (busy, conflict, work, family, urgent, that "
+            "day, can't make it, schedule, kids, travel, etc.):\n"
+            "    \"Sounds like a timing thing — want me to find another "
+            "time, or are you set on canceling?\"\n"
+            "  • FIRM reason (sick, illness, injured, no longer want it):\n"
+            "    \"Totally understand. Just to confirm, go ahead and cancel?\"\n"
+            "  • VAGUE / no reason given (\"personal\", \"just need to\"):\n"
+            "    \"No problem. Would you rather reschedule, or cancel?\"\n\n"
+            "DO NOT transition until the caller answers Turn 2. Capture the "
+            "reason internally for the within-24h callback note. NEVER skip "
+            "Turn 2 — the caller MUST hear an explicit reschedule-vs-cancel "
+            "choice before we proceed."
+        ),
+    },
+    "edges": [
+        edge(
+            "e-cancel-reason-reschedule",
+            "After Aria explicitly offered to find another time / reschedule, "
+            "the caller agreed — e.g. \"yes\", \"reschedule\", \"find another "
+            "time\", \"move it\", \"sure let's try\". Does NOT fire merely "
+            "because the caller stated a timing reason without yet hearing "
+            "the offer.",
+            "reschedule-subagent",
+            examples=[
+                {"id": "fe-cancel-reschedule-1", "destination_node_id": "reschedule-subagent",
+                 "transcript": [
+                     {"role": "agent", "content": "Sounds like a timing thing — want me to find another time, or are you set on canceling?"},
+                     {"role": "user", "content": "yeah let's try another time"},
+                 ]},
+                {"id": "fe-cancel-reschedule-2", "destination_node_id": "reschedule-subagent",
+                 "transcript": [
+                     {"role": "agent", "content": "No problem. Would you rather reschedule, or cancel?"},
+                     {"role": "user", "content": "reschedule please"},
+                 ]},
+            ],
+        ),
+        edge(
+            "e-cancel-reason-walkaway",
+            "Caller changed their mind and wants to keep the booking as-is "
+            "(\"never mind\", \"actually keep it\", \"forget it\").",
+            "post-task",
+        ),
+        edge(
+            "e-cancel-reason-proceed",
+            "After Aria explicitly offered the reschedule-vs-cancel choice "
+            "(Turn 2), the caller chose to cancel — \"cancel\", \"go ahead "
+            "and cancel\", \"I'm set on canceling\", \"yes cancel\". Does "
+            "NOT fire on the caller's FIRST reply (a stated reason); the "
+            "agent must complete Turn 2 first.",
+            "cancel-policy-router",
+            examples=[
+                {"id": "fe-cancel-proceed-1", "destination_node_id": "cancel-policy-router",
+                 "transcript": [
+                     {"role": "agent", "content": "Sounds like a timing thing — want me to find another time, or are you set on canceling?"},
+                     {"role": "user", "content": "no just cancel it"},
+                 ]},
+                {"id": "fe-cancel-proceed-2", "destination_node_id": "cancel-policy-router",
+                 "transcript": [
+                     {"role": "agent", "content": "Totally understand. Just to confirm, go ahead and cancel?"},
+                     {"role": "user", "content": "yes please"},
+                 ]},
+            ],
+        ),
+    ],
+    "display_position": {"x": 2100, "y": 100},
+})
+
+add({
+    "id": "cancel-policy-router",
+    "type": "conversation",
+    "name": "Cancel — 24-Hour Policy Router",
+    "instruction": {
+        "type": "prompt",
+        "text": (
+            "Speak ONE short line based on {{booking_within_24h_flag}}:\n"
+            "• \"yes\" → \"Hmm — your appointment's within twenty-four hours. "
+            "Let me handle this carefully.\"\n"
+            "• anything else → \"Sure, no problem.\"\n\n"
+            "ONE sentence. The next node handles the rest."
+        ),
+    },
+    "edges": [
+        edge(
+            "e-cancel-policy-within",
+            "Aria's previous line mentioned the booking is within twenty-four "
+            "hours, or used phrasing like 'within the cancellation window'.",
+            "cancel-within-window",
+        ),
+        edge(
+            "e-cancel-policy-outside",
+            "Aria's previous line was a brief acknowledgment ('Sure, no "
+            "problem' / 'Okay' / similar) — no twenty-four-hour mention.",
+            "cancel-confirm",
+        ),
+    ],
+    "display_position": {"x": 2100, "y": 250},
+})
+
+add({
+    "id": "cancel-within-window",
+    "type": "subagent",
+    "name": "Cancel — Within 24h (auto-callback)",
+    "instruction": {
+        "type": "prompt",
+        "text": (
+            "The booking is within twenty-four hours of starting, so we don't "
+            "process the cancellation directly. Two things this turn:\n\n"
+            "1. Say warmly: \"I've noted this and someone from the team will "
+            "reach out about options. Anything else I can help with?\"\n\n"
+            "2. In the same turn, call flag_callback with:\n"
+            "   • reason: \"Within-24h cancellation request\"\n"
+            "   • callerName: {{booking_first_name}} {{booking_last_name}}\n"
+            "   • callerPhone: {{user_number}}\n"
+            "   • questionDetail: a one-line summary including the caller's "
+            "stated cancellation reason (from the prior turn) AND the booking "
+            "details — {{booking_service_name}}, {{booking_start}}, "
+            "staff: {{booking_staff_name}}, bookingId: {{booking_id}}."
+        ),
+    },
+    "tool_ids": ["flag_callback"],
+    "edges": [
+        edge(
+            "e-cancel-within-done",
+            "Caller responded to 'anything else?' — either said no/thanks/bye "
+            "or has another question/intent.",
+            "post-task",
+        ),
+    ],
+    "display_position": {"x": 2500, "y": 100},
+})
+
+add({
+    "id": "cancel-confirm",
+    "type": "conversation",
+    "name": "Cancel — Confirm (>24h)",
+    "instruction": {
+        "type": "prompt",
+        "text": (
+            "Confirm the cancellation in ONE short line. Use enriched booking "
+            "details for clarity:\n"
+            "  \"Just to confirm — cancel your "
+            "{{booking_duration_min}}-minute {{booking_service_name}} with "
+            "{{booking_staff_name}} on {{booking_day_of_week}}, "
+            "[calendar date] at [time]? Sure?\"\n\n"
+            "Use {{booking_day_of_week}} for the weekday (never compute it). "
+            "Calendar date + time come from {{booking_start}}. If staff name "
+            "is empty, drop that phrase. Yes → proceed; hesitation / "
+            "reschedule → route accordingly."
         ),
     },
     "edges": [
         edge(
             "e-cancel-yes",
-            "Caller has explicitly confirmed they want to cancel — said yes, please cancel, "
-            "go ahead, or similar firm affirmation after Aria asked \"should I go ahead?\".",
+            "Caller has explicitly confirmed cancellation — yes, go ahead, "
+            "please cancel, or similar firm affirmation.",
             "cancel-execute",
-            examples=[
-                {"id": "fe-cancel-yes-1", "destination_node_id": "cancel-execute",
-                 "transcript": [{"role": "agent", "content": "...should I go ahead?"},
-                                {"role": "user", "content": "Yes please."}]},
-                {"id": "fe-cancel-yes-2", "destination_node_id": "cancel-execute",
-                 "transcript": [{"role": "agent", "content": "...should I go ahead?"},
-                                {"role": "user", "content": "Yeah, go ahead and cancel it."}]},
-            ],
         ),
         edge(
             "e-cancel-reschedule-instead",
@@ -835,16 +945,11 @@ add({
         ),
         edge(
             "e-cancel-back-out",
-            "Caller decided to keep the booking after all and is not canceling.",
+            "Caller decided to keep the booking after all.",
             "post-task",
-            examples=[
-                {"id": "fe-cancel-back-1", "destination_node_id": "post-task",
-                 "transcript": [{"role": "agent", "content": "...should I go ahead?"},
-                                {"role": "user", "content": "Actually no, leave it."}]},
-            ],
         ),
     ],
-    "display_position": {"x": 2100, "y": 250},
+    "display_position": {"x": 2500, "y": 250},
 })
 
 add({
@@ -866,12 +971,10 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "Say ONE short line:\n"
-            "\"All set — your appointment is canceled. Anything else I can help with?\"\n\n"
-            "If cancel_success returned false, say instead:\n"
-            "\"Hmm, looks like that didn't go through on my end. I'll have someone reach "
-            "out to make sure it's handled. Anything else?\"\n\n"
-            "Then route based on what the caller says next."
+            "Check {{cancel_success_flag}}:\n"
+            "• \"yes\" → \"All set — your appointment is canceled. Anything else I can help with?\"\n"
+            "• anything else → \"Hmm, that didn't go through on my end. I'll have someone reach out. Anything else?\"\n\n"
+            "The flag is the source of truth — don't default to the success line."
         ),
     },
     "edges": [
@@ -908,53 +1011,44 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "You're rescheduling an existing booking. The original booking details are "
-            "already loaded as variables: {{booking_id}}, {{booking_revision}}, "
-            "{{booking_service_id}}, {{booking_schedule_id}}, {{booking_staff_id}}.\n\n"
-            "Sequence:\n\n"
-            "STEP 1 — Get new-day preference.\n"
-            "  Ask: \"What day were you thinking of moving it to?\" Get a target day or rough "
-            "  range.\n\n"
-            "STEP 2 — Get time-of-day preference (BEFORE calling get_slots).\n"
-            "  Ask: \"Morning, afternoon, or evening work better — or do you want the "
-            "  earliest available?\"\n"
-            "    - \"morning\" / \"afternoon\" / \"evening\" → pass timeOfDay to get_slots.\n"
-            "    - \"earliest\" / \"anytime\" / \"soonest\" → pass earliestFirst: true, "
-            "      limit: 3.\n"
-            "    - flexible → pass timeOfDay: \"any\", limit: 6.\n\n"
-            "  THERAPIST RULE — read this carefully:\n"
-            "  - DEFAULT: keep the same therapist as the original booking. Pass "
-            "    staffId={{booking_staff_id}} on every get_slots call. The caller has "
-            "    already seen this therapist; reschedule continuity matters.\n"
-            "  - DO NOT call get_staff. Do NOT ask the caller \"who was your previous "
-            "    therapist?\" — we already know from {{booking_staff_id}}.\n"
-            "  - If the caller says \"same therapist as before\" / \"the one I had\" / "
-            "    similar continuity language, that is the DEFAULT — proceed silently.\n"
-            "  - ONLY omit staffId if the caller EXPLICITLY says they want a different "
-            "    therapist (\"someone else\", \"a different person\") or says \"anyone is fine\".\n\n"
-            "STEP 3 — Fetch and offer.\n"
-            "  Call get_slots with serviceId={{booking_service_id}}, a 3–5 day window "
-            "  around the new preferred day, plus the filters from Step 2. Read back two "
-            "  or three viable times; let the caller pick.\n"
-            "  - If empty under the filters, widen ONCE (drop staffId, then drop timeOfDay) "
-            "    before giving up.\n\n"
-            "STEP 4 — Confirm new slot.\n"
-            "  Say: \"To confirm — moving you to [new day, date] at [new time]. Sound good?\"\n\n"
-            "STEP 5 — Submit.\n"
-            "  After they confirm, call reschedule_booking with the new slot's "
-            "  serviceId, scheduleId, staffId, startDate, endDate, plus the original "
-            "  bookingId={{booking_id}} and revision={{booking_revision}}.\n\n"
-            "If reschedule_booking returns failure, apologize and call flag_callback so "
-            "Nicky can sort it out manually.\n\n"
-            "Pacific time, ten AM to eight PM only. Speak times naturally. Do not read "
-            "out IDs or revision numbers."
+            "Reschedule an existing booking. Use {{booking_id}}, "
+            "{{booking_revision}}, {{booking_service_id}}, {{booking_schedule_id}}, "
+            "{{booking_staff_id}}. For multi-booking lookups where caller picked "
+            "a non-most-recent one, pull THAT booking's fields from get_booking "
+            "context (variables default to most-recent).\n\n"
+            "STAFFID RULE: must be a 36-char GUID from the booking's `staffId` "
+            "field. NEVER use scheduleId/serviceId. If the selected booking has "
+            "no staffId (any-resource booking), OMIT staffId entirely from "
+            "get_slots and reschedule_booking.\n\n"
+            "STEP 1 — Ask: \"What day were you thinking of moving it to?\"\n\n"
+            "STEP 2 — Ask: \"Morning, afternoon, or evening — or earliest "
+            "available?\" Map to timeOfDay, or earliestFirst:true + limit:3.\n"
+            "  Therapist: default to {{booking_staff_id}} for continuity (don't "
+            "ask, don't call get_staff). Only drop staffId if caller explicitly "
+            "asks for a different person or says \"anyone\".\n\n"
+            "STEP 3 — Call get_slots with serviceId={{booking_service_id}} + "
+            "filters. DATE WINDOW: specific day → startDate = endDate = that "
+            "day; \"earliest\" with no day → 5-day window from today; range → "
+            "3–5 day window. Read back two or three times; let caller pick. "
+            "Empty → widen ONCE (drop staffId, then timeOfDay).\n\n"
+            "STEP 4 — Confirm: \"To confirm — moving you to [new day, date] at "
+            "[new time]. Sound good?\"\n\n"
+            "STEP 5 — On yes, call reschedule_booking with the new slot's "
+            "serviceId, scheduleId, staffId, startDate, endDate + original "
+            "bookingId={{booking_id}}, revision={{booking_revision}}.\n\n"
+            "Failure → call flag_callback. Pacific time, 10 AM–8 PM only."
         ),
     },
     "tool_ids": ["get_slots", "reschedule_booking", "flag_callback"],
     "edges": [
-        equation_edge(
+        # Prompt-based instead of equation: Retell's branch/equation evaluation
+        # of response_variables right after a tool call is unreliable. The
+        # subagent's LLM has the tool result in its context window though, so
+        # a prompt edge can match it correctly.
+        edge(
             "e-reschedule-success",
-            [{"left": "{{reschedule_success}}", "operator": "==", "right": "true"}],
+            "The reschedule_booking tool just returned success — the booking "
+            "was successfully moved to the new slot (rescheduleFlag is \"yes\").",
             "reschedule-success",
         ),
         edge(
@@ -979,8 +1073,11 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "Say ONE short line confirming the new time, using {{new_start}}.\n\n"
-            "Example: \"Done — you're now booked for [new day, date] at [new time].\"\n\n"
+            "Say ONE short line confirming the new time, using "
+            "{{new_day_of_week}} for the weekday and {{new_start}} for the "
+            "date and time. NEVER compute the weekday yourself.\n\n"
+            "Example: \"Done — you're now booked for {{new_day_of_week}}, "
+            "[calendar date] at [time].\"\n\n"
             "Speak the date and time naturally. Do not read out IDs."
         ),
     },
@@ -998,22 +1095,18 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "You're answering a general question about Sage & Willow Spa. Use the "
-            "attached knowledge base for FAQs (hours, location, parking, gift cards, "
-            "payment methods, prenatal eligibility, late arrival, gratuity, insurance, "
-            "etc.) and the get_services tool when the caller asks about specific "
-            "service details, prices, durations, or add-ons.\n\n"
-            "Answer in 1–2 sentences, conversationally. Don't read service lists or "
-            "prices like a menu — pick the relevant ones for the caller's question.\n\n"
-            "If the question isn't answered by the KB or get_services and you're not "
-            "confident, do NOT guess. Offer a callback: \"That's a good question — "
-            "let me have someone reach out so you get the right answer.\"\n\n"
-            "After answering, ask: \"Anything else I can help with?\"\n\n"
-            "Hours reminder: ten AM to eight PM Pacific, every day except Christmas Day "
-            "and Thanksgiving Day. Address: four hundred Rowland Boulevard, Novato, "
-            "California. Phone: six two eight, six eight two, eight zero one zero. "
-            "Cancellation policy: twenty-four hours' notice. Walk-ins accepted "
-            "depending on availability."
+            "Answer a general spa question using the attached knowledge base "
+            "(hours, location, parking, gift cards, payments, prenatal, late "
+            "arrival, gratuity, insurance, walk-ins, cancellation policy) and "
+            "get_services for service-specific details (prices, durations, "
+            "add-ons).\n\n"
+            "Answer in 1–2 sentences. Don't read prices/services like a menu — "
+            "just the relevant ones.\n"
+            "If the answer isn't in KB or get_services and you're not "
+            "confident, DON'T guess — offer a callback: \"That's a good "
+            "question — let me have someone reach out so you get the right "
+            "answer.\"\n"
+            "After answering: \"Anything else I can help with?\""
         ),
     },
     "tool_ids": ["get_services", "get_staff", "flag_callback"],
@@ -1051,19 +1144,15 @@ add({
     "instruction": {
         "type": "prompt",
         "text": (
-            "Goal: collect the info needed to flag a callback for Nicky. ONE QUESTION PER TURN.\n\n"
-            "1. Caller's name (if not already known from earlier in the call).\n"
-            "2. Best phone number — default to the number they're calling from "
-            f"   ({{{{user_number}}}}); only re-ask if they want a different number. "
-            "   Read back grouped 3-3-4.\n"
-            "3. A one-sentence summary of what they need help with.\n\n"
-            "After all three are collected, say EXACTLY:\n"
-            "\"Got it — I'll have her reach out as soon as she's free.\"\n"
-            "Then stop. The system flags the callback.\n\n"
-            "GUARDRAILS:\n"
-            "- One question per turn.\n"
-            "- Confirm any uncommon name with phonetic alphabet.\n"
-            "- Don't promise a specific call-back time — Nicky calls back when she's out of session."
+            "Collect callback info ONE QUESTION PER TURN:\n"
+            "1. Caller's name (skip if known from earlier).\n"
+            "2. Best phone — default to {{user_number}}, confirm; only re-ask "
+            "if they want a different number.\n"
+            "3. One-sentence summary of what they need help with.\n\n"
+            "After all three: \"Got it — I'll have her reach out as soon as "
+            "she's free.\" Then stop.\n"
+            "Don't promise a specific call-back time — Nicky calls when she's "
+            "out of session."
         ),
     },
     "edges": [
@@ -1443,7 +1532,7 @@ GLOBAL_PROMPT = PROMPT_PATH.read_text(encoding="utf-8")
 AGENT = {
     "agent_id": "",
     "channel": "voice",
-    "agent_name": "Aria — Sage & Willow Spa - V05",
+    "agent_name": "Aria — Sage & Willow Spa - V19",
     "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU"],
     "voice_id": "11labs-Brynne",
     "voice_temperature": 0.7,

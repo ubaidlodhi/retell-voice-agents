@@ -1,0 +1,164 @@
+[
+  {
+    "success": true,
+    "services": [
+      {
+        "id": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
+        "name": "Deep Tissue Massage",
+        "description": "Relieve tension and stress with our 90-Minute Deep Tissue Massage, targeting deeper layers of muscles for persistent pain and stiffness relief.",
+        "pricingVariants": [
+          {
+            "id": "19f3d8d5-364b-436b-9109-2cdda9950443",
+            "duration": "60 min",
+            "price": "USD 90"
+          },
+          {
+            "id": "f787bfa5-e37d-48e8-86c6-82bdb961ae31",
+            "duration": "90 min",
+            "price": "USD 130"
+          },
+          {
+            "id": "9b5b30b1-5ea8-4394-8e3c-171070209c5f",
+            "duration": "120 min",
+            "price": "USD 180"
+          }
+        ],
+        "availableAddOns": [
+          {
+            "id": "a2b42867-693c-466a-a710-4ee57b8257ed",
+            "name": "Aromatherapy Enhancement",
+            "price": "USD 50",
+            "duration": "20 min",
+            "groupIds": [
+              "122b2901-5de8-4e14-912d-a958b03884c3"
+            ]
+          },
+          {
+            "id": "23b94847-39b5-417c-8120-89b9e1f0d32c",
+            "name": "Hot Towel & Foot Scrub",
+            "price": "USD 40",
+            "duration": "15 min",
+            "groupIds": [
+              "122b2901-5de8-4e14-912d-a958b03884c3"
+            ]
+          },
+          {
+            "id": "7997235f-6729-4cd5-8027-9807e2306aa5",
+            "name": "CBD Muscle Recovery",
+            "price": "USD 40",
+            "duration": "15 min",
+            "groupIds": [
+              "122b2901-5de8-4e14-912d-a958b03884c3"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "635860f5-0000-4dc8-93cf-5bf25c42ee31",
+        "name": "30 min meeting"
+      },
+      {
+        "id": "6e61f91b-f97f-4461-a4fb-953dfb44ec05",
+        "name": "Couples Massage",
+        "description": "Experience profound relaxation together with our Couples Massage, featuring side-by-side massage sessions tailored for you and your partner.",
+        "pricingVariants": [
+          {
+            "id": "d9982fb7-4066-4066-9284-f27913cd51ad",
+            "duration": "60 min",
+            "price": "USD 80"
+          },
+          {
+            "id": "11a15a08-cac8-48dd-8912-918adc283500",
+            "duration": "120 min",
+            "price": "USD 170"
+          },
+          {
+            "id": "7a2c94c1-2495-4607-8d92-8fc3775f3ab4",
+            "duration": "90 min",
+            "price": "USD 120"
+          }
+        ],
+        "availableAddOns": [
+          {
+            "id": "a2b42867-693c-466a-a710-4ee57b8257ed",
+            "name": "Aromatherapy Enhancement",
+            "price": "USD 50",
+            "duration": "20 min",
+            "groupIds": [
+              "77f98822-6448-4471-96b1-b5157e0542f1"
+            ]
+          },
+          {
+            "id": "23b94847-39b5-417c-8120-89b9e1f0d32c",
+            "name": "Hot Towel & Foot Scrub",
+            "price": "USD 40",
+            "duration": "15 min",
+            "groupIds": [
+              "77f98822-6448-4471-96b1-b5157e0542f1"
+            ]
+          },
+          {
+            "id": "7997235f-6729-4cd5-8027-9807e2306aa5",
+            "name": "CBD Muscle Recovery",
+            "price": "USD 40",
+            "duration": "15 min",
+            "groupIds": [
+              "77f98822-6448-4471-96b1-b5157e0542f1"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+        "name": "Swedish Massage",
+        "description": "Relax and unwind with our 60-Minute Swedish Massage that utilizes gentle, calming strokes to promote relaxation and stress relief.",
+        "pricingVariants": [
+          {
+            "id": "6ca859d2-8754-4875-80e8-24d8b6a291d2",
+            "duration": "60 min",
+            "price": "USD 90"
+          },
+          {
+            "id": "5412307e-05ca-4833-86cc-d077b4badce0",
+            "duration": "90 min",
+            "price": "USD 140"
+          },
+          {
+            "id": "0c2817ff-4fcf-4b36-aab5-8f8a73951d5c",
+            "duration": "120 min",
+            "price": "USD 200"
+          }
+        ],
+        "availableAddOns": [
+          {
+            "id": "a2b42867-693c-466a-a710-4ee57b8257ed",
+            "name": "Aromatherapy Enhancement",
+            "price": "USD 50",
+            "duration": "20 min",
+            "groupIds": [
+              "f3773b13-4ce0-4666-b8b1-77bca4540575"
+            ]
+          },
+          {
+            "id": "23b94847-39b5-417c-8120-89b9e1f0d32c",
+            "name": "Hot Towel & Foot Scrub",
+            "price": "USD 40",
+            "duration": "15 min",
+            "groupIds": [
+              "f3773b13-4ce0-4666-b8b1-77bca4540575"
+            ]
+          },
+          {
+            "id": "7997235f-6729-4cd5-8027-9807e2306aa5",
+            "name": "CBD Muscle Recovery",
+            "price": "USD 40",
+            "duration": "15 min",
+            "groupIds": [
+              "f3773b13-4ce0-4666-b8b1-77bca4540575"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

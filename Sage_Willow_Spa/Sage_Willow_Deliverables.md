@@ -101,7 +101,7 @@ Per onboarding sheet section 4 + section 6 qualification questions:
 9. Add-ons / enhancements — *required ask*, optional answer
 10. How they heard about us — *optional* (post-call analysis field)
 
-> **Email handling:** the n8n `book-appointment` validator marks `email` as required, but qualification lists it optional. Resolution (decided): ask for email; if the caller declines, fall back to **`sagewillowspa@gmail.com`** so the Wix call still succeeds. The confirmation lands in Nicky's inbox and she has the caller's phone number to follow up. No synthesized/fake addresses.
+> **Email handling:** email is **required, no fallback**. Wix Bookings does not support phone-based lookup, so the email captured at booking is the only key the agent can use later to find the appointment for reschedule or cancel. If the caller declines, the agent re-asks once with a one-line explanation; on firm refusal, route to a callback instead of inventing or using a spa-owned address.
 
 ### 3.2 Hard policy lines (must be enforced in prompt, not KB)
 
@@ -270,7 +270,7 @@ All seven tools post to the **same** n8n webhook — `POST /webhook/retell-wix` 
   > *"Just to let you know, this call is recorded for quality. How can I help you today?"*
   Plays once at the start, immediately after the greeting. If the caller objects, end the call politely.
 - ✅ **Wix API credentials** — build team uses our own automation/sandbox credentials during the build & test phase. Swap to client's Wix credentials at go-live; no client action needed pre-approval.
-- ✅ **Email-required handling for `book-appointment`** — when caller does not provide an email, fall back to **`sagewillowspa@gmail.com`** (Nicky's business email). Wix accepts the booking, the confirmation lands in her inbox, and she has the caller's phone number to follow up. No fake placeholder addresses.
+- ✅ **Email-required handling for `book-appointment`** — email is mandatory; Wix Bookings does not support phone-based lookup, so the email captured at booking is the only key the agent can use to find the appointment later for reschedule/cancel. No fallback to a spa-owned address (that would orphan future lookups and route confirmations away from the caller). If the caller firmly refuses, route to a callback instead.
 - ✅ **Topics to avoid / scope** — Aria is a *Sage & Willow Spa receptionist*, full stop. If the caller asks anything off-topic (general chitchat, unrelated product questions, advice outside spa services), gently redirect: *"I'm here to help with bookings and questions about Sage & Willow Spa — is there anything spa-related I can help you with?"* Don't engage with politics, news, opinions, jokes, or other off-brand topics.
 - ✅ **Do-not-book rules** — defer to whatever the Wix calendar already enforces (same-day cutoffs, therapist availability, capacity). The agent reads `get-slots`; if a slot isn't returned as bookable, it isn't offered. No additional rules layered on top.
 - ✅ **Crisis / distressed caller protocol** — default: *"If you're in crisis or having thoughts of harming yourself, please contact the 988 Suicide and Crisis Lifeline by dialing 988. They're available 24/7."* Then end the call gently. Do not engage further.

@@ -1,0 +1,1138 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.first().json;\nconst { args } = inputJson;\nconst errors = [];\n\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss\nfunction formatForWix(dateStr, isEnd = false) {\n    if (!dateStr) return dateStr;\n    let cleanStr = String(dateStr).replace('Z', '');\n    cleanStr = cleanStr.replace(/[+-]\\d{2}:\\d{2}$/, '');\n    if (cleanStr.length === 10) {\n        cleanStr += isEnd ? 'T23:59:59.000' : 'T00:00:00.000';\n    }\n    return cleanStr;\n}\n\nif (args.startDate) {\n    if (isNaN(Date.parse(args.startDate))) {\n        errors.push('startDate is not a valid date');\n    } else {\n        args.startDate = formatForWix(args.startDate, false);\n    }\n}\n\nif (args.endDate) {\n    if (isNaN(Date.parse(args.endDate))) {\n        errors.push('endDate is not a valid date');\n    } else {\n        args.endDate = formatForWix(args.endDate, true);\n    }\n}\n\n// --- NEW: Normalize optional filter args ---\n\n// staffId: trim or null\nif (args.staffId === '' || args.staffId === undefined) {\n    args.staffId = null;\n} else if (args.staffId) {\n    args.staffId = String(args.staffId).trim();\n}\n\n// timeOfDay: lowercase one of morning/afternoon/evening/any (default any)\nconst validTOD = ['morning', 'afternoon', 'evening', 'any'];\nif (args.timeOfDay) {\n    const tod = String(args.timeOfDay).toLowerCase().trim();\n    args.timeOfDay = validTOD.includes(tod) ? tod : 'any';\n} else {\n    args.timeOfDay = 'any';\n}\n\n// earliestFirst: coerce to boolean\nif (args.earliestFirst === true || String(args.earliestFirst).toLowerCase() === 'true') {\n    args.earliestFirst = true;\n} else {\n    args.earliestFirst = false;\n}\n\n// limit: integer 1..50, default 6 (3 if earliestFirst and not set)\nif (args.limit !== undefined && args.limit !== null && args.limit !== '') {\n    const n = parseInt(args.limit, 10);\n    if (!isNaN(n) && n >= 1 && n <= 50) {\n        args.limit = n;\n    } else {\n        args.limit = args.earliestFirst ? 3 : 6;\n    }\n} else {\n    args.limit = args.earliestFirst ? 3 : 6;\n}\n\nreturn [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+      },
+      "id": "a6d9c927-fe7f-4258-955c-c6e903214b4c",
+      "name": "Validate: Slots Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "d2b0e39e-7904-4f1a-a226-9ff4fd5d2328",
+      "name": "IF: Slots Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/_api/service-availability/v2/time-slots",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"serviceId\": \"{{ $json.args.serviceId }}\",\n  \"fromLocalDate\": \"{{ $json.args.startDate }}\",\n  \"toLocalDate\": \"{{ $json.args.endDate }}\",\n  \"timeZone\": \"America/Los_Angeles\"\n  {{ $json.args.staffId ? ', \"resourceId\": \"' + $json.args.staffId + '\"' : '' }}\n}",
+        "options": {}
+      },
+      "id": "d03ee52d-bc67-4da6-9f40-06440afd0e6e",
+      "name": "Wix: Query Time Slots",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        112,
+        1184
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================================\n// STAFF LOOKUP — populate with your spa's resources.\n// ============================================================================\n// Wix's queryTimeSlots returns availableResources holding resource IDs, but\n// names aren't always present. To read therapist names back to the caller, we\n// resolve resourceId -> display name here.\n//\n// HOW TO POPULATE: run the get-staff tool once. For each entry returned, copy\n// its `resourceId` and assign a display name (gender in parens helps the agent\n// when caller asks for male/female). Names with no resourceId match fall back\n// to \"Therapist\".\nconst STAFF_LOOKUP = {\n    // \"<resourceId>\": \"Rocky (Male)\",\n    // \"<resourceId>\": \"Lily (Female)\",\n};\n// ============================================================================\n\nconst raw = $input.first().json;\nconst { args } = $('Parse Retell Payload').first().json;\n\nconst data = Array.isArray(raw) ? raw[0] : raw;\n\nif (!data) return [{ json: { success: false, error: 'Empty response from Wix' } }];\nif (data.message || data.details) {\n    return [{ json: { success: false, error: data.message || 'Failed to retrieve slots', details: data.details || null } }];\n}\n\nconst entries = data.timeSlots || [];\n\nconst staffFilter = args.staffId || null;\nconst timeOfDay = (args.timeOfDay || 'any').toLowerCase();\nconst earliestFirst = args.earliestFirst === true;\nconst limit = (typeof args.limit === 'number' && args.limit > 0)\n    ? args.limit\n    : (earliestFirst ? 3 : 6);\n\nfunction parseLocalDateTime(localDateTime) {\n    const [datePart, timePart] = (localDateTime || '').split('T');\n    const [hourStr, minuteStr] = (timePart || '00:00:00').split(':');\n    return {\n        localDate: datePart,\n        hour: parseInt(hourStr, 10),\n        minute: parseInt(minuteStr, 10)\n    };\n}\n\nfunction formatTimeLabel(hour, minute) {\n    const suffix = hour >= 12 ? 'PM' : 'AM';\n    const h = hour % 12 === 0 ? 12 : hour % 12;\n    const m = String(minute).padStart(2, '0');\n    return `${h}:${m} ${suffix}`;\n}\n\nfunction inBand(hour, band) {\n    if (band === 'morning')   return hour >= 10 && hour < 12;\n    if (band === 'afternoon') return hour >= 12 && hour < 17;\n    if (band === 'evening')   return hour >= 17 && hour < 20;\n    return hour >= 10 && hour < 20;\n}\n\nfunction bandOf(hour) {\n    if (hour >= 10 && hour < 12) return 'morning';\n    if (hour >= 12 && hour < 17) return 'afternoon';\n    if (hour >= 17 && hour < 20) return 'evening';\n    return null;\n}\n\n// Pull therapists from Wix's per-slot availableResources, resolving names via\n// the lookup map above. Tolerates several response shapes Wix has used:\n//   { resource: { id, name } }, { id, name }, or just { resourceId }.\nfunction extractTherapists(availableResources) {\n    if (!Array.isArray(availableResources)) return [];\n    const out = [];\n    const seen = new Set();\n    for (const r of availableResources) {\n        const id = r?.resource?.id || r?.resourceId || r?.id || null;\n        const explicitName = r?.resource?.name || r?.name || null;\n        if (!id && !explicitName) continue;\n        const key = id || explicitName;\n        if (seen.has(key)) continue;\n        seen.add(key);\n        const name = explicitName || STAFF_LOOKUP[id] || 'Therapist';\n        out.push({ name, staffId: id });\n    }\n    return out;\n}\n\nfunction mergeTherapists(agg, candidate) {\n    for (const t of candidate.therapists) {\n        const exists = agg.availableTherapists.some(x =>\n            (x.staffId && t.staffId && x.staffId === t.staffId) ||\n            (!x.staffId && !t.staffId && x.name === t.name)\n        );\n        if (!exists) agg.availableTherapists.push({ name: t.name, staffId: t.staffId });\n    }\n}\n\nfunction buildAgg(s) {\n    return {\n        localDate: s.localDate,\n        time: s.time,\n        startDate: s.startDate,\n        endDate: s.endDate,\n        // Top-level staffId default: respect filter, else first therapist's id.\n        // The agent should use the staffId from the chosen entry of\n        // availableTherapists when caller picks a specific therapist.\n        staffId: staffFilter || s.therapists[0]?.staffId || null,\n        scheduleId: s.scheduleId,\n        availableTherapists: s.therapists.map(t => ({ name: t.name, staffId: t.staffId })),\n        location: s.location,\n        remainingCapacity: s.remainingCapacity,\n        totalCapacity: s.totalCapacity\n    };\n}\n\n// 1. Map Wix slots -> local + extract therapists per slot\nlet slots = entries\n    .filter(e => e.bookable === true)\n    .map(e => {\n        const startParts = parseLocalDateTime(e.localStartDate);\n        const therapists = extractTherapists(e.availableResources);\n        return {\n            localDate: startParts.localDate,\n            time: formatTimeLabel(startParts.hour, startParts.minute),\n            hour: startParts.hour,\n            minute: startParts.minute,\n            startDate: e.localStartDate,\n            endDate: e.localEndDate,\n            therapists,\n            therapistIds: therapists.map(t => t.staffId).filter(Boolean),\n            scheduleId: e.scheduleId || null,\n            location: e.location || null,\n            remainingCapacity: e.remainingCapacity ?? null,\n            totalCapacity: e.totalCapacity ?? null\n        };\n    });\n\n// 2. Apply staff filter — match against any of the slot's therapist IDs\nif (staffFilter) slots = slots.filter(s => s.therapistIds.includes(staffFilter));\n\n// 3. Apply time-of-day filter\nslots = slots.filter(s => inBand(s.hour, timeOfDay));\n\nconst filterApplied = { staffId: staffFilter, timeOfDay, earliestFirst, limit };\n\n// 4a. EARLIEST_FIRST\nif (earliestFirst) {\n    const sorted = slots.slice().sort((a, b) => new Date(a.startDate) - new Date(b.startDate));\n    const seen = new Map();\n    const order = [];\n    for (const s of sorted) {\n        const key = `${s.localDate}|${s.time}`;\n        if (seen.has(key)) {\n            mergeTherapists(seen.get(key), s);\n        } else {\n            const agg = buildAgg(s);\n            seen.set(key, agg);\n            order.push(agg);\n            if (order.length >= limit) break;\n        }\n    }\n    return [{ json: { success: true, mode: 'earliest_first', count: order.length, filterApplied, slots: order } }];\n}\n\n// 4b. GROUPED\nconst availabilityByDay = {};\nslots.forEach(s => {\n    const band = bandOf(s.hour);\n    if (!band) return;\n    if (!availabilityByDay[s.localDate]) {\n        availabilityByDay[s.localDate] = { morning: [], afternoon: [], evening: [] };\n    }\n    const day = availabilityByDay[s.localDate];\n    const existing = [...day.morning, ...day.afternoon, ...day.evening].find(x => x.time === s.time);\n    if (existing) {\n        mergeTherapists(existing, s);\n    } else {\n        day[band].push(buildAgg(s));\n    }\n});\n\n// Cap slots per band\nlet totalReturned = 0;\nconst sortedDates = Object.keys(availabilityByDay).sort();\nfor (const date of sortedDates) {\n    const day = availabilityByDay[date];\n    const activeBands = ['morning', 'afternoon', 'evening'].filter(b => day[b].length > 0);\n    const perBand = activeBands.length === 0 ? 0 : Math.max(2, Math.ceil(limit / Math.max(1, activeBands.length)));\n    for (const band of ['morning', 'afternoon', 'evening']) {\n        day[band].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));\n        if (day[band].length > perBand) day[band] = day[band].slice(0, perBand);\n        totalReturned += day[band].length;\n    }\n}\n\nreturn [{ json: { success: true, mode: 'grouped', count: totalReturned, filterApplied, availabilityByDay } }];\n"
+      },
+      "id": "7bada78e-e2f0-4114-9a0b-943e0b595ca8",
+      "name": "Format: Time Slots Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "dcc8b7bf-473c-4447-baa0-5db1b60e5484",
+      "name": "Respond: Get Slots",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        560,
+        1088
+      ]
+    }
+  ],
+  "connections": {
+    "Validate: Slots Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Slots Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Slots Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Query Time Slots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Wix: Query Time Slots": {
+      "main": [
+        [
+          {
+            "node": "Format: Time Slots Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Format: Time Slots Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Validate: Slots Args": [
+      {
+        "tool": "get-slots",
+        "args": {
+          "endDate": "2026-05-12T23:59:59.000",
+          "limit": 3,
+          "earliestFirst": false,
+          "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+          "startDate": "2026-05-11T00:00:00.000",
+          "timeOfDay": "morning",
+          "staffId": null
+        },
+        "_valid": true,
+        "_validationError": ""
+      }
+    ],
+    "Wix: Query Time Slots": [
+      {
+        "timeSlots": [
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T10:00:00",
+            "localEndDate": "2026-05-11T11:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T10:30:00",
+            "localEndDate": "2026-05-11T11:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T11:00:00",
+            "localEndDate": "2026-05-11T12:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T11:30:00",
+            "localEndDate": "2026-05-11T12:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T12:00:00",
+            "localEndDate": "2026-05-11T13:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T12:30:00",
+            "localEndDate": "2026-05-11T13:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T13:00:00",
+            "localEndDate": "2026-05-11T14:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T13:30:00",
+            "localEndDate": "2026-05-11T14:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T14:00:00",
+            "localEndDate": "2026-05-11T15:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T14:30:00",
+            "localEndDate": "2026-05-11T15:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T15:00:00",
+            "localEndDate": "2026-05-11T16:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T15:30:00",
+            "localEndDate": "2026-05-11T16:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T16:00:00",
+            "localEndDate": "2026-05-11T17:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T16:30:00",
+            "localEndDate": "2026-05-11T17:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T17:00:00",
+            "localEndDate": "2026-05-11T18:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T17:30:00",
+            "localEndDate": "2026-05-11T18:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T18:00:00",
+            "localEndDate": "2026-05-11T19:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T18:30:00",
+            "localEndDate": "2026-05-11T19:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-11T19:00:00",
+            "localEndDate": "2026-05-11T20:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T10:00:00",
+            "localEndDate": "2026-05-12T11:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T10:30:00",
+            "localEndDate": "2026-05-12T11:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T11:00:00",
+            "localEndDate": "2026-05-12T12:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T11:30:00",
+            "localEndDate": "2026-05-12T12:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T12:00:00",
+            "localEndDate": "2026-05-12T13:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T12:30:00",
+            "localEndDate": "2026-05-12T13:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T13:00:00",
+            "localEndDate": "2026-05-12T14:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T13:30:00",
+            "localEndDate": "2026-05-12T14:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T14:00:00",
+            "localEndDate": "2026-05-12T15:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T14:30:00",
+            "localEndDate": "2026-05-12T15:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T15:00:00",
+            "localEndDate": "2026-05-12T16:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T15:30:00",
+            "localEndDate": "2026-05-12T16:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T16:00:00",
+            "localEndDate": "2026-05-12T17:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T16:30:00",
+            "localEndDate": "2026-05-12T17:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T17:00:00",
+            "localEndDate": "2026-05-12T18:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T17:30:00",
+            "localEndDate": "2026-05-12T18:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T18:00:00",
+            "localEndDate": "2026-05-12T19:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T18:30:00",
+            "localEndDate": "2026-05-12T19:30:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          },
+          {
+            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
+            "localStartDate": "2026-05-12T19:00:00",
+            "localEndDate": "2026-05-12T20:00:00",
+            "bookable": true,
+            "location": {
+              "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+              "name": "Rowland Boulevard",
+              "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+              "locationType": "BUSINESS"
+            },
+            "totalCapacity": 1,
+            "remainingCapacity": 1,
+            "bookingPolicyViolations": {
+              "tooEarlyToBook": false,
+              "tooLateToBook": false,
+              "bookOnlineDisabled": false
+            },
+            "availableResources": [],
+            "nestedTimeSlots": [],
+            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc"
+          }
+        ],
+        "timeZone": "America/Los_Angeles",
+        "cursorPagingMetadata": {
+          "cursors": {},
+          "hasNext": false
+        }
+      }
+    ],
+    "Format: Time Slots Response": [
+      {
+        "success": true,
+        "mode": "grouped",
+        "count": 6,
+        "filterApplied": {
+          "staffId": null,
+          "timeOfDay": "morning",
+          "earliestFirst": false,
+          "limit": 3
+        },
+        "availabilityByDay": {
+          "2026-05-11": {
+            "morning": [
+              {
+                "localDate": "2026-05-11",
+                "time": "10:00 AM",
+                "startDate": "2026-05-11T10:00:00",
+                "endDate": "2026-05-11T11:00:00",
+                "staffId": null,
+                "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
+                "availableTherapists": [],
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "BUSINESS"
+                },
+                "remainingCapacity": 1,
+                "totalCapacity": 1
+              },
+              {
+                "localDate": "2026-05-11",
+                "time": "10:30 AM",
+                "startDate": "2026-05-11T10:30:00",
+                "endDate": "2026-05-11T11:30:00",
+                "staffId": null,
+                "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
+                "availableTherapists": [],
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "BUSINESS"
+                },
+                "remainingCapacity": 1,
+                "totalCapacity": 1
+              },
+              {
+                "localDate": "2026-05-11",
+                "time": "11:00 AM",
+                "startDate": "2026-05-11T11:00:00",
+                "endDate": "2026-05-11T12:00:00",
+                "staffId": null,
+                "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
+                "availableTherapists": [],
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "BUSINESS"
+                },
+                "remainingCapacity": 1,
+                "totalCapacity": 1
+              }
+            ],
+            "afternoon": [],
+            "evening": []
+          },
+          "2026-05-12": {
+            "morning": [
+              {
+                "localDate": "2026-05-12",
+                "time": "10:00 AM",
+                "startDate": "2026-05-12T10:00:00",
+                "endDate": "2026-05-12T11:00:00",
+                "staffId": null,
+                "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
+                "availableTherapists": [],
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "BUSINESS"
+                },
+                "remainingCapacity": 1,
+                "totalCapacity": 1
+              },
+              {
+                "localDate": "2026-05-12",
+                "time": "10:30 AM",
+                "startDate": "2026-05-12T10:30:00",
+                "endDate": "2026-05-12T11:30:00",
+                "staffId": null,
+                "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
+                "availableTherapists": [],
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "BUSINESS"
+                },
+                "remainingCapacity": 1,
+                "totalCapacity": 1
+              },
+              {
+                "localDate": "2026-05-12",
+                "time": "11:00 AM",
+                "startDate": "2026-05-12T11:00:00",
+                "endDate": "2026-05-12T12:00:00",
+                "staffId": null,
+                "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
+                "availableTherapists": [],
+                "location": {
+                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
+                  "name": "Rowland Boulevard",
+                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
+                  "locationType": "BUSINESS"
+                },
+                "remainingCapacity": 1,
+                "totalCapacity": 1
+              }
+            ],
+            "afternoon": [],
+            "evening": []
+          }
+        }
+      }
+    ]
+  },
+  "meta": {
+    "instanceId": "ac196cde23a3d6ef70e5e219252c1746cd31eed638b30f72c27ae62726c49a9f"
+  }
+}
