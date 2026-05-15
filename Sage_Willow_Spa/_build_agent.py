@@ -611,9 +611,18 @@ add({
     },
     "tool_ids": ["get_contact", "get_services", "get_staff", "get_slots", "book_appointment", "flag_callback"],
     "edges": [
-        equation_edge(
+        # Prompt-based, NOT equation. Retell's equation evaluation of
+        # response_variables ({{new_booking_id}}) right after a tool call is
+        # unreliable — the variable isn't loaded into the equation context
+        # yet, so the edge silently never fires and the subagent gets stuck
+        # free-form chatting instead of transitioning to book-success. The
+        # subagent's LLM DOES have the tool result in its context window, so
+        # a prompt edge matches it correctly. Same fix as reschedule-subagent.
+        edge(
             "e-book-subagent-success",
-            [{"left": "{{new_booking_id}}", "operator": "exists"}],
+            "The book_appointment tool just returned success — the booking "
+            "was created (the result has a bookingId and success/confirmed "
+            "is true).",
             "book-success",
         ),
         edge(
@@ -906,12 +915,32 @@ add({
         ),
     },
     "tool_ids": ["flag_callback"],
+    # This node asks "anything else?" itself, so it must OWN the routing —
+    # route directly to close-call / flows like cancel-success does. Routing
+    # into post-task here caused a hung call: post-task would see the question
+    # was already asked, say "Got it", then wait for a caller turn that never
+    # comes (the caller already answered).
     "edges": [
         edge(
-            "e-cancel-within-done",
-            "Caller responded to 'anything else?' — either said no/thanks/bye "
-            "or has another question/intent.",
-            "post-task",
+            "e-cancel-within-no",
+            "Caller said no, that's all, thanks, goodbye, or otherwise "
+            "indicated they're done with the call.",
+            "close-call",
+        ),
+        edge(
+            "e-cancel-within-book",
+            "Caller wants to book a new appointment.",
+            "book-collect",
+        ),
+        edge(
+            "e-cancel-within-manage",
+            "Caller wants to manage another existing booking.",
+            "manage-collect",
+        ),
+        edge(
+            "e-cancel-within-faq",
+            "Caller has another general question.",
+            "faq-handler",
         ),
     ],
     "display_position": {"x": 2500, "y": 100},
@@ -1256,11 +1285,8 @@ add({
         "text": (
             "Say ONE short line:\n"
             "\"Anything else I can help you with today?\"\n\n"
-            "If you've ALREADY asked this same question in the immediately previous "
-            "turn (caller is responding to it now), DO NOT repeat — instead say a "
-            "brief acknowledgment like \"Sounds good.\" or \"Got it.\" and let the "
-            "edges route based on the caller's response. NEVER stay silent or "
-            "respond NO_RESPONSE_NEEDED here."
+            "NEVER stay silent or respond NO_RESPONSE_NEEDED here — always "
+            "ask the line so the caller has a clear prompt to respond to."
         ),
     },
     "edges": intent_route_edges("post") + [
@@ -1557,21 +1583,23 @@ GLOBAL_PROMPT = PROMPT_PATH.read_text(encoding="utf-8")
 AGENT = {
     "agent_id": "",
     "channel": "voice",
-    "agent_name": "Aria — Sage & Willow Spa - V24",
+    "agent_name": "Aria — Sage & Willow Spa - V26",
     "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU"],
-    "voice_id": "11labs-Brynne",
+    # voice_id / voice_speed / post_call_analysis_model below were changed by
+    # the client in the Retell dashboard — synced here so rebuilds don't revert.
+    "voice_id": "custom_voice_573dab78e535ca398ccb542f7e",
     "voice_temperature": 0.7,
-    "voice_speed": 0.9,
+    "voice_speed": 1,
     "max_call_duration_ms": 1800000,
     "interruption_sensitivity": 0.9,
-    "responsiveness": 1.0,
+    "responsiveness": 1,
     "begin_message_delay_ms": 800,
     "ring_duration_ms": 30000,
     "normalize_for_speech": True,
     "stt_mode": "accurate",
     "denoising_mode": "noise-and-background-speech-cancellation",
     "data_storage_setting": "everything",
-    "post_call_analysis_model": "gpt-4.1",
+    "post_call_analysis_model": "gpt-4.1-mini",
     "is_published": False,
     "handbook_config": {
         "echo_verification": False,
@@ -1612,16 +1640,6 @@ AGENT = {
             "description": "Wix bookingId if a booking was created on this call.",
         },
         {
-            "name": "service_booked",
-            "type": "string",
-            "description": "Service name if a booking was created or rescheduled.",
-        },
-        {
-            "name": "appointment_datetime",
-            "type": "string",
-            "description": "Local appointment date and time in natural language if booked or rescheduled.",
-        },
-        {
             "name": "callback_required",
             "type": "boolean",
             "description": "True if a callback was flagged for Nicky.",
@@ -1638,20 +1656,10 @@ AGENT = {
             "description": "Overall caller sentiment by end of call.",
         },
         {
-            "name": "is_returning_client",
-            "type": "boolean",
-            "description": "Did the caller indicate they are a returning client?",
-        },
-        {
             "name": "language_used",
             "type": "enum",
             "choices": ["english", "spanish", "mixed"],
             "description": "Primary language of the conversation.",
-        },
-        {
-            "name": "recording_consent_acknowledged",
-            "type": "boolean",
-            "description": "Did the agent deliver the recording-consent line at the start of the call?",
         },
         {
             "name": "spam_call",
@@ -1667,11 +1675,6 @@ AGENT = {
             "name": "tool_failure",
             "type": "boolean",
             "description": "Did any Wix tool call fail (slot lookup, booking creation, etc.)?",
-        },
-        {
-            "name": "call_summary",
-            "type": "string",
-            "description": "Two-sentence summary of what happened on the call.",
         },
     ],
     "response_engine": {

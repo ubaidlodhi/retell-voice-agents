@@ -1,7 +1,7 @@
 {
   "agent_id": "",
   "channel": "voice",
-  "agent_name": "Aria — Sage & Willow Spa - V24",
+  "agent_name": "Aria — Sage & Willow Spa - V26",
   "language": [
     "en-US",
     "es-ES",
@@ -10,19 +10,19 @@
     "en-GB",
     "en-AU"
   ],
-  "voice_id": "11labs-Brynne",
+  "voice_id": "custom_voice_573dab78e535ca398ccb542f7e",
   "voice_temperature": 0.7,
-  "voice_speed": 0.9,
+  "voice_speed": 1,
   "max_call_duration_ms": 1800000,
   "interruption_sensitivity": 0.9,
-  "responsiveness": 1.0,
+  "responsiveness": 1,
   "begin_message_delay_ms": 800,
   "ring_duration_ms": 30000,
   "normalize_for_speech": true,
   "stt_mode": "accurate",
   "denoising_mode": "noise-and-background-speech-cancellation",
   "data_storage_setting": "everything",
-  "post_call_analysis_model": "gpt-4.1",
+  "post_call_analysis_model": "gpt-4.1-mini",
   "is_published": false,
   "handbook_config": {
     "echo_verification": false,
@@ -78,16 +78,6 @@
       "description": "Wix bookingId if a booking was created on this call."
     },
     {
-      "name": "service_booked",
-      "type": "string",
-      "description": "Service name if a booking was created or rescheduled."
-    },
-    {
-      "name": "appointment_datetime",
-      "type": "string",
-      "description": "Local appointment date and time in natural language if booked or rescheduled."
-    },
-    {
       "name": "callback_required",
       "type": "boolean",
       "description": "True if a callback was flagged for Nicky."
@@ -109,11 +99,6 @@
       "description": "Overall caller sentiment by end of call."
     },
     {
-      "name": "is_returning_client",
-      "type": "boolean",
-      "description": "Did the caller indicate they are a returning client?"
-    },
-    {
       "name": "language_used",
       "type": "enum",
       "choices": [
@@ -122,11 +107,6 @@
         "mixed"
       ],
       "description": "Primary language of the conversation."
-    },
-    {
-      "name": "recording_consent_acknowledged",
-      "type": "boolean",
-      "description": "Did the agent deliver the recording-consent line at the start of the call?"
     },
     {
       "name": "spam_call",
@@ -142,11 +122,6 @@
       "name": "tool_failure",
       "type": "boolean",
       "description": "Did any Wix tool call fail (slot lookup, booking creation, etc.)?"
-    },
-    {
-      "name": "call_summary",
-      "type": "string",
-      "description": "Two-sentence summary of what happened on the call."
     }
   ],
   "response_engine": {
@@ -764,14 +739,8 @@
           {
             "id": "e-book-subagent-success",
             "transition_condition": {
-              "type": "equation",
-              "equations": [
-                {
-                  "left": "{{new_booking_id}}",
-                  "operator": "exists"
-                }
-              ],
-              "operator": "&&"
+              "type": "prompt",
+              "prompt": "The book_appointment tool just returned success — the booking was created (the result has a bookingId and success/confirmed is true)."
             },
             "destination_node_id": "book-success"
           },
@@ -1074,12 +1043,36 @@
         ],
         "edges": [
           {
-            "id": "e-cancel-within-done",
+            "id": "e-cancel-within-no",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller responded to 'anything else?' — either said no/thanks/bye or has another question/intent."
+              "prompt": "Caller said no, that's all, thanks, goodbye, or otherwise indicated they're done with the call."
             },
-            "destination_node_id": "post-task"
+            "destination_node_id": "close-call"
+          },
+          {
+            "id": "e-cancel-within-book",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to book a new appointment."
+            },
+            "destination_node_id": "book-collect"
+          },
+          {
+            "id": "e-cancel-within-manage",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to manage another existing booking."
+            },
+            "destination_node_id": "manage-collect"
+          },
+          {
+            "id": "e-cancel-within-faq",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has another general question."
+            },
+            "destination_node_id": "faq-handler"
           }
         ],
         "display_position": {
@@ -1428,7 +1421,7 @@
         "name": "Post-Task Menu",
         "instruction": {
           "type": "prompt",
-          "text": "Say ONE short line:\n\"Anything else I can help you with today?\"\n\nIf you've ALREADY asked this same question in the immediately previous turn (caller is responding to it now), DO NOT repeat — instead say a brief acknowledgment like \"Sounds good.\" or \"Got it.\" and let the edges route based on the caller's response. NEVER stay silent or respond NO_RESPONSE_NEEDED here."
+          "text": "Say ONE short line:\n\"Anything else I can help you with today?\"\n\nNEVER stay silent or respond NO_RESPONSE_NEEDED here — always ask the line so the caller has a clear prompt to respond to."
         },
         "edges": [
           {
