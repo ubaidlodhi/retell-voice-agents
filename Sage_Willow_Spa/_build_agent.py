@@ -162,6 +162,7 @@ TOOLS = [
                 "serviceId": {"type": "string", "description": "Wix service ID from get_services."},
                 "startDate": {"type": "string", "description": "ISO local start, e.g. 2026-05-10 or 2026-05-10T00:00:00."},
                 "endDate":   {"type": "string", "description": "ISO local end, e.g. 2026-05-12 or 2026-05-12T23:59:59."},
+                "durationInMinutes": {"type": "number", "description": "Required. The chosen session length in minutes (60 / 90 / 120 / 30 / 45). For NEW bookings, use the pricingVariants[].duration the caller picked (parse from strings like '60 min'). For RESCHEDULES, use {{booking_duration_min}}."},
                 "staffId":   {"type": "string", "description": "Optional. resourceId from get_staff to filter to one therapist."},
                 "timeOfDay": {
                     "type": "string",
@@ -177,7 +178,7 @@ TOOLS = [
                     "description": "Optional. Max slots (default 6, 3 if earliestFirst).",
                 },
             },
-            "required": ["serviceId", "startDate", "endDate"],
+            "required": ["serviceId", "startDate", "endDate", "durationInMinutes"],
         },
     ),
     tool(
@@ -233,11 +234,16 @@ TOOLS = [
     tool(
         "cancel_booking",
         "cancel-booking",
-        "Cancel an existing booking by bookingId. Get the bookingId from get_booking first.",
+        "Cancel an existing booking. REQUIRED: bookingId AND revision — Wix "
+        "V2 cancellation rejects requests without the revision number. Get "
+        "both from get_booking first ({{booking_id}} and {{booking_revision}}).",
         {
             "type": "object",
-            "properties": {"bookingId": {"type": "string"}},
-            "required": ["bookingId"],
+            "properties": {
+                "bookingId": {"type": "string"},
+                "revision":  {"type": "string", "description": "Revision number from get_booking — required by Wix."},
+            },
+            "required": ["bookingId", "revision"],
         },
         response_variables={
             "cancel_success_flag": "$.cancelFlag",
@@ -454,7 +460,7 @@ add({
             "Caller has named a specific service (Swedish, Deep Tissue, Hot Stone, "
             "Signature, Prenatal, Lymphatic Drainage, Focus, Couples, or any other "
             "spa service from the menu).",
-            "book-subagent",
+            "book-services-fetch",
         ),
         edge(
             "e-book-collect-cancel",
@@ -463,6 +469,26 @@ add({
         ),
     ],
     "display_position": {"x": 500, "y": 100},
+})
+
+# Deterministic get_services call — NOT left to the subagent's discretion.
+# Earlier the subagent (LLM decides whether to call tools) skipped
+# get_services because the Knowledge Base already gave it descriptions,
+# prices, and durations — but the KB has NO machine IDs, so the agent
+# fabricated a serviceId for get_slots and the call failed. A function
+# node always executes its tool on entry: by the time book-subagent
+# starts, the real catalog (serviceId, variantId, pricingVariants,
+# availableAddOns) is guaranteed to be in context.
+add({
+    "id": "book-services-fetch",
+    "type": "function",
+    "name": "Book — Fetch Service Catalog",
+    "tool_id": "get_services",
+    "tool_type": "local",
+    "wait_for_result": True,
+    "edges": [],
+    "always_edge": always_edge("e-book-services-fetch-after", "book-subagent"),
+    "display_position": {"x": 700, "y": 100},
 })
 
 add({
@@ -474,8 +500,19 @@ add({
         "text": (
             "Handle a NEW booking. Caller just named a service. Pacific time, "
             "open 10 AM–8 PM daily (closed Christmas + Thanksgiving).\n\n"
+            "DATA SOURCE RULE (critical):\n"
+            "  get_services has ALREADY been called — its result (the full "
+            "catalog with real serviceId, variantId, pricingVariants, "
+            "availableAddOns) is in your context. Use ONLY those values. "
+            "The Knowledge Base has service descriptions for ANSWERING "
+            "QUESTIONS only — it has NO IDs. NEVER pull serviceId, "
+            "variantId, scheduleId, prices-to-book, or add-ons from the KB "
+            "or from memory. NEVER fabricate an ID — if a required ID isn't "
+            "in the get_services result, you cannot proceed; offer a "
+            "callback instead. (Only re-call get_services if its result is "
+            "genuinely not in your context.)\n\n"
             "STEP 1 — Service + variant.\n"
-            "  Call get_services. Find the named service.\n"
+            "  Find the named service in the get_services result.\n"
             "  • Has `pricingVariants` → read durations in ONE sentence (e.g. "
             "\"Swedish comes in three lengths — one hour for ninety dollars, an "
             "hour and a half for one hundred forty, or two hours for two hundred. "
@@ -484,15 +521,22 @@ add({
             "[duration].\"\n"
             "  No add-ons here.\n\n"
             "STEP 2 — Add-on offer (one soft turn).\n"
-            "  If service has no `availableAddOns`, SKIP silently.\n"
-            "  Otherwise frame as additions (never \"we offer\"): \"Would you "
-            "like to add aromatherapy for fifty dollars, a hot towel and foot "
-            "scrub for forty, or CBD muscle recovery for forty — or skip "
-            "add-ons?\"\n"
+            "  HARD RULE: if this service's `availableAddOns` is missing, "
+            "empty, or absent — SKIP this step entirely. Do NOT mention "
+            "add-ons, do NOT ask \"any add-ons?\", do NOT name examples. "
+            "NEVER invent or recall add-ons from memory (no aromatherapy / "
+            "hot towel / CBD / etc.) — every name and price MUST come from "
+            "the current get_services response. Fabricated add-ons break "
+            "book_appointment.\n"
+            "  When `availableAddOns` IS present: read each entry's actual "
+            "`name` and `price` from the array, framed as additions (never "
+            "\"we offer\"). Example shape only — substitute real values: "
+            "\"Would you like to add [name] for [price], or [name] for "
+            "[price] — or skip add-ons?\"\n"
             "  Capture each chosen add-on as `{id, groupId}`. groupId = "
             "groupIds[0] from this service's availableAddOns (same id has "
-            "different groupIds per service — never mix). One re-prompt max, "
-            "then move on.\n\n"
+            "different groupIds per service — never mix). One re-prompt "
+            "max, then move on.\n\n"
             "STEP 3 — Availability + slot pick.\n"
             "  Ask ONE PER TURN, in this order:\n"
             "    a) THERAPIST: \"Any preference on therapist — male, female, or "
@@ -506,7 +550,11 @@ add({
             "    c) TIME OF DAY (only if more narrowing needed): "
             "\"Morning, afternoon, or evening — or earliest available?\" → pass "
             "timeOfDay, or earliestFirst:true + limit:3.\n\n"
-            "  Call get_slots. DATE WINDOW:\n"
+            "  Call get_slots. ALWAYS pass durationInMinutes — the duration "
+            "the caller chose in STEP 1 (parse from pricingVariants[].duration "
+            "like \"60 min\" → 60, or from the service's single duration if "
+            "no variants). REQUIRED by Wix.\n"
+            "  DATE WINDOW:\n"
             "    • Specific day → startDate = endDate = that day.\n"
             "    • \"Earliest\" with no day → today + 5 days, earliestFirst:true.\n"
             "    • Range (\"this weekend\") → 3–5 day window.\n"
@@ -616,19 +664,23 @@ add({
         "text": (
             "Caller wants to cancel, reschedule, or check an existing booking. "
             "Get the email used at booking — that's our lookup key.\n\n"
-            "Ask: \"Sure — I can help with that. What email did you use when "
-            "you booked?\"\n"
-            "Read it back per the global email pronunciation rules, then say "
-            "\"Got it — let me pull that up.\"\n\n"
-            "Don't ask for phone, name, or booking ID (get_booking returns "
-            "contact details from the email lookup)."
+            "TURN 1: \"Sure — I can help with that. What email did you use "
+            "when you booked?\"\n"
+            "TURN 2: read the email back per the global email pronunciation "
+            "rules and ask \"Did I get that right?\" — then WAIT for the "
+            "caller's reply. On explicit yes, transition silently (don't say "
+            "\"let me pull that up\" — the lookup tool plays a filler line "
+            "on its own). On no/correction, re-ask the email once.\n\n"
+            "Don't ask for phone, name, or booking ID."
         ),
     },
     "edges": [
         edge(
             "e-manage-collect-ready",
-            "The caller has confirmed their email address is correct, OR "
-            "Aria has just said \"Got it — let me pull that up.\"",
+            "The caller has explicitly confirmed their email address is "
+            "correct (\"yes\", \"that's right\", \"correct\", \"yep\"). "
+            "Does NOT fire on the caller's first reply (the email itself) "
+            "— Aria must read it back and the caller must confirm.",
             "manage-fetch",
         ),
     ],
@@ -643,128 +695,93 @@ add({
     "tool_type": "local",
     "wait_for_result": True,
     "edges": [],
-    "always_edge": always_edge("e-manage-fetch-after", "manage-router"),
+    "always_edge": always_edge("e-manage-fetch-after", "manage-result"),
     "display_position": {"x": 900, "y": 400},
 })
 
+# Merged "router + action prompt + not-found" into ONE node. Earlier we had
+# three separate conversation nodes each speaking one short line — every split
+# forced a dead-air caller turn ("Got it — I found your booking." → wait → ...).
+# This node handles ALL three lookup outcomes in a single first turn, reading
+# the booking descriptor AND asking the action together when a single booking
+# is found.
 add({
-    "id": "manage-router",
+    "id": "manage-result",
     "type": "conversation",
-    "name": "Manage — Lookup Result",
-    # Was a `branch` node — but Retell branch nodes evaluate equations against a
-    # context that doesn't yet include the prior tool's response_variables, so
-    # the equation always failed even when the response clearly had the
-    # expected value. A conversation node has an LLM turn which DOES load
-    # response_variables into context, and the prompt-based edges below
-    # evaluate AFTER the LLM speaks — by then the variable is in context.
+    "name": "Manage — Result + Action",
     "instruction": {
         "type": "prompt",
         "text": (
-            "Speak ONE line based on {{lookup_found_flag}} and {{bookings_count}}:\n"
-            "• No bookings: \"Hmm, I'm not finding any upcoming appointments under that email.\"\n"
-            "• One booking: \"Got it — I found your booking.\" (next node reads details)\n"
-            "• Multiple: list each by service + staff + day/date/time. Use each "
-            "booking's `dayOfWeek` for the weekday (NEVER compute it yourself), "
-            "and read the calendar date from `startDate`. e.g.\n"
-            "  \"I see two — your Deep Tissue with Rocky on Friday, May fifteenth "
-            "at ten AM, and your Swedish with Lily on Monday, May eighteenth at "
-            "one PM. Which one?\"\n"
-            "  If a booking has no staffName, drop the \"with X\" part.\n\n"
-            "Never read booking IDs."
+            "ONE turn — never a separate \"I found your booking\" line.\n\n"
+            "Branch by {{lookup_found_flag}} and {{bookings_count}}:\n\n"
+            "• NOT FOUND ({{lookup_found_flag}} != \"yes\"):\n"
+            "  \"Hmm, I'm not finding any upcoming appointments under that "
+            "email. Want me to book you something new, or is there anything "
+            "else I can help with?\"\n"
+            "  (Don't suggest the caller's email is wrong — be diplomatic.)\n\n"
+            "• ONE BOOKING ({{bookings_count}} == \"1\"):\n"
+            "  Read the FULL descriptor + ask the action in ONE breath. Use "
+            "{{booking_duration_min}}, {{booking_service_name}}, "
+            "{{booking_staff_name}}, {{booking_day_of_week}}, and the "
+            "calendar date/time from {{booking_start}}. NEVER compute the "
+            "weekday — always use dayOfWeek. Drop the \"with X\" if staff "
+            "name is empty.\n"
+            "  - If caller stated their action earlier (cancel/reschedule) → "
+            "CONFIRM: \"Got it — your {{booking_duration_min}}-minute "
+            "{{booking_service_name}} with {{booking_staff_name}} on "
+            "{{booking_day_of_week}}, [date] at [time]. Just to confirm, "
+            "you'd like to [cancel | reschedule] this appointment?\"\n"
+            "  - Otherwise ASK: \"Got it — your [descriptor]. Would you like "
+            "to cancel, reschedule, or just check details?\"\n\n"
+            "• MULTIPLE BOOKINGS ({{bookings_count}} != \"1\" AND not zero):\n"
+            "  TURN 1 — list each with descriptor (use each booking's "
+            "dayOfWeek), ask which. e.g. \"I see two — your one-hour Deep "
+            "Tissue with Rocky on Friday, May fifteenth at ten AM, and your "
+            "Swedish with Lily on Monday, May eighteenth at one PM. Which "
+            "one?\"\n"
+            "  TURN 2 (after caller picks) — confirm the picked one + ask "
+            "action: \"Got it — your [picked descriptor]. Cancel or "
+            "reschedule?\"\n\n"
+            "Phrase as a DESCRIPTOR (\"your Friday appointment\"), never "
+            "\"reschedule your appointment on Friday\" (sounds like moving "
+            "TO Friday). NEVER read booking IDs."
         ),
     },
     "edges": [
+        # 1-booking and multi-booking selection outcomes
         edge(
-            "e-manage-router-found",
-            "EITHER (a) Aria's previous turn confirmed finding a single booking "
-            "(\"Got it, found your booking\" etc.), OR (b) Aria listed multiple "
-            "bookings AND the caller has identified which one they want to "
-            "manage (by date, time, or order — e.g., 'the May 15th one', 'the "
-            "morning one', 'the second one', 'the one at three PM').",
-            "manage-action-prompt",
-        ),
-        edge(
-            "e-manage-router-not-found",
-            "Aria's previous turn said no booking was found — \"I'm not "
-            "finding any\", \"no active appointments\", or similar.",
-            "manage-not-found",
-        ),
-    ],
-    "display_position": {"x": 1300, "y": 400},
-})
-
-add({
-    "id": "manage-not-found",
-    "type": "conversation",
-    "name": "Manage — Not Found",
-    "instruction": {
-        "type": "prompt",
-        "text": (
-            "Say:\n"
-            "\"Hmm, I'm not finding any active appointments under that email. Want me "
-            "to book you something new, or is there anything else I can help with?\"\n\n"
-            "Don't suggest the caller's email is wrong or misspelled — be diplomatic. "
-            "It's possible the booking was made with a different address."
-        ),
-    },
-    "edges": [
-        edge("e-manage-nf-book", "Caller wants to book a new appointment.", "book-collect"),
-        edge("e-manage-nf-faq", "Caller has a general question instead.", "faq-handler"),
-        edge(
-            "e-manage-nf-no",
-            "Caller said no, that's all, goodbye, or otherwise indicated they're done.",
-            "close-call",
-        ),
-    ],
-    "display_position": {"x": 1300, "y": 650},
-})
-
-add({
-    "id": "manage-action-prompt",
-    "type": "conversation",
-    "name": "Manage — Action Prompt",
-    "instruction": {
-        "type": "prompt",
-        "text": (
-            "Read back the SELECTED booking as a descriptor — e.g. \"your "
-            "one-hour Deep Tissue Massage with Lily on Friday, May fifteenth "
-            "at ten thirty AM\" — using {{booking_service_name}}, "
-            "{{booking_duration_min}}, {{booking_staff_name}}, "
-            "{{booking_day_of_week}}, and the calendar date/time from "
-            "{{booking_start}}. NEVER compute the weekday yourself — always "
-            "use the dayOfWeek field. Drop the \"with X\" part if staff name "
-            "is empty. For multi-booking, use the SELECTED booking's fields "
-            "from the get_booking context (the response_variables above "
-            "default to most-recent — for any other selection, read from "
-            "the tool's bookings[] array).\n\n"
-            "If caller stated their action earlier (reschedule/cancel/check) → "
-            "CONFIRM: \"Got it — [descriptor]. [action-specific follow-up]?\" "
-            "Otherwise ASK: \"[descriptor] — cancel, reschedule, or something "
-            "else?\"\n\n"
-            "Always phrase the appointment as a DESCRIPTOR (\"your Wednesday "
-            "appointment\"), never \"reschedule your appointment on Wednesday\" "
-            "(sounds like moving TO Wednesday). Don't repeat \"I found your "
-            "booking\"."
-        ),
-    },
-    "edges": [
-        edge(
-            "e-manage-action-cancel",
-            "Caller wants to CANCEL the appointment.",
+            "e-manage-cancel",
+            "Caller wants to CANCEL the (selected) appointment.",
             "cancel-reason",
         ),
         edge(
-            "e-manage-action-reschedule",
-            "Caller wants to RESCHEDULE, move, or change the time of the appointment.",
+            "e-manage-reschedule",
+            "Caller wants to RESCHEDULE, move, or change the time of the (selected) appointment.",
             "reschedule-subagent",
         ),
         edge(
-            "e-manage-action-info",
-            "Caller just wanted to confirm the details and isn't changing anything.",
+            "e-manage-info",
+            "Caller just wanted to confirm details and isn't changing anything.",
             "post-task",
         ),
+        # Not-found outcomes
+        edge(
+            "e-manage-nf-book",
+            "After being told no booking was found, caller wants to book a new appointment.",
+            "book-collect",
+        ),
+        edge(
+            "e-manage-nf-faq",
+            "After being told no booking was found, caller has a general question instead.",
+            "faq-handler",
+        ),
+        edge(
+            "e-manage-nf-no",
+            "After being told no booking was found, caller said no, that's all, goodbye, or otherwise indicated they're done.",
+            "close-call",
+        ),
     ],
-    "display_position": {"x": 1700, "y": 400},
+    "display_position": {"x": 1300, "y": 400},
 })
 
 # --- Cancel ---
@@ -777,8 +794,10 @@ add({
         "type": "prompt",
         "text": (
             "TWO-TURN flow — DO NOT transition after only Turn 1.\n\n"
-            "TURN 1 (first time here) — ask the reason:\n"
-            "  \"Got it — mind if I ask what came up?\"\n\n"
+            "TURN 1 (first time here) — ask the reason AND signal the "
+            "reschedule off-ramp upfront so the caller knows it's an option:\n"
+            "  \"Got it — mind if I ask what came up? If it's a timing thing "
+            "I might be able to move it instead.\"\n\n"
             "TURN 2 (after caller answers) — based on their reason, ALWAYS "
             "give them a binary choice. Pick ONE phrasing:\n"
             "  • TIMING reason (busy, conflict, work, family, urgent, that "
@@ -849,33 +868,19 @@ add({
 })
 
 add({
+    # Silent branch — no speech, no dead air. Routes directly on the
+    # server-computed within-24h flag from get_booking.
     "id": "cancel-policy-router",
-    "type": "conversation",
+    "type": "branch",
     "name": "Cancel — 24-Hour Policy Router",
-    "instruction": {
-        "type": "prompt",
-        "text": (
-            "Speak ONE short line based on {{booking_within_24h_flag}}:\n"
-            "• \"yes\" → \"Hmm — your appointment's within twenty-four hours. "
-            "Let me handle this carefully.\"\n"
-            "• anything else → \"Sure, no problem.\"\n\n"
-            "ONE sentence. The next node handles the rest."
-        ),
-    },
     "edges": [
-        edge(
+        equation_edge(
             "e-cancel-policy-within",
-            "Aria's previous line mentioned the booking is within twenty-four "
-            "hours, or used phrasing like 'within the cancellation window'.",
+            [{"left": "{{booking_within_24h_flag}}", "operator": "==", "right": "yes"}],
             "cancel-within-window",
         ),
-        edge(
-            "e-cancel-policy-outside",
-            "Aria's previous line was a brief acknowledgment ('Sure, no "
-            "problem' / 'Okay' / similar) — no twenty-four-hour mention.",
-            "cancel-confirm",
-        ),
     ],
+    "else_edge": else_edge("e-cancel-policy-outside", "cancel-confirm"),
     "display_position": {"x": 2100, "y": 250},
 })
 
@@ -1020,19 +1025,39 @@ add({
             "field. NEVER use scheduleId/serviceId. If the selected booking has "
             "no staffId (any-resource booking), OMIT staffId entirely from "
             "get_slots and reschedule_booking.\n\n"
-            "STEP 1 — Ask: \"What day were you thinking of moving it to?\"\n\n"
-            "STEP 2 — Ask: \"Morning, afternoon, or evening — or earliest "
-            "available?\" Map to timeOfDay, or earliestFirst:true + limit:3.\n"
-            "  Therapist: default to {{booking_staff_id}} for continuity (don't "
-            "ask, don't call get_staff). Only drop staffId if caller explicitly "
-            "asks for a different person or says \"anyone\".\n\n"
-            "STEP 3 — Call get_slots with serviceId={{booking_service_id}} + "
-            "filters. DATE WINDOW: specific day → startDate = endDate = that "
-            "day; \"earliest\" with no day → 5-day window from today; range → "
-            "3–5 day window. Read back two or three times; let caller pick. "
-            "Empty → widen ONCE (drop staffId, then timeOfDay).\n\n"
-            "STEP 4 — Confirm: \"To confirm — moving you to [new day, date] at "
-            "[new time]. Sound good?\"\n\n"
+            "STEP 1 — Ask: \"What day were you thinking of moving it to?\" "
+            "Parse the caller's reply for BOTH the day and (if given) an "
+            "exact time. Capture:\n"
+            "  • dayTarget — the day they named.\n"
+            "  • timeTarget — exact time IF the caller said one (\"one PM\", "
+            "\"three thirty\") OR said \"same time\" / \"same as my current\" "
+            "(then use the H:MM from {{booking_start}}). Otherwise null.\n\n"
+            "STEP 2 — Time-of-day question. SKIP this step entirely if "
+            "timeTarget is set. Otherwise ask: \"Morning, afternoon, or "
+            "evening — or earliest available?\" Map to timeOfDay, or "
+            "earliestFirst:true + limit:3.\n"
+            "  Therapist: default to {{booking_staff_id}} for continuity "
+            "(don't ask, don't call get_staff). Only drop staffId if caller "
+            "explicitly asks for a different person or says \"anyone\".\n\n"
+            "STEP 3 — Call get_slots with serviceId={{booking_service_id}}, "
+            "durationInMinutes={{booking_duration_min}}, + filters. "
+            "durationInMinutes is REQUIRED — Wix uses it to return slots of "
+            "the right length. DATE WINDOW: specific day → startDate = "
+            "endDate = that day.\n"
+            "  Reading slots back:\n"
+            "  • timeTarget set (caller asked for an exact time):\n"
+            "    - Find the slot in the response whose `time` matches "
+            "timeTarget. If present → confirm JUST that slot: \"Good news — "
+            "Lily has [time] open on [day]. Want me to move it there?\" "
+            "DO NOT mention other times.\n"
+            "    - If exact time not available → say so and offer the single "
+            "closest open time: \"Hmm, [time] isn't open — the closest is "
+            "[closest]. Want that, or pick a different time?\"\n"
+            "  • timeTarget NOT set (caller gave time-of-day only):\n"
+            "    Read back two or three options as before; let caller pick.\n"
+            "  Empty result → widen ONCE (drop staffId, then timeOfDay).\n\n"
+            "STEP 4 — Confirm: \"To confirm — moving you to [new day, date] "
+            "at [new time]. Sound good?\"\n\n"
             "STEP 5 — On yes, call reschedule_booking with the new slot's "
             "serviceId, scheduleId, staffId, startDate, endDate + original "
             "bookingId={{booking_id}}, revision={{booking_revision}}.\n\n"
@@ -1532,7 +1557,7 @@ GLOBAL_PROMPT = PROMPT_PATH.read_text(encoding="utf-8")
 AGENT = {
     "agent_id": "",
     "channel": "voice",
-    "agent_name": "Aria — Sage & Willow Spa - V19",
+    "agent_name": "Aria — Sage & Willow Spa - V24",
     "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU"],
     "voice_id": "11labs-Brynne",
     "voice_temperature": 0.7,
@@ -1670,6 +1695,16 @@ AGENT = {
         "nodes": NODES,
     },
 }
+
+# -----------------------------------------------------------------------------
+# Enable the typing-sound UX cue on every tool-calling node — function nodes
+# (deterministic tool calls) and subagent nodes (LLM-woven tool calls). The
+# sound plays while the tool executes so the caller hears "the system is
+# working" rather than dead silence. Safe to apply uniformly: nodes that
+# don't actually invoke a tool will just ignore it.
+for _n in NODES:
+    if _n["type"] in ("function", "subagent"):
+        _n["enable_typing_sound"] = True
 
 # -----------------------------------------------------------------------------
 # Write

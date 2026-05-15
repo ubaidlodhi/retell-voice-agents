@@ -1,0 +1,491 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "boardId": "18409649964",
+        "groupId": "topics",
+        "name": "={{ $json.body.call_type + ' — ' + $json.body.caller_name }}",
+        "additionalFields": {
+          "columnValues": "={\"text_mm2mrhy6\": \"{{ $json.body.caller_name || 'Unknown' }}\", \n\"phone_mm2m7bhz\": \"{{ $json.body.caller_phone || '' }}\", \n\"text_mm2majqv\": \"{{ $json.body.caller_state || 'Unknown' }}\", \n\"dropdown_mm2rjfbk\": \"{{ $json.body.call_type || 'Unknown' }}\", \n\"dropdown_mm2seww5\": \"{{ $json.body.priority || 'normal' }}\", \n\"long_text_mm2my16x\": \"{{ $json.body.call_summary || '' }}\",\n\"status\": {\"label\": \"New\"},\n\"text_mm33xp6z\": \"{{ $json.body.caller_email || '' }}\"}"
+        }
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        -1664,
+        416
+      ],
+      "id": "6d032643-642a-417c-831a-113d973d4e5f",
+      "name": "Create Ticket in Monday.com",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fatality-check",
+              "leftValue": "={{ $('Webhook').item.json.body.call_type }}",
+              "rightValue": "fatality",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1408,
+        416
+      ],
+      "id": "6205374c-d259-461d-974d-e6357f4bfa20",
+      "name": "Is Fatality?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "email-check",
+              "leftValue": "={{ $('Webhook').item.json.body.call_type }}",
+              "rightValue": "income_letter",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "email-check-2",
+              "leftValue": "={{ $('Webhook').item.json.body.call_type }}",
+              "rightValue": "paystubs_sfc",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1408,
+        672
+      ],
+      "id": "698ca1fb-efaf-4a59-bc3c-2515e1d578bb",
+      "name": "Needs Email?"
+    },
+    {
+      "parameters": {
+        "sendTo": "azlan@impleko.ai",
+        "subject": "🚨 FATALITY ALERT — Immediate Action Required",
+        "emailType": "text",
+        "message": "=A fatality has been reported on a Keyline call. Immediate callback required.\n\nCaller Name: {{ $('Webhook').item.json.body.caller_name || 'Unknown' }}\nPhone: {{ $('Webhook').item.json.body.caller_phone || 'Unknown' }}\nState: {{ $('Webhook').item.json.body.caller_state || 'Unknown' }}\nSummary: {{ $('Webhook').item.json.body.call_summary || 'No summary provided' }}\n\nPlease follow up immediately — even after hours.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1168,
+        320
+      ],
+      "id": "b5f90991-5b2d-4a4a-9cb1-e4552ecc5041",
+      "name": "Send Fatality Alert Email",
+      "webhookId": "9fd9073f-4729-49f3-924b-07cedf60e9f7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3XuQJY0SH9si2NAv",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "azlanbaigbaig@gmail.com",
+        "subject": "=New Request — {{ $('Webhook').item.json.body.call_type }} — {{ $('Webhook').item.json.body.caller_name }}",
+        "emailType": "text",
+        "message": "=A new request has been submitted.\n\nRequest Type: {{ $('Webhook').item.json.body.call_type }}\nCaller Name: {{ $('Webhook').item.json.body.caller_name || 'Unknown' }}\nPhone: {{ $('Webhook').item.json.body.caller_phone || 'Unknown' }}\nState: {{ $('Webhook').item.json.body.caller_state || 'Unknown' }}\nSummary: {{ $('Webhook').item.json.body.call_summary || 'No summary provided' }}\n\nPlease process within 1-2 business days.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1168,
+        672
+      ],
+      "id": "67776ac7-2bcb-4bee-ad0f-48f285f7026f",
+      "name": "Send Admin Email",
+      "webhookId": "900bca54-f63b-4daa-8c91-5db70c4b1d34",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3XuQJY0SH9si2NAv",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ticket_id: $('Create Ticket in Monday.com').item.json.id.toString(), ticket_success: true }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -928,
+        448
+      ],
+      "id": "86cb9173-4faf-4953-9402-01214bb2ad01",
+      "name": "Respond to Retell"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "4870eeff-266e-4f77-b8ba-e67cf20a7777",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2128,
+        416
+      ],
+      "id": "dd8c439f-dc6b-4119-83e5-a3f68cbc0cb8",
+      "name": "Webhook",
+      "webhookId": "4870eeff-266e-4f77-b8ba-e67cf20a7777"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "getByColumnValue",
+        "boardId": "18413254159",
+        "columnId": "phone_mm2m7bhz",
+        "columnValue": "={{ $('Webhook').item.json.body.caller_phone }}"
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        928
+      ],
+      "id": "acba65ff-80ef-40f5-a701-f886451df8df",
+      "name": "Get Caller Board Row",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "caller-found-check",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        928
+      ],
+      "id": "061ae184-e347-4fe1-81ce-3cef9d533406",
+      "name": "Caller Exists?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Backfill the caller record: only overwrite a field when this call actually\n// brought a real value. Retell doesn't capture every field on every call, so a\n// blank or 'Unknown' from the new call must NOT wipe a value the record already\n// has — caller records should only get more complete over time, never reset.\nconst body = $('Webhook').item.json.body || {};\nconst existingCols = $('Get Caller Board Row').item.json.column_values || [];\nconst existing = (id) => (existingCols.find(c => c.id === id)?.text) || '';\n\nconst junk = ['', 'unknown', 'there', 'n/a', 'na', 'none'];\nconst clean = (v) => (v == null ? '' : String(v).trim());\nconst coalesce = (incoming, current) => {\n  const inc = clean(incoming);\n  if (inc && !junk.includes(inc.toLowerCase())) return inc;\n  return clean(current);\n};\n\nreturn [{ json: {\n  caller_name:  coalesce(body.caller_name,  existing('text_mm2mrhy6')),\n  caller_state: coalesce(body.caller_state, existing('text_mm2majqv')),\n  caller_email: coalesce(body.caller_email, existing('text_mm33xp6z')),\n  // Last call type/summary always reflect the most recent call — straight overwrite.\n  last_call_type:    clean(body.call_type),\n  last_call_summary: clean(body.call_summary)\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        832
+      ],
+      "id": "a3f1c8d2-7b44-4e91-9a02-1b2c3d4e5f60",
+      "name": "Merge Caller Fields"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "changeMultipleColumnValues",
+        "boardId": "18413254159",
+        "itemId": "={{ $('Get Caller Board Row').item.json.id }}",
+        "columnValues": "={\"text_mm2mrhy6\": \"{{ $json.caller_name }}\", \"text_mm2majqv\": \"{{ $json.caller_state }}\", \"text_mm33xp6z\": \"{{ $json.caller_email }}\", \"text_mm3bvv8e\": \"{{ $json.last_call_summary }}\", \"text_mm3bpvag\": \"{{ $json.last_call_type }}\"}"
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        832
+      ],
+      "id": "00673e0c-7fe6-4bbe-888d-824885eece6c",
+      "name": "Update Caller Data",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "boardId": "18413254159",
+        "groupId": "group_mm3bz36d",
+        "name": "={{ $('Webhook').item.json.body.caller_name || 'Unknown Caller' }}",
+        "additionalFields": {
+          "columnValues": "={\"text_mm2mrhy6\": \"{{ $('Webhook').item.json.body.caller_name || 'Unknown' }}\", \"phone_mm2m7bhz\": \"{{ $('Webhook').item.json.body.caller_phone || '' }}\", \"text_mm2majqv\": \"{{ $('Webhook').item.json.body.caller_state || 'Unknown' }}\", \"text_mm33xp6z\": \"{{ $('Webhook').item.json.body.caller_email || '' }}\", \"text_mm3bvv8e\": \"{{ $('Webhook').item.json.body.call_summary || '' }}\", \"text_mm3bpvag\": \"{{ $('Webhook').item.json.body.call_type || '' }}\"}"
+        }
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        1056
+      ],
+      "id": "fa7ec8dd-708d-4bbe-8634-a6e0896efd67",
+      "name": "Create Caller Data",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Create Ticket in Monday.com": {
+      "main": [
+        [
+          {
+            "node": "Is Fatality?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Needs Email?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Caller Board Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Fatality?": {
+      "main": [
+        [
+          {
+            "node": "Send Fatality Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Retell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Email?": {
+      "main": [
+        [
+          {
+            "node": "Send Admin Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Admin Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Retell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Ticket in Monday.com",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Caller Board Row": {
+      "main": [
+        [
+          {
+            "node": "Caller Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caller Exists?": {
+      "main": [
+        [
+          {
+            "node": "Merge Caller Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Caller Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Caller Fields": {
+      "main": [
+        [
+          {
+            "node": "Update Caller Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Create Ticket in Monday.com": [
+      {
+        "id": "12016541963"
+      }
+    ],
+    "Respond to Retell": [
+      {
+        "id": "12016541963"
+      }
+    ],
+    "Webhook": [
+      {
+        "headers": {
+          "host": "keyline.app.n8n.cloud",
+          "user-agent": "axios/1.15.2",
+          "content-length": "321",
+          "accept": "application/json, text/plain, */*",
+          "accept-encoding": "gzip, br",
+          "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=f1d8aa54862f49f58133d67198d6861b,sentry-org_id=4511141371183104",
+          "cdn-loop": "cloudflare; loops=1; subreqs=1",
+          "cf-connecting-ip": "100.20.5.228",
+          "cf-ew-via": "15",
+          "cf-ipcountry": "US",
+          "cf-ray": "9fb458b87c145f03-PDX",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "cf-worker": "n8n.cloud",
+          "content-type": "application/json",
+          "sentry-trace": "f1d8aa54862f49f58133d67198d6861b-a199338ad66e7dc7",
+          "x-forwarded-for": "100.20.5.228, 104.23.160.181",
+          "x-forwarded-host": "keyline.app.n8n.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "traefik-prod-users-gwc-57-84ffcf945d-gp9x8",
+          "x-is-trusted": "yes",
+          "x-real-ip": "100.20.5.228",
+          "x-retell-signature": "v=1778703445663,d=9d4a6a63d24f8bdec0494b3042134f1d07dc8c6d4c026288d4eaeddb34757c4b"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "caller_name": "John Doe",
+          "collected_fields": null,
+          "caller_phone": "+12532624137",
+          "caller_state": "Texas",
+          "caller_email": "ubaid@gmail.com",
+          "priority": "normal",
+          "call_type": "missed_clockout",
+          "call_summary": "John Doe missed his clock out for client Dave Smith today, May thirteenth, because his CareBravo app was not working."
+        },
+        "webhookUrl": "https://keyline.app.n8n.cloud/webhook/4870eeff-266e-4f77-b8ba-e67cf20a7777",
+        "executionMode": "production"
+      }
+    ],
+    "Get Caller Board Row": [
+      {}
+    ],
+    "Create Caller Data": [
+      {
+        "id": "12016559288"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"
+  }
+}

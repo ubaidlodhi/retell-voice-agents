@@ -1,0 +1,111 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "d869cfc5-4227-4cdf-b049-a98fb7ec550b",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        128
+      ],
+      "id": "9e41037a-d3fc-474a-8ac8-9dd3370df480",
+      "name": "Webhook",
+      "webhookId": "d869cfc5-4227-4cdf-b049-a98fb7ec550b"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "getByColumnValue",
+        "boardId": "18413254159",
+        "columnId": "phone_mm2m7bhz",
+        "columnValue": "={{ $json.body.call_inbound.from_number }}"
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        768,
+        128
+      ],
+      "id": "cbc03319-7d07-4f5f-94bc-8485d02bf128",
+      "name": "Get items item by column value",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1216,
+        128
+      ],
+      "id": "e1c2d90c-8889-4ec5-bceb-386f78c6d272",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Caller lookup against the Caller Database board (18413254159).\n// One row per caller, so no sorting/aggregation needed — just read the matched row.\nconst items = $input.all();\nconst firstItem = items?.[0]?.json;\n\nconst notFound = { json: {\n  call_inbound: {\n    dynamic_variables: {\n      caller_found: \"false\",\n      is_returning_caller: \"false\",\n      caller_name: \"\",\n      caller_state: \"\",\n      caller_type: \"unknown\",\n      caller_email: \"\",\n      app_refused: \"false\",\n      last_call_summary: \"\",\n      caller_tickets: \"[]\"\n    }\n  }\n} };\n\nif (!items || items.length === 0 || !firstItem || !firstItem.column_values) {\n  return [notFound];\n}\n\nconst get = (id) => firstItem.column_values?.find(c => c.id === id)?.text || '';\n\nconst callerName = get('text_mm2mrhy6');\nconst callerState = get('text_mm2majqv');\nconst callerEmail = get('text_mm33xp6z');\nconst callerPhone = get('phone_mm2m7bhz');\nconst lastCallSummary = get('text_mm3bvv8e');\nconst lastCallType = get('text_mm3bpvag');\n\n// Derive caller_type from the most recent call type stored on the caller row.\nlet callerType = 'unknown';\nif (['missed_clockout','missed_clockin','travel','incident','dd_hold',\n     'income_letter','address_update','nurse_cancel','paystubs_sfc'].includes(lastCallType)) {\n  callerType = 'caregiver';\n} else if (lastCallType === 'prospect') {\n  callerType = 'prospect';\n}\n\nreturn [{ json: {\n  call_inbound: {\n    dynamic_variables: {\n      caller_found: \"true\",\n      is_returning_caller: \"true\",\n      caller_name: callerName,\n      caller_state: callerState,\n      caller_type: callerType,\n      caller_phone: callerPhone,\n      caller_email: callerEmail,\n      app_refused: \"false\",\n      last_call_summary: lastCallSummary,\n    }\n  }\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        128
+      ],
+      "id": "d42a5a21-a333-43d5-911b-d804c08091a2",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get items item by column value",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get items item by column value": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"
+  }
+}

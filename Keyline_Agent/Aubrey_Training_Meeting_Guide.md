@@ -22,11 +22,12 @@
 | Time | Section | Outcome |
 | :---- | :---- | :---- |
 | 0:00–0:05 | Welcome + what they'll walk away knowing | Set expectations |
-| 0:05–0:15 | Retell tour — the lay of the land | They can find anything |
-| 0:15–0:30 | Anatomy of a node (live in their flow) | They understand prompts, edges, variables |
-| 0:30–0:50 | Live demo + hands-on edits (3 recipes) | Someone on their side publishes a change |
-| 0:50–0:55 | Safety net — testing, versions, rollback | They feel safe to experiment |
-| 0:55–1:00 | Q&A + when to call us | Clean exit, open door |
+| 0:05–0:13 | Retell overview — dashboard, numbers, knowledge base | They can find anything |
+| 0:13–0:22 | Best practices — the safe change workflow | They never break production |
+| 0:22–0:35 | Anatomy of a node (live in their flow) | They understand prompts, edges, variables |
+| 0:35–0:52 | Live demo + hands-on edits (3 recipes) | Someone on their side publishes a change |
+| 0:52–0:56 | Safety net recap — testing, versions, rollback | Reinforce the discipline |
+| 0:56–1:00 | Q&A + when to call us | Clean exit, open door |
 
 ---
 
@@ -45,29 +46,61 @@
 
 ---
 
-## 0:05–0:15 — Retell Tour (10 min)
+## 0:05–0:13 — Retell Overview (8 min)
 
-Share your screen on the Retell dashboard. Walk through:
+Share your screen on the Retell dashboard. Give them the lay of the land before touching anything:
 
-**1\.** **The agent list** — show that Aubrey is the production agent. Mention you can create test copies.
+**1\.** **The dashboard** — where you see your numbers: call volume, call logs, recordings. Show where they'd go to review what Aubrey has been handling.
 
-**2\.** **The flow editor canvas** — point out:
+**2\.** **The agent list** — Aubrey is the production agent. Point out you can have copies (test agents) sitting alongside it.
+
+**3\.** **The flow editor canvas** — point out:
    - Nodes (the boxes)
    - Edges (the lines connecting them)
    - Node groups (Entry, Routing, Intake, Tickets, Transfers, Global) — match this to `Aubrey_Flows_Built.md`
    - Use Ctrl+F to find a node by name
 
-**3\.** **Right sidebar** — show:
+**4\.** **Right sidebar** — show:
    - **Global Settings** (Agent Handbook, voice, response speed)
    - **Tools** (send_app_link, create_ticket, send_ticket_sms)
-   - **Knowledge Base** (FAQ content)
+   - **Knowledge Base** (FAQ content Aubrey reads from)
    - **Versions** (their safety net — more on this later)
 
-**4\.** **Top right buttons** — **Test Call** and **Publish**. Emphasize: nothing is live until Publish.
+**5\.** **Phone numbers** — show where numbers are attached to an agent. This matters for the next section.
+
+**6\.** **Top right buttons** — **Test Call** and **Publish**. Emphasize: nothing is live until Publish.
 
 ---
 
-## 0:15–0:30 — Anatomy of a Node (15 min)
+## 0:13–0:22 — Best Practices: The Safe Change Workflow (9 min)
+
+This is the single most important habit to teach them. **The golden rule: never experiment on the live agent.**
+
+Walk them through the full pipeline a change should travel before it touches a real caller:
+
+**1\.** **Duplicate the agent first.** Make a copy of Aubrey. Every change you make happens on the *copy*, never the production agent.
+
+**2\.** **Web test it.** Use the Test Call button in the browser. Walk through your change end to end.
+
+**3\.** **Publish the copy to a test number.** Once the web test looks clean, publish the duplicate and attach a test phone number to it.
+
+**4\.** **Call the test number yourself.** Go through the flow like a real caller would — out loud, on an actual phone.
+
+**5\.** **Forward a sample of real traffic.** Route the next 10–20 real calls to the test number. Listen back to those recordings. This is where you catch the things a scripted test never surfaces.
+
+**6\.** **Only if everything checks out** — apply the same change to the production agent and publish it.
+
+**7\.** **Switch the main line over.** Forward your real number to the updated production agent.
+
+**Say something like:**
+
+> "If you follow this every time, a bad change can never reach a real caregiver. The worst case is you catch it on the test number and fix it before going live. That's the whole point — give yourself a place to be wrong safely."
+
+*Draw it on screen as a simple arrow chain if you can: Duplicate → Web test → Test number → Real call → Review 10–20 calls → Production → Forward main line.*
+
+---
+
+## 0:22–0:35 — Anatomy of a Node (13 min)
 
 Click into a real node in their flow — **OPENING** is a good one because it has everything.
 
@@ -95,16 +128,19 @@ Walk through, in order:
 
 ---
 
-## 0:30–0:50 — Live Demo + Hands-On (20 min) ⭐ MOST IMPORTANT BLOCK
+## 0:35–0:52 — Live Demo + Hands-On (17 min) ⭐ MOST IMPORTANT BLOCK
 
 Pick **three recipes from the SOP** and do them live. Suggested set (easy → moderate):
 
 ### Demo 1 (you do it) — Recipe 1: Change Aubrey's Greeting
 
 - 5 min total: edit → save → Test Call → revert
-- Make a tiny, obviously-different change ("Hi, this is Aubrey from Keyline Home Care Solutions, calling on the warm side today")
-- Use Test Call so they hear the new greeting
-- Then revert — shows the round trip
+- **Node:** `OPENING` → **Prompt** tab
+- **Find the line:** `If new/unrecognized: "Hi, this is Aubrey with Keyline Home Care. How can I support you today?"`
+- **Change only the text inside the quotes**, e.g.: `"Hi, this is Aubrey with Keyline Home Care Solutions — thanks for calling in. How can I help you today?"`
+- Use the unrecognized line (not the `"Hi [Name], welcome back"` one) — your Test Call comes in as an unknown caller, so that's the one they'll hear
+- **Call out what NOT to touch:** the `CRITICAL:` block at the top, the caller-type routing logic, and `{{current_time_America/New_York}}`. Only the quoted words.
+- Test Call so they hear the new greeting → then revert. Publish nothing — it's a throwaway demo.
 
 ### Demo 2 (you do it) — Recipe 2: Update a Transfer Phone Number
 
@@ -128,19 +164,19 @@ Pick **three recipes from the SOP** and do them live. Suggested set (easy → mo
 
 ---
 
-## 0:50–0:55 — Safety Net (5 min)
+## 0:52–0:56 — Safety Net Recap (4 min)
 
-Three things to hammer home:
+Quick reinforcement — tie it back to the Best Practices workflow from earlier:
 
-**1\.** **Test before Publish, always.** Use the Test Call button in the top right. If your change touches routing, test the happy path AND an adjacent flow.
+**1\.** **The safe workflow is the rule, not a suggestion.** Duplicate → web test → test number → review real calls → production. Every time.
 
-**2\.** **Versions are your friend.** Right sidebar → Versions. Every Publish creates a snapshot. If you break something, click an older version → Restore. You can always roll back.
+**2\.** **Versions are your undo button.** Right sidebar → Versions. Every Publish creates a snapshot. If you break something, click an older version → Restore.
 
 **3\.** **When in doubt, don't Publish.** Save your draft, ping us, and we'll look at it with you.
 
 ---
 
-## 0:55–1:00 — Q&A + When to Call Us
+## 0:56–1:00 — Q&A + When to Call Us
 
 Open the floor. If there's no question, prompt them with one:
 

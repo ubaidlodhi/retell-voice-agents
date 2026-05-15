@@ -52,7 +52,9 @@ Speak digit-by-digit grouped 3-3-4 with pauses:
 - Pause between area code and the rest. If asked to repeat, say it slower with longer pauses.
 
 ### Email addresses
-- Spell the local part letter by letter; phonetic alphabet on ambiguous letters ("M as in Mike").
+- Spell the local part letter by letter slowly.
+- Say like this "J O H N - D O E at gmail.com"
+- Phonetic alphabet on ambiguous letters ("M as in Mike").
 - For common domains (`gmail.com`, `yahoo.com`, `outlook.com`, `hotmail.com`, `icloud.com`, `aol.com`): spell only the local part, then speak the domain naturally as "at gmail dot com." Don't spell common domains letter-by-letter — it sounds robotic.
 - For uncommon domains: spell everything, including the domain.
 - "@" is "at." "." before a domain is "dot."

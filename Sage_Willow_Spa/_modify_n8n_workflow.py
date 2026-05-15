@@ -86,6 +86,7 @@ const errors = [];
 if (!args.serviceId) errors.push('serviceId is required');
 if (!args.startDate) errors.push('startDate is required');
 if (!args.endDate) errors.push('endDate is required');
+if (!args.durationInMinutes) errors.push('durationInMinutes is required');
 
 // Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss
 function formatForWix(dateStr, isEnd = false) {
@@ -410,6 +411,10 @@ WIX_QUERY_TIME_SLOTS_BODY = (
         f": ', \"includeResourceTypeIds\": [\"{STAFF_RESOURCE_TYPE_ID}\"]' }}}}\n"
         if STAFF_RESOURCE_TYPE_ID else ""
     )
+    # durationInMinutes — required by Wix when the service has pricingVariants
+    # (variable-duration services). Maps to customerChoices.durationInMinutes
+    # so Wix returns slots blocks of the right length.
+    + "  {{ $json.args.durationInMinutes ? ', \"customerChoices\": { \"durationInMinutes\": ' + $json.args.durationInMinutes + ' }' : '' }}\n"
     + "}"
 )
 
@@ -420,6 +425,12 @@ WIX_QUERY_TIME_SLOTS_BODY = (
 
 VALIDATE_BOOKING_JS = r"""const { args } = $input.first().json;
 const errors = [];
+
+// Trim incoming string args — Retell sometimes passes stray whitespace/newlines
+// which break Wix's strict-equality filters on email/phone fields.
+function trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }
+['firstName','lastName','email','phone','serviceId','variantId','scheduleId','staffId','startDate','endDate']
+  .forEach(k => { if (args[k] !== undefined) args[k] = trim(args[k]); });
 
 // 1. Slot Context (staffId is optional — caller may have said "no preference")
 if (!args.serviceId) errors.push('serviceId is required');
@@ -513,6 +524,13 @@ WIX_CREATE_BOOKING_BODY = (
 
 VALIDATE_GET_BOOKING_JS = r"""const { args, callerPhone } = $input.first().json;
 const errors = [];
+
+// Trim incoming strings — Retell occasionally passes values with stray
+// newlines/whitespace which break Wix's strict-equality filters.
+function trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }
+args.email     = trim(args.email);
+args.phone     = trim(args.phone);
+args.bookingId = trim(args.bookingId);
 
 // Resolve inputs
 const phoneToSearch = args.phone || callerPhone || null;
@@ -627,6 +645,21 @@ return [{ json: {
   bookings: found ? bookings : [],
   message: found ? undefined : 'No upcoming bookings found for this customer'
 } }];
+"""
+
+VALIDATE_CANCEL_JS = r"""const { args } = $input.first().json;
+const errors = [];
+
+// Trim — Retell occasionally passes stray whitespace.
+function trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }
+args.bookingId = trim(args.bookingId);
+args.revision  = trim(args.revision);
+
+if (!args.bookingId) errors.push('bookingId is required');
+// Wix V2 cancel requires revision — without it the API returns 400.
+if (!args.revision) errors.push('revision is required (from get_booking)');
+
+return [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];
 """
 
 FORMAT_CANCEL_JS = r"""const data = $input.first().json;
@@ -785,6 +818,11 @@ nodes_by_name["Wix: Get Booking"]["parameters"]["jsonBody"] = WIX_GET_BOOKING_BO
 nodes_by_name["Format: Get Booking Response"]["parameters"]["jsCode"] = FORMAT_GET_BOOKING_JS
 nodes_by_name["Format: Cancel Response"]["parameters"]["jsCode"] = FORMAT_CANCEL_JS
 nodes_by_name["Format: Reschedule Response"]["parameters"]["jsCode"] = FORMAT_RESCHEDULE_JS
+
+# 2e-cancel-validator. The default `Validate: Cancel Args` only checks
+# bookingId. Wix V2 also requires `revision` — without it the cancel API
+# returns 400 and the booking stays alive. Also trim stray whitespace.
+nodes_by_name["Validate: Cancel Args"]["parameters"]["jsCode"] = VALIDATE_CANCEL_JS
 
 # 2f. Add STANDALONE `Wix: Query Resource Types` node — not wired into the
 #     execution flow. User runs it once manually to discover the staff
