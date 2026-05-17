@@ -1,36 +1,32 @@
 """
-Modify the n8n workflow:
+Build script for the Sage & Willow Spa n8n workflow.
 
-  1. Update `Parse Retell Payload` — handle args_at_root: true (the
-     production-validated default — args spread at body root, no body.call).
-  2. Update `Validate: Slots Args` — normalize new optional filter args
-     (staffId, timeOfDay, earliestFirst, limit).
-  3. Update `Format: Time Slots Response` — apply filters, support
-     earliestFirst flat mode, and cap slots per band in grouped mode.
-  4. Update `Validate: Get Booking Args` — email-based lookup
-     (replaces phone-based; phone fallback removed).
-  5. Update `Wix: Get Booking` request body — filter on contactDetails.email
-     instead of contactDetails.phone.
-  6. Add `flag-callback` route — new switch rule + 7 nodes + connections.
-     Email goes to engineering@aiemply.com via existing SMTP credential.
+Single source of truth for the workflow at
+https://automation.aiemply.com/webhook/retell-wix.
+Running this script writes a fully importable workflow JSON to
+`Retell AI ↔ Wix Bookings _ Production v2.json` — no existing file required.
 
 Run:  py -X utf8 _modify_n8n_workflow.py
 """
-
 from __future__ import annotations
 import json
 from pathlib import Path
 
 WF_PATH = Path(__file__).parent / "Retell AI ↔ Wix Bookings _ Production v2.json"
 
-CALLBACK_RECIPIENT = "engineering@aiemply.com"
-SMTP_CREDENTIAL_ID = "m0mbibKf6il36id5"
-SMTP_CREDENTIAL_NAME = "SMTP account"
-FROM_EMAIL = "Aria <contact@aiemply.com>"
+# n8n credential references (replace if importing into a different n8n instance)
+WIX_CREDENTIAL_ID   = 'wLpWbblaihcY4xnw'
+WIX_CREDENTIAL_NAME = 'Test: Wix Sage Site'
+SMTP_CREDENTIAL_ID  = 'm0mbibKf6il36id5'
+SMTP_CREDENTIAL_NAME = 'SMTP account'
+
+# Flag-callback email destination + sender identity
+CALLBACK_RECIPIENT = 'sagewillowspa@gmail.com'
+FROM_EMAIL         = 'Aria <engineering@aiemply.com>'
 
 
 # -----------------------------------------------------------------------------
-# Replacement JS for the Retell payload parser
+# JS code constants (inlined into Code-type nodes)
 # -----------------------------------------------------------------------------
 
 PARSE_RETELL_PAYLOAD_JS = r"""// Retell tool-call webhook normalizer
@@ -73,11 +69,6 @@ if (!tool) {
 
 return [{ json: { tool, args } }];
 """
-
-
-# -----------------------------------------------------------------------------
-# Replacement JS for the slots validator + formatter
-# -----------------------------------------------------------------------------
 
 VALIDATE_SLOTS_JS = r"""const inputJson = $input.first().json;
 const { args } = inputJson;
@@ -154,7 +145,6 @@ if (args.limit !== undefined && args.limit !== null && args.limit !== '') {
 
 return [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];
 """
-
 
 FORMAT_SLOTS_JS = r"""// Reads Wix's per-slot availableResources (populated because the request
 // passes includeResourceTypeIds upstream) and returns therapist names directly
@@ -355,82 +345,25 @@ for (const date of sortedDates) {
 return [{ json: { success: true, mode: 'grouped', count: totalReturned, filterApplied, availabilityByDay } }];
 """
 
+FORMAT_STAFF_JS = r"""const data = $input.first().json;
 
-# -----------------------------------------------------------------------------
-# Resource type lookup (so Wix returns therapist names per slot)
-# -----------------------------------------------------------------------------
-# Wix's List Availability Time Slots returns availableResources as []
-# UNLESS we pass `includeResourceTypeIds`. We can't pass that without first
-# knowing the staff_member resource type ID. Solution: query the Resource
-# Types V3 endpoint, find the staff_member type, cache in workflow static
-# data, and pass it on every subsequent slots query.
+if (data.message || data.details || !data.staffMembers) {
+  return [{ json: { success: false, error: data.message || 'Failed to retrieve staff members' } }];
+}
 
-# Body shape from the Wix QueryResourceTypes docs (cursorPaging required).
-WIX_QUERY_RESOURCE_TYPES_BODY = (
-    "{\n"
-    "  \"query\": {\n"
-    "    \"cursorPaging\": {\n"
-    "      \"limit\": 100\n"
-    "    }\n"
-    "  }\n"
-    "}"
-)
+const staff = (data.staffMembers || []).map(s => ({
+  id: s.id,
+  resourceId: s.resourceId,
+  name: s.name,
+  // description: s.description ?? null,
+  // phone: s.phone ?? null,
+  email: s.email ?? null
+}));
 
-# -----------------------------------------------------------------------------
-# Staff resource type ID — set once, baked literally into slots + booking bodies.
-# -----------------------------------------------------------------------------
-# To get the value: import the workflow, open the `Wix: Query Resource Types`
-# node (standalone — not wired in), click "Execute Node", and look for the
-# entry in `resourceTypes[]` whose `name` is "staff_member" (Wix default for
-# the staff resource type). Copy its `id`. Paste it as the value below.
-#
-# When empty, the slots query omits `includeResourceTypeIds` (so
-# availableResources will be []) and the booking body omits
-# `resourceSelections` entirely.
-STAFF_RESOURCE_TYPE_ID = "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155"  # from your pinned data
-
-# Wix V2 LIST timeSlots filter rules:
-#   - `includeResourceTypeIds` adds response detail (populates availableResources)
-#     but does NOT filter slots.
-#   - `resourceTypes: [{ resourceTypeId, resourceIds: [...] }]` filters slots
-#     server-side to only those served by the listed resources.
-#   - A loose `resourceId` at the body root is silently ignored.
-#
-# So: when staffId is provided, use `resourceTypes` for server-side narrowing.
-# When not, use `includeResourceTypeIds` so the response still carries staff
-# names per slot.
-WIX_QUERY_TIME_SLOTS_BODY = (
-    "={\n"
-    "  \"serviceId\": \"{{ $json.args.serviceId }}\",\n"
-    "  \"fromLocalDate\": \"{{ $json.args.startDate }}\",\n"
-    "  \"toLocalDate\": \"{{ $json.args.endDate }}\",\n"
-    "  \"timeZone\": \"America/Los_Angeles\"\n"
-    + (
-        "  {{ $json.args.staffId "
-        f"? ', \"resourceTypes\": [{{ \"resourceTypeId\": \"{STAFF_RESOURCE_TYPE_ID}\", \"resourceIds\": [\"' + $json.args.staffId + '\"] }}]' "
-        f": ', \"includeResourceTypeIds\": [\"{STAFF_RESOURCE_TYPE_ID}\"]' }}}}\n"
-        if STAFF_RESOURCE_TYPE_ID else ""
-    )
-    # durationInMinutes — required by Wix when the service has pricingVariants
-    # (variable-duration services). Maps to customerChoices.durationInMinutes
-    # so Wix returns slots blocks of the right length.
-    + "  {{ $json.args.durationInMinutes ? ', \"customerChoices\": { \"durationInMinutes\": ' + $json.args.durationInMinutes + ' }' : '' }}\n"
-    + "}"
-)
-
-
-# -----------------------------------------------------------------------------
-# Booking — staffId optional + addOns now array of {id, groupId} objects
-# -----------------------------------------------------------------------------
+return [{ json: { success: true, count: staff.length, staff } }];"""
 
 VALIDATE_BOOKING_JS = r"""const { args } = $input.first().json;
 const errors = [];
-
-// Trim incoming string args — Retell sometimes passes stray whitespace/newlines
-// which break Wix's strict-equality filters on email/phone fields.
-function trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }
-['firstName','lastName','email','phone','serviceId','variantId','scheduleId','staffId','startDate','endDate']
-  .forEach(k => { if (args[k] !== undefined) args[k] = trim(args[k]); });
 
 // 1. Slot Context (staffId is optional — caller may have said "no preference")
 if (!args.serviceId) errors.push('serviceId is required');
@@ -445,7 +378,6 @@ if (!args.firstName) errors.push('firstName is required');
 if (!args.lastName) errors.push('lastName is required');
 if (!args.email) errors.push('email is required');
 if (!args.phone) errors.push('phone is required');
-if (!args.variantId) errors.push('variantId is required for this service');
 
 // Date format checks
 if (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');
@@ -469,68 +401,119 @@ if (args.addOns) {
 return [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];
 """
 
-# Build the resourceSelections fragment from the Python constant. When
-# STAFF_RESOURCE_TYPE_ID is set, the booking always includes a
-# resourceSelections entry — SPECIFIC_RESOURCE when caller named a therapist,
-# ANY_RESOURCE when they had no preference. When the constant is empty, the
-# entire fragment is omitted (Wix falls back to its default behavior).
-_RS_FRAGMENT = ""
-if STAFF_RESOURCE_TYPE_ID:
-    _RS_FRAGMENT = (
-        "        {{ $('IF: Booking Args Valid').item.json.args.staffId "
-        f"? ',\"resourceSelections\": [{{ \"resourceTypeId\": \"{STAFF_RESOURCE_TYPE_ID}\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }}]' "
-        f": ',\"resourceSelections\": [{{ \"resourceTypeId\": \"{STAFF_RESOURCE_TYPE_ID}\", \"selectionMethod\": \"ANY_RESOURCE\" }}]' }}}}\n"
-    )
+FORMAT_BOOKING_JS = r"""const confirmData = $input.first().json;
+// Fallback to the create booking data if confirm had issues
+const createData = $('Wix: Create Booking').first().json;
 
-WIX_CREATE_BOOKING_BODY = (
-    "={\n"
-    "  \"booking\": {\n"
-    "    \"bookedEntity\": {\n"
-    "      \"variantId\": \"{{ $('IF: Booking Args Valid').item.json.args.variantId }}\",\n"
-    "      \"slot\": {\n"
-    "        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n"
-    "        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n"
-    "        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n"
-    "        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n"
-    "        \"timezone\": \"America/Los_Angeles\",\n"
-    "        \"location\": {\n"
-    "          \"locationType\": \"OWNER_BUSINESS\",\n"
-    "          \"id\": \"a345d3c7-2a89-4816-ad3a-277ea40730a7\"\n"
-    "        }\n"
-    "        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n"
-    + _RS_FRAGMENT +
-    "      }\n"
-    "    },\n"
-    "    \"contactDetails\": {\n"
-    "      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n"
-    "      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n"
-    "      \"email\": \"{{ $('IF: Booking Args Valid').item.json.args.email }}\",\n"
-    "      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n"
-    "    },\n"
-    "    \"numberOfParticipants\": 1\n"
-    "    {{ $('IF: Booking Args Valid').item.json.args.notes ? ',\"additionalFields\": { \"fields\": [{ \"fieldId\": \"field:note\", \"value\": { \"stringValue\": \"' + $('IF: Booking Args Valid').item.json.args.notes + '\" } }] }' : '' }}\n"
-    "    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n"
-    "  },\n"
-    "  \"flowControlSettings\": {\n"
-    "    \"withoutPayment\": true\n"
-    "  }\n"
-    "}"
-)
+const booking = confirmData.booking || createData.booking || {};
+const isConfirmed = confirmData.booking?.status === 'CONFIRMED';
 
+if (!booking.id) {
+  return [{ json: { success: false, error: confirmData.message || 'Booking confirmation failed' } }];
+}
 
-# -----------------------------------------------------------------------------
-# Get-Booking: email (primary) / id / phone (fallback)
-# -----------------------------------------------------------------------------
+return [{ json: {
+  success: true,
+  confirmed: isConfirmed,
+  bookingId: booking.id,
+  status: booking.status,
+  startDate: booking.bookedEntity?.slot?.startDate,
+  endDate: booking.bookedEntity?.slot?.endDate,
+  serviceId: booking.bookedEntity?.slot?.serviceId,
+  contact: {
+    firstName: booking.contactDetails?.firstName,
+    lastName: booking.contactDetails?.lastName,
+    phone: booking.contactDetails?.phone,
+    email: booking.contactDetails?.email ?? null
+  },
+  message: `Appointment booked for ${booking.contactDetails?.firstName} ${booking.contactDetails?.lastName} on ${booking.bookedEntity?.slot?.startDate}`
+} }];"""
+
+VALIDATE_CANCEL_JS = r"""const { args } = $input.first().json;
+const errors = [];
+
+if (!args.bookingId) errors.push('bookingId is required');
+
+return [{ json: { ...$input.first().json, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"""
+
+FORMAT_CANCEL_JS = r"""const data = $input.first().json;
+
+// Wix cancel returns 200 with booking object on success; message+details on error
+if (data.message && data.details) {
+  return [{ json: {
+    success: false,
+    cancelFlag: 'no',
+    error: data.message || 'Failed to cancel booking. It may have already been cancelled or the cancellation policy prevents it.'
+  } }];
+}
+
+return [{ json: {
+  success: true,
+  cancelFlag: 'yes',
+  message: 'Booking has been successfully cancelled.',
+  bookingId: data.booking?.id ?? $('Validate: Cancel Args').first().json.args.bookingId,
+  status: data.booking?.status ?? 'CANCELED'
+} }];
+"""
+
+VALIDATE_RESCHEDULE_JS = r"""const { args } = $input.first().json;
+const errors = [];
+
+// 1. Existing Booking Identifiers
+if (!args.bookingId) errors.push('bookingId is required');
+// Note: checking strictly for undefined because revision can technically be 0
+if (args.revision === undefined || args.revision === null) errors.push('revision is required'); 
+
+// 2. New Slot Context (Required by Wix V2 API)
+if (!args.serviceId) errors.push('serviceId is required');
+if (!args.scheduleId) errors.push('scheduleId is required');
+if (!args.staffId) errors.push('staffId is required');
+
+// 3. New Dates
+if (!args.startDate) errors.push('startDate is required (new slot start time)');
+if (!args.endDate) errors.push('endDate is required (new slot end time)');
+
+// Date formatting checks
+if (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');
+if (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');
+
+return [{ json: { ...$input.first().json, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"""
+
+FORMAT_RESCHEDULE_JS = r"""const data = $input.first().json;
+
+if (data.message || !data.booking) {
+  return [{ json: {
+    success: false,
+    rescheduleFlag: 'no',
+    error: data.message || 'Failed to reschedule the booking. The new slot may not be available or rescheduling is not permitted by the service policy.'
+  } }];
+}
+
+const booking = data.booking;
+const newStart = booking.bookedEntity?.slot?.startDate;
+
+// Day-of-week from local date part — never let the agent compute it.
+const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+let newDayOfWeek = null;
+if (newStart) {
+  const m = String(newStart).split('T')[0].match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) newDayOfWeek = DOW[new Date(Date.UTC(+m[1], +m[2]-1, +m[3])).getUTCDay()];
+}
+
+return [{ json: {
+  success: true,
+  rescheduleFlag: 'yes',
+  message: 'Booking successfully rescheduled.',
+  bookingId: booking.id,
+  newStartDate: newStart,
+  newEndDate: booking.bookedEntity?.slot?.endDate,
+  newDayOfWeek,
+  status: booking.status
+} }];
+"""
 
 VALIDATE_GET_BOOKING_JS = r"""const { args, callerPhone } = $input.first().json;
 const errors = [];
-
-// Trim incoming strings — Retell occasionally passes values with stray
-// newlines/whitespace which break Wix's strict-equality filters.
-function trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }
-args.email     = trim(args.email);
-args.phone     = trim(args.phone);
-args.bookingId = trim(args.bookingId);
 
 // Resolve inputs
 const phoneToSearch = args.phone || callerPhone || null;
@@ -552,15 +535,6 @@ return [{ json: {
   _lookupMode: lookupMode
 } }];
 """
-
-WIX_GET_BOOKING_BODY = "={\n  \"query\": {\n    \"filter\": {\n      {{ \n        $json._lookupMode === 'by-id' ? '\"id\": { \"$in\": [\"' + $json.args._resolvedBookingId + '\"]}' : \n        $json._lookupMode === 'by-email' ? '\"contactDetails.email\": \"' + $json.args._resolvedEmail + '\"' : \n        '\"contactDetails.phone\": \"' + $json.args._resolvedPhone + '\"' \n      }},\n      \"status\": { \"$in\": [\"CONFIRMED\", \"PENDING_APPROVAL\", \"CREATED\", \"PENDING\"] }\n    },\n    \"sort\": [{ \"fieldName\": \"createdDate\", \"order\": \"DESC\" }],\n    \"paging\": { \"limit\": 5 }\n  }\n}"
-
-
-# -----------------------------------------------------------------------------
-# Explicit string flags ("yes"/"no") on Get-Booking / Cancel / Reschedule
-# responses so Retell branch + prompt logic doesn't have to interpret booleans
-# or compare numeric values (the equation engine has been flaky with both).
-# -----------------------------------------------------------------------------
 
 FORMAT_GET_BOOKING_JS = r"""const data = $input.first().json;
 
@@ -647,79 +621,6 @@ return [{ json: {
 } }];
 """
 
-VALIDATE_CANCEL_JS = r"""const { args } = $input.first().json;
-const errors = [];
-
-// Trim — Retell occasionally passes stray whitespace.
-function trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }
-args.bookingId = trim(args.bookingId);
-args.revision  = trim(args.revision);
-
-if (!args.bookingId) errors.push('bookingId is required');
-// Wix V2 cancel requires revision — without it the API returns 400.
-if (!args.revision) errors.push('revision is required (from get_booking)');
-
-return [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];
-"""
-
-FORMAT_CANCEL_JS = r"""const data = $input.first().json;
-
-// Wix cancel returns 200 with booking object on success; message+details on error
-if (data.message && data.details) {
-  return [{ json: {
-    success: false,
-    cancelFlag: 'no',
-    error: data.message || 'Failed to cancel booking. It may have already been cancelled or the cancellation policy prevents it.'
-  } }];
-}
-
-return [{ json: {
-  success: true,
-  cancelFlag: 'yes',
-  message: 'Booking has been successfully cancelled.',
-  bookingId: data.booking?.id ?? $('Validate: Cancel Args').first().json.args.bookingId,
-  status: data.booking?.status ?? 'CANCELED'
-} }];
-"""
-
-FORMAT_RESCHEDULE_JS = r"""const data = $input.first().json;
-
-if (data.message || !data.booking) {
-  return [{ json: {
-    success: false,
-    rescheduleFlag: 'no',
-    error: data.message || 'Failed to reschedule the booking. The new slot may not be available or rescheduling is not permitted by the service policy.'
-  } }];
-}
-
-const booking = data.booking;
-const newStart = booking.bookedEntity?.slot?.startDate;
-
-// Day-of-week from local date part — never let the agent compute it.
-const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-let newDayOfWeek = null;
-if (newStart) {
-  const m = String(newStart).split('T')[0].match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) newDayOfWeek = DOW[new Date(Date.UTC(+m[1], +m[2]-1, +m[3])).getUTCDay()];
-}
-
-return [{ json: {
-  success: true,
-  rescheduleFlag: 'yes',
-  message: 'Booking successfully rescheduled.',
-  bookingId: booking.id,
-  newStartDate: newStart,
-  newEndDate: booking.bookedEntity?.slot?.endDate,
-  newDayOfWeek,
-  status: booking.status
-} }];
-"""
-
-
-# -----------------------------------------------------------------------------
-# Flag-callback nodes
-# -----------------------------------------------------------------------------
-
 VALIDATE_FLAG_CALLBACK_JS = r"""const { args, callerPhone } = $input.first().json;
 const errors = [];
 
@@ -773,334 +674,1299 @@ return [{ json: {
 } }];
 """
 
+VALIDATE_GET_CONTACT_JS = r"""const { args, callerPhone } = $input.first().json;
+const errors = [];
 
-# -----------------------------------------------------------------------------
-# Mutation
-# -----------------------------------------------------------------------------
+const phone = args?.phone || callerPhone || null;
+const email = args?.email || null;
 
-with open(WF_PATH, "r", encoding="utf-8") as f:
-    wf = json.load(f)
-
-nodes = wf["nodes"]
-nodes_by_name = {n["name"]: n for n in nodes}
-connections = wf["connections"]
-
-
-# 0. Update Parse Retell Payload (handle args_at_root: true)
-nodes_by_name["Parse Retell Payload"]["parameters"]["jsCode"] = PARSE_RETELL_PAYLOAD_JS
-
-# 1. Update Validate: Slots Args
-nodes_by_name["Validate: Slots Args"]["parameters"]["jsCode"] = VALIDATE_SLOTS_JS
-
-# 2. Update Format: Time Slots Response
-nodes_by_name["Format: Time Slots Response"]["parameters"]["jsCode"] = FORMAT_SLOTS_JS
-
-# 2a. Update Wix: Query Time Slots body — adds includeResourceTypeIds so Wix
-#     populates availableResources per slot.
-nodes_by_name["Wix: Query Time Slots"]["parameters"]["jsonBody"] = WIX_QUERY_TIME_SLOTS_BODY
-
-# 2b. Update Validate: Booking Args — staffId now optional, addOns is array of {id, groupId}.
-nodes_by_name["Validate: Booking Args"]["parameters"]["jsCode"] = VALIDATE_BOOKING_JS
-
-# 2c. Update Wix: Create Booking body — resource is conditional on staffId,
-#     addOns now passed as full {id, groupId, quantity} objects.
-nodes_by_name["Wix: Create Booking"]["parameters"]["jsonBody"] = WIX_CREATE_BOOKING_BODY
-
-# 2d. Update Validate: Get Booking Args (email-based)
-nodes_by_name["Validate: Get Booking Args"]["parameters"]["jsCode"] = VALIDATE_GET_BOOKING_JS
-
-# 2e. Update Wix: Get Booking request body (filter on contactDetails.email)
-nodes_by_name["Wix: Get Booking"]["parameters"]["jsonBody"] = WIX_GET_BOOKING_BODY
-
-# 2e-flag. Apply explicit-flag formatters to Get Booking / Cancel / Reschedule
-# responses so Retell branch logic can rely on a single string field instead of
-# numeric counts or boolean coercion.
-nodes_by_name["Format: Get Booking Response"]["parameters"]["jsCode"] = FORMAT_GET_BOOKING_JS
-nodes_by_name["Format: Cancel Response"]["parameters"]["jsCode"] = FORMAT_CANCEL_JS
-nodes_by_name["Format: Reschedule Response"]["parameters"]["jsCode"] = FORMAT_RESCHEDULE_JS
-
-# 2e-cancel-validator. The default `Validate: Cancel Args` only checks
-# bookingId. Wix V2 also requires `revision` — without it the cancel API
-# returns 400 and the booking stays alive. Also trim stray whitespace.
-nodes_by_name["Validate: Cancel Args"]["parameters"]["jsCode"] = VALIDATE_CANCEL_JS
-
-# 2f. Add STANDALONE `Wix: Query Resource Types` node — not wired into the
-#     execution flow. User runs it once manually to discover the staff
-#     resource type ID, then hardcodes it in STAFF_RESOURCE_TYPE_ID above.
-RESOURCE_LOOKUP_NODES = [
-    {
-        "parameters": {
-            "method": "POST",
-            "url": "https://www.wixapis.com/bookings/v2/resources/resource-types/query",
-            "authentication": "predefinedCredentialType",
-            "nodeCredentialType": "wixApi",
-            "sendBody": True,
-            "specifyBody": "json",
-            "jsonBody": WIX_QUERY_RESOURCE_TYPES_BODY,
-            "options": {},
-        },
-        "id": "node-wix-query-resource-types",
-        "name": "Wix: Query Resource Types",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.1,
-        "position": [-1008, 800],
-        "credentials": {
-            "wixApi": {
-                "id": "wLpWbblaihcY4xnw",
-                "name": "Test: Wix Sage Site",
-            }
-        },
-    },
-]
-for new in RESOURCE_LOOKUP_NODES:
-    nm = new["name"]
-    if nm in nodes_by_name:
-        idx = next(i for i, n in enumerate(nodes) if n["name"] == nm)
-        nodes[idx] = new
-    else:
-        nodes.append(new)
-    nodes_by_name[nm] = new
-
-# 2g. Remove the old Extract: Staff Resource Type ID node and its wiring
-#     (no longer needed — STAFF_RESOURCE_TYPE_ID constant is baked literally
-#     into the slots + booking bodies above).
-extract_name = "Extract: Staff Resource Type ID"
-if extract_name in nodes_by_name:
-    nodes[:] = [n for n in nodes if n["name"] != extract_name]
-    del nodes_by_name[extract_name]
-if extract_name in connections:
-    del connections[extract_name]
-
-# 2h. Restore the original wiring:
-#     Parse Retell Payload -> Route by Tool (direct)
-#     IF: Slots Args Valid (true) -> Wix: Query Time Slots (direct)
-#     Wix: Query Resource Types is standalone (no connections in or out).
-parse_main = connections.setdefault("Parse Retell Payload", {}).setdefault("main", [])
-if not parse_main:
-    parse_main.append([])
-# Strip any old wiring to the resource-types lookup
-parse_main[0] = [t for t in parse_main[0] if t.get("node") != "Wix: Query Resource Types"]
-if not any(t.get("node") == "Route by Tool" for t in parse_main[0]):
-    parse_main[0].append({"node": "Route by Tool", "type": "main", "index": 0})
-
-# Remove any outbound edges from Wix: Query Resource Types (standalone)
-if "Wix: Query Resource Types" in connections:
-    del connections["Wix: Query Resource Types"]
-
-# Restore IF: Slots Args Valid (true) -> Wix: Query Time Slots
-if_slots_main = connections.setdefault("IF: Slots Args Valid", {}).setdefault("main", [])
-while len(if_slots_main) < 2:
-    if_slots_main.append([])
-if_slots_main[0] = [t for t in if_slots_main[0] if t.get("node") != "Wix: Query Resource Types"]
-if not any(t.get("node") == "Wix: Query Time Slots" for t in if_slots_main[0]):
-    if_slots_main[0].append({"node": "Wix: Query Time Slots", "type": "main", "index": 0})
-
-# 3. Add new switch rule for flag-callback (output index 7, after the 7 existing rules)
-route_node = nodes_by_name["Route by Tool"]
-rules = route_node["parameters"]["rules"]["values"]
-flag_callback_rule = {
-    "conditions": {
-        "options": {
-            "caseSensitive": True,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3,
-        },
-        "conditions": [
-            {
-                "id": "rule-flag-callback",
-                "leftValue": "={{ $json.tool }}",
-                "rightValue": "flag-callback",
-                "operator": {
-                    "type": "string",
-                    "operation": "equals",
-                    "name": "filter.operator.equals",
-                },
-            }
-        ],
-        "combinator": "and",
-    },
-    "renameOutput": True,
-    "outputKey": "Flag Callback",
+if (!phone && !email) {
+  errors.push('Either phone or email is required to look up a contact');
 }
-# Avoid double-adding if script is re-run
-existing_ids = [
-    cond["id"]
-    for r in rules
-    for cond in r["conditions"]["conditions"]
-]
-if "rule-flag-callback" not in existing_ids:
-    rules.append(flag_callback_rule)
+
+return [{ json: {
+  ...$input.first().json,
+  args: { ...args, _resolvedPhone: phone, _resolvedEmail: email },
+  _valid: errors.length === 0,
+  _validationError: errors.join('; ')
+} }];"""
+
+FORMAT_CONTACT_RESPONSE_JS = r"""const data = $input.first().json;
+
+if (data.message || data.details) {
+  return [{ json: { success: false, error: data.message || 'Failed to query contact' } }];
+}
+
+const contacts = data.contacts || [];
+
+if (contacts.length === 0) {
+  return [{ json: { success: true, found: false, message: 'No contact found with this information.' } }];
+}
+
+const c = contacts[0];
+
+// Use the root primaryInfo that Wix automatically generates for us
+const primaryEmail = c.primaryInfo?.email || c.primaryEmail?.email || null;
+const primaryPhone = c.primaryInfo?.phone || c.primaryPhone?.phone || null;
+
+return [{ json: { 
+  success: true, 
+  found: true,
+  contact: {
+    contactId: c.id,
+    firstName: c.info?.name?.first || null,
+    lastName: c.info?.name?.last || null,
+    email: primaryEmail,
+    phone: primaryPhone
+  }
+} }];"""
+
+FORMAT_CREATE_CONTACT_JS = r"""const data = $input.first().json;
+
+if (data.message || data.details) {
+  return [{ json: { success: false, error: data.message || 'Failed to create contact' } }];
+}
+
+return [{ json: { success: true, contactId: data.contact.id, message: 'Contact created successfully' } }];"""
+
+FORMAT_CONTACT_RESPONSE_1_JS = r"""const data = $input.first().json;
+
+if (data.message || data.details) {
+  return [{ json: { success: false, error: data.message || 'Failed to query contact' } }];
+}
+
+const contacts = data.contacts || [];
+
+if (contacts.length === 0) {
+  return [{ json: { success: true, found: false, message: 'No contact found with this information.' } }];
+}
+
+const c = contacts[0];
+
+// Use the root primaryInfo that Wix automatically generates for us
+const primaryEmail = c.primaryInfo?.email || c.primaryEmail?.email || null;
+const primaryPhone = c.primaryInfo?.phone || c.primaryPhone?.phone || null;
+
+return [{ json: { 
+  success: true, 
+  found: true,
+  contact: {
+    contactId: c.id,
+    firstName: c.info?.name?.first || null,
+    lastName: c.info?.name?.last || null,
+    email: primaryEmail,
+    phone: primaryPhone
+  }
+} }];"""
+
+EXTRACT_PRICING_IDS_JS = r"""const data = $('Wix: Query Services').first().json;
+if (!data.services) return [{ json: { hasVaried: false, serviceId: null } }];
+
+const varied = data.services.filter(s => s.payment?.rateType === 'VARIED');
+if (varied.length === 0) return [{ json: { hasVaried: false, serviceId: null } }];
+
+return varied.map(s => ({ json: { hasVaried: true, serviceId: s.id } }));"""
+
+EXTRACT_ADD_ON_IDS_JS = r"""const data = $('Wix: Query Services').first().json;
+
+if (!data.services) {
+  return [{ json: { hasAddOns: false } }];
+}
+
+// Use a Set to automatically remove duplicates globally
+const uniqueAddOnIds = new Set();
+
+data.services.forEach(service => {
+  if (service.addOnGroups) {
+    service.addOnGroups.forEach(group => {
+      if (group.addOnIds) {
+        group.addOnIds.forEach(id => uniqueAddOnIds.add(id));
+      }
+    });
+  }
+});
+
+if (uniqueAddOnIds.size === 0) {
+  return [{ json: { hasAddOns: false } }];
+}
+
+// Convert the Set into the flat array format n8n needs for the HTTP node
+return Array.from(uniqueAddOnIds).map(id => ({
+  json: { 
+    hasAddOns: true, 
+    addOnId: id 
+  }
+}));"""
+
+FORMAT_SERVICES_RESPONSE_JS = r"""const servicesData = $('Wix: Query Services').first().json;
+
+if (servicesData.message || servicesData.details || !servicesData.services) {
+  return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];
+}
+
+const services = servicesData.services || [];
+
+// 1. Map Pricing Variants
+const pricingLookup = {};
+try {
+  const pricingItems = $('Wix: Get Pricing Variants').all();
+  pricingItems.forEach(item => {
+    const sv = item.json.serviceVariants || item.json;
+    if (sv && sv.serviceId && sv.variants && sv.variants.values) {
+      pricingLookup[sv.serviceId] = sv.variants.values.map(v => ({
+        id: v.id,
+        duration: v.choices?.[0]?.duration?.minutes + " min",
+        price: "USD " + (v.price?.value || 0)
+      }));
+    }
+  });
+} catch (e) {
+  console.error("Pricing map skipped or failed.");
+}
+
+// 2. Map Add-ons (Base Details Only: Name, Price, Duration)
+const addOnLookup = {};
+try {
+  const addonItems = $('Wix: Get Add-ons').all();
+  for (const item of addonItems) {
+    const addon = item.json?.addOn || item.json;
+    if (addon?.id) {
+      addOnLookup[addon.id] = {
+        name: addon.name || "Unknown",
+        price: "USD " + (addon.price?.value || 0),
+        duration: (addon.durationInMinutes || 0) + " min"
+      };
+    }
+  }
+} catch (e) {
+  console.error("Error mapping Add-on base details:", e);
+}
+
+// 3. Final Lean Mapping (Extracts Group IDs directly from original data)
+const formattedServices = services.map(s => {
+  let availableAddOns = [];
+
+  // Check if the service has add-on groups attached
+  if (s.addOnGroups && s.addOnGroups.length > 0) {
+    
+    // Map Addon IDs to their corresponding Group IDs for THIS specific service
+    const localGroupMap = {};
+    
+    s.addOnGroups.forEach(group => {
+      const groupId = group.id; // This is the groupId
+      const addOnIds = group.addOnIds || [];
+      
+      addOnIds.forEach(addOnId => {
+        if (!localGroupMap[addOnId]) {
+          localGroupMap[addOnId] = [];
+        }
+        // Push the groupId, avoiding duplicates
+        if (!localGroupMap[addOnId].includes(groupId)) {
+          localGroupMap[addOnId].push(groupId);
+        }
+      });
+    });
+
+    const uniqueIds = Object.keys(localGroupMap);
+
+    availableAddOns = uniqueIds.map(id => {
+      // Get base details from Step 2
+      const details = addOnLookup[id] || {
+        name: "Unknown",
+        price: "USD 0",
+        duration: "0 min"
+      };
+
+      return {
+        id,
+        name: details.name,
+        price: details.price,
+        duration: details.duration,
+        groupIds: localGroupMap[id] // Map the dynamically created group IDs
+      };
+    });
+  }
+
+  const isVaried = s.payment?.rateType === 'VARIED';
+  const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;
+
+  const fixedPrice =
+    !isVaried && s.payment?.fixed?.price?.value
+      ? "USD " + s.payment.fixed.price.value
+      : undefined;
+
+  return {
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    price: fixedPrice,
+    pricingVariants,
+    availableAddOns: availableAddOns.length > 0 ? availableAddOns : undefined
+  };
+});
+
+return [{ json: { success: true, services: formattedServices } }];"""
 
 
-# 4. Add new flag-callback nodes (idempotent — replace if present)
+# -----------------------------------------------------------------------------
+# HTTP body templates (inlined into Wix httpRequest nodes)
+# -----------------------------------------------------------------------------
 
-NEW_NODES = [
-    {
-        "parameters": {"jsCode": VALIDATE_FLAG_CALLBACK_JS},
-        "id": "node-validate-flag-callback",
-        "name": "Validate: Flag Callback Args",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [-800, 3000],
+WIX_QUERY_TIME_SLOTS_BODY = r"""={
+  "serviceId": "{{ $json.args.serviceId }}",
+  "fromLocalDate": "{{ $json.args.startDate }}",
+  "toLocalDate": "{{ $json.args.endDate }}",
+  "timeZone": "America/Los_Angeles"
+  {{ $json.args.staffId ? ', "resourceTypes": [{ "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155", "resourceIds": ["' + $json.args.staffId + '"] }]' : ', "includeResourceTypeIds": ["1cd44cf8-756f-41c3-bd90-3e2ffcaf1155"]' }}
+  {{ $json.args.durationInMinutes ? ', "customerChoices": { "durationInMinutes": ' + $json.args.durationInMinutes + ' }' : '' }}
+}"""
+
+WIX_QUERY_STAFF_BODY = r"""{
+  "query": {
+    "paging": { "limit": 50 }
+  }
+}"""
+
+WIX_CREATE_BOOKING_BODY = r"""={
+  "booking": {
+    "bookedEntity": {
+      {{ $('IF: Booking Args Valid').item.json.args.variantId ? '"variantId": "' + $('IF: Booking Args Valid').item.json.args.variantId + '",' : '' }}
+      "slot": {
+        "serviceId": "{{ $('IF: Booking Args Valid').item.json.args.serviceId }}",
+        "scheduleId": "{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}",
+        "startDate": "{{ $('IF: Booking Args Valid').item.json.args.startDate }}",
+        "endDate": "{{ $('IF: Booking Args Valid').item.json.args.endDate }}",
+        "timezone": "America/Los_Angeles",
+        "location": {
+          "locationType": "OWNER_BUSINESS",
+          "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7"
+        }
+        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',"resource": { "id": "' + $('IF: Booking Args Valid').item.json.args.staffId + '" }' : '' }}
+        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',"resourceSelections": [{ "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155", "selectionMethod": "SPECIFIC_RESOURCE" }]' : ',"resourceSelections": [{ "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155", "selectionMethod": "ANY_RESOURCE" }]' }}
+      }
     },
-    {
-        "parameters": {
-            "conditions": {
-                "boolean": [
-                    {"value1": "={{ $json._valid }}", "value2": True}
-                ]
-            }
-        },
-        "id": "node-if-flag-callback-valid",
-        "name": "IF: Flag Callback Args Valid",
-        "type": "n8n-nodes-base.if",
-        "typeVersion": 1,
-        "position": [-576, 3000],
+    "contactDetails": {
+      "firstName": "{{ $('IF: Booking Args Valid').item.json.args.firstName }}",
+      "lastName": "{{ $('IF: Booking Args Valid').item.json.args.lastName }}",
+      "email": "{{ $('IF: Booking Args Valid').item.json.args.email || 'sagewillowspa@gmail.com' }}",
+      "phone": "{{ $('IF: Booking Args Valid').item.json.args.phone }}"
     },
-    {
-        "parameters": {
-            "fromEmail": FROM_EMAIL,
-            "toEmail": CALLBACK_RECIPIENT,
-            "subject": "={{ $json._emailSubject }}",
-            "emailFormat": "text",
-            "text": "={{ $json._emailBody }}",
-            "options": {
-                "appendAttribution": False,
-                "replyTo": "contact@aiemply.com",
-            },
-        },
-        "id": "node-send-flag-callback-email",
-        "name": "Send Email: Flag Callback",
-        "type": "n8n-nodes-base.emailSend",
-        "typeVersion": 2.1,
-        "position": [-352, 2960],
-        "credentials": {
-            "smtp": {
-                "id": SMTP_CREDENTIAL_ID,
-                "name": SMTP_CREDENTIAL_NAME,
-            }
-        },
-        "onError": "continueErrorOutput",
+    "numberOfParticipants": 1
+    {{ $('IF: Booking Args Valid').item.json.args.notes ? ',"additionalFields": { "fields": [{ "fieldId": "field:note", "value": { "stringValue": "' + $('IF: Booking Args Valid').item.json.args.notes + '" } }] }' : '' }}
+    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',"bookedAddOns": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}
+  },
+  "flowControlSettings": {
+    "withoutPayment": true
+  }
+}"""
+
+WIX_CONFIRM_BOOKING_BODY = r"""={
+  "participantNotification": {
+    "notifyParticipants": true
+  },
+  "revision": {{ $json.booking.revision }}
+}"""
+
+WIX_CANCEL_BOOKING_BODY = r"""={
+  "revision": "{{ $json.args.revision }}",
+  "participantNotification": {
+    "notifyParticipants": true
+  }
+}"""
+
+WIX_RESCHEDULE_BOOKING_BODY = r"""={
+  "slot": {
+    "serviceId": "{{ $json.args.serviceId }}",
+    "scheduleId": "{{ $json.args.scheduleId }}",
+    "startDate": "{{ $json.args.startDate }}",
+    "endDate": "{{ $json.args.endDate }}",
+    "timezone": "America/Los_Angeles",
+    "resource": {
+      "id": "{{ $json.args.staffId }}"
     },
-    {
-        "parameters": {"jsCode": FORMAT_FLAG_CALLBACK_RESPONSE_JS},
-        "id": "node-format-flag-callback-response",
-        "name": "Format: Flag Callback Response",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [-128, 2960],
+    "location": {
+      "locationType": "OWNER_BUSINESS",
+      "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7"
+    }
+  },
+  "revision": {{ $json.args.revision }},
+  "participantNotification": {
+    "notifyParticipants": true
+  }
+}"""
+
+WIX_GET_BOOKING_BODY = r"""={
+  "query": {
+    "filter": {
+      {{ 
+        $json._lookupMode === 'by-id' ? '"id": { "$in": ["' + $json.args._resolvedBookingId + '"]}' : 
+        $json._lookupMode === 'by-email' ? '"contactDetails.email": "' + $json.args._resolvedEmail + '"' : 
+        '"contactDetails.phone": "' + $json.args._resolvedPhone + '"' 
+      }},
+      "status": { "$in": ["CONFIRMED", "PENDING_APPROVAL", "CREATED", "PENDING"] }
     },
-    {
-        "parameters": {
-            "respondWith": "json",
-            "responseBody": "={{ $json }}",
-            "options": {},
-        },
-        "id": "node-respond-flag-callback",
-        "name": "Respond: Flag Callback",
-        "type": "n8n-nodes-base.respondToWebhook",
-        "typeVersion": 1,
-        "position": [96, 2960],
+    "sort": [{ "fieldName": "createdDate", "order": "DESC" }],
+    "paging": { "limit": 5 }
+  }
+}"""
+
+WIX_SEARCH_CONTACT_BODY = r"""={
+  "query": {
+    "filter": {
+      {{ $json.args._resolvedEmail ? '"info.emails.email": "' + $json.args._resolvedEmail + '"' : '"info.phones.phone": "' + $json.args._resolvedPhone + '"' }}
     },
-    {
-        "parameters": {
-            "respondWith": "json",
-            "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
-            "options": {},
-        },
-        "id": "node-respond-flag-callback-validation-error",
-        "name": "Respond: Flag Callback Validation Error",
-        "type": "n8n-nodes-base.respondToWebhook",
-        "typeVersion": 1,
-        "position": [-352, 3140],
+    "paging": {
+      "limit": 1
+    }
+  }
+}"""
+
+WIX_CREATE_CONTACT_BODY = r"""={
+  "info": {
+    "name": {
+      "first": "{{ $('IF: Booking Args Valid').item.json.args.firstName }}",
+      "last": "{{ $('IF: Booking Args Valid').item.json.args.lastName || '' }}"
     },
-    {
-        "parameters": {
-            "respondWith": "json",
-            "responseBody": "{\n  \"success\": false,\n  \"error\": \"Failed to send callback notification email\"\n}",
-            "options": {},
-        },
-        "id": "node-error-flag-callback",
-        "name": "Error: Flag Callback",
-        "type": "n8n-nodes-base.respondToWebhook",
-        "typeVersion": 1.5,
-        "position": [-128, 3120],
+    "emails": {
+      "items": [
+        {
+          "tag": "MAIN",
+          "email": "{{ $('IF: Booking Args Valid').item.json.args.email }}"
+        }
+      ]
     },
-]
+    "phones": {
+      "items": [
+        {
+          "tag": "MAIN",
+          "phone": "{{ $('IF: Booking Args Valid').item.json.args.phone }}"
+        }
+      ]
+    }
+  }
+}"""
 
-for new in NEW_NODES:
-    nm = new["name"]
-    if nm in nodes_by_name:
-        # Replace existing entry in the nodes list
-        idx = next(i for i, n in enumerate(nodes) if n["name"] == nm)
-        nodes[idx] = new
-    else:
-        nodes.append(new)
-    nodes_by_name[nm] = new
+WIX_SEARCH_CONTACT_1_BODY = r"""={
+  "query": {
+    "filter": {
+      {{ $json.args.email ? '"info.emails.email": "' + $json.args.email + '"' : '"info.phones.phone": "' + $json.args.phone + '"' }}
+    },
+    "paging": {
+      "limit": 1
+    }
+  }
+}"""
 
-
-# 5. Wire connections
-def add_conn(source: str, target: str, source_index: int = 0):
-    """Add a connection from source.main[source_index] -> target.main[0], avoiding duplicates."""
-    conn = connections.setdefault(source, {}).setdefault("main", [])
-    while len(conn) <= source_index:
-        conn.append([])
-    bucket = conn[source_index]
-    if not any(t.get("node") == target for t in bucket):
-        bucket.append({"node": target, "type": "main", "index": 0})
-
-
-# Route by Tool — output 7 (the new 8th rule, 0-indexed) → Validate.
-# The switch has fallbackOutput: "extra", which creates a dedicated extra output
-# AFTER all numbered rule outputs. Before this script ran, the fallback was at
-# index 7 (Respond: Unknown Tool Error). Adding an 8th rule must shift the
-# fallback to index 8.
-route_main = connections.setdefault("Route by Tool", {}).setdefault("main", [])
-# Strip the Unknown-Tool-Error fallback wherever it currently lives so we can
-# reattach it to the correct (now index 8) extra output.
-fallback_targets = []
-for i, bucket in enumerate(route_main):
-    keep = []
-    for t in bucket:
-        if t.get("node") == "Respond: Unknown Tool Error":
-            fallback_targets.append(t)
-        else:
-            keep.append(t)
-    route_main[i] = keep
-# Make sure the rule output (index 7) and fallback output (index 8) exist
-while len(route_main) < 9:
-    route_main.append([])
-add_conn("Route by Tool", "Validate: Flag Callback Args", source_index=7)
-# Reattach fallback to extra output at index 8
-existing_fb = [t["node"] for t in route_main[8]]
-if fallback_targets:
-    for fb in fallback_targets:
-        if fb["node"] not in existing_fb:
-            route_main[8].append(fb)
-            existing_fb.append(fb["node"])
-elif "Respond: Unknown Tool Error" not in existing_fb:
-    route_main[8].append({"node": "Respond: Unknown Tool Error", "type": "main", "index": 0})
-
-# Linear chain
-add_conn("Validate: Flag Callback Args", "IF: Flag Callback Args Valid")
-# IF: true branch (index 0) → Send Email
-add_conn("IF: Flag Callback Args Valid", "Send Email: Flag Callback", source_index=0)
-# IF: false branch (index 1) → Validation error response
-add_conn("IF: Flag Callback Args Valid", "Respond: Flag Callback Validation Error", source_index=1)
-# Send Email: success (index 0) → Format
-add_conn("Send Email: Flag Callback", "Format: Flag Callback Response", source_index=0)
-# Send Email: error (index 1) → Error response
-add_conn("Send Email: Flag Callback", "Error: Flag Callback", source_index=1)
-# Format → Respond success
-add_conn("Format: Flag Callback Response", "Respond: Flag Callback")
+WIX_QUERY_SERVICES_BODY = r"""{
+  "query": {
+    "filter": {
+      "type": ["APPOINTMENT", "CLASS"]
+    },
+    "paging": {
+      "limit": 100
+    }
+  }
+}"""
 
 
-# 6. Save
-with open(WF_PATH, "w", encoding="utf-8") as f:
-    json.dump(wf, f, indent=2, ensure_ascii=False)
+# -----------------------------------------------------------------------------
+# Nodes (every node in the workflow — full canonical state)
+# -----------------------------------------------------------------------------
 
-print(f"Wrote {WF_PATH}")
-print(f"Total nodes: {len(nodes)}")
-print(f"Switch rules: {len(rules)}")
-print(f"Email recipient: {CALLBACK_RECIPIENT}")
+NODES = [   {   'parameters': {'httpMethod': 'POST', 'path': 'retell-wix', 'responseMode': 'responseNode', 'options': {}},
+        'id': '2ebbfda4-ff8c-499c-80a9-d9f5e9d34267',
+        'name': 'Webhook — Retell Tool Call',
+        'type': 'n8n-nodes-base.webhook',
+        'typeVersion': 1,
+        'position': [64, 5904],
+        'webhookId': 'retell-wix-prod-v2'},
+    {   'parameters': {'jsCode': PARSE_RETELL_PAYLOAD_JS},
+        'id': '6f960a23-57e1-447e-95cf-8b9d9521a7b5',
+        'name': 'Parse Retell Payload',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [288, 5904]},
+    {   'parameters': {'jsCode': VALIDATE_SLOTS_JS},
+        'id': 'b90db447-2267-4408-956b-829d8acdfcbd',
+        'name': 'Validate: Slots Args',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [736, 4656]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json._valid }}', 'value2': True}]}},
+        'id': '82c4e2d3-8caf-47d4-a833-c3c568c85d05',
+        'name': 'IF: Slots Args Valid',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [960, 4656]},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/_api/service-availability/v2/time-slots',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_QUERY_TIME_SLOTS_BODY,
+                          'options': {}},
+        'id': 'efd7602a-a098-4a2f-8d50-e1d0f7be581b',
+        'name': 'Wix: Query Time Slots',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1184, 4560],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_SLOTS_JS},
+        'id': '6cb356ab-005b-492f-8508-2957f99598df',
+        'name': 'Format: Time Slots Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1408, 4464]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': "={{ { success: false, error: 'Validation failed: ' + $json._validationError "
+                                          '} }}',
+                          'options': {}},
+        'id': '803fec28-814e-460b-9544-b9593573d089',
+        'name': 'Respond: Slots Validation Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1184, 4752]},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/bookings/v1/staff-members/query',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_QUERY_STAFF_BODY,
+                          'options': {}},
+        'id': 'b29980f3-4985-4192-989e-68298f235284',
+        'name': 'Wix: Query Staff Members',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [736, 5040],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_STAFF_JS},
+        'id': '5ebb1ce2-c33a-476e-b5d6-6b8179784450',
+        'name': 'Format: Staff Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [960, 4944]},
+    {   'parameters': {'jsCode': VALIDATE_BOOKING_JS},
+        'id': '41516601-6d7a-421b-ad7b-544249a9b9aa',
+        'name': 'Validate: Booking Args',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [736, 5328]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json._valid }}', 'value2': True}]}},
+        'id': 'b6acd95c-2b46-4763-b93f-394f3a9003fe',
+        'name': 'IF: Booking Args Valid',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [960, 5328]},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/bookings/v2/bookings',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_CREATE_BOOKING_BODY,
+                          'options': {}},
+        'id': '55d5dc78-c645-4b60-b51b-f93518edae3a',
+        'name': 'Wix: Create Booking',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [2304, 5168],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {   'conditions': {   'string': [   {   'value1': "={{ $json.booking?.id ?? '' }}",
+                                                              'operation': 'isNotEmpty'}]}},
+        'id': '1281e87c-1b99-4b01-bf1c-06c040c86b39',
+        'name': 'IF: Booking Created OK',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [2528, 5088]},
+    {   'parameters': {   'method': 'POST',
+                          'url': '=https://www.wixapis.com/bookings/v2/bookings/{{ $json.booking.id }}/confirm',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_CONFIRM_BOOKING_BODY,
+                          'options': {}},
+        'id': '790fed11-5054-4ccd-b9b6-4e93aee97754',
+        'name': 'Wix: Confirm Booking',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [2752, 5024],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_BOOKING_JS},
+        'id': 'b71a199b-e86f-469f-b376-cd67c99d0a7a',
+        'name': 'Format: Booking Confirmation',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [2976, 4976]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': "={{ { success: false, error: 'Validation failed: ' + $json._validationError "
+                                          '} }}',
+                          'options': {}},
+        'id': '2a76a541-a727-46b7-b88e-0380ae5e9bb5',
+        'name': 'Respond: Booking Validation Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1184, 5424]},
+    {   'parameters': {'jsCode': VALIDATE_CANCEL_JS},
+        'id': '99fa7bb6-678e-4254-8301-795772ecb937',
+        'name': 'Validate: Cancel Args',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [736, 5712]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json._valid }}', 'value2': True}]}},
+        'id': '487df482-1065-4b45-bcee-31709131a918',
+        'name': 'IF: Cancel Args Valid',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [960, 5712]},
+    {   'parameters': {   'method': 'POST',
+                          'url': '=https://www.wixapis.com/bookings/v2/bookings/{{ $json.args.bookingId }}/cancel',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_CANCEL_BOOKING_BODY,
+                          'options': {}},
+        'id': 'a6ba0920-fb42-4a22-97b0-7233be2a89db',
+        'name': 'Wix: Cancel Booking',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1184, 5616],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_CANCEL_JS},
+        'id': '18a56924-a194-438f-876c-b0df5307c8af',
+        'name': 'Format: Cancel Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1408, 5504]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': "={{ { success: false, error: 'Validation failed: ' + $json._validationError "
+                                          '} }}',
+                          'options': {}},
+        'id': 'd363c3ef-e65b-4fd6-bef5-3921454f4f42',
+        'name': 'Respond: Cancel Validation Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1184, 5808]},
+    {   'parameters': {'jsCode': VALIDATE_RESCHEDULE_JS},
+        'id': '27447d0a-5cba-48e7-af4f-959584ffbad1',
+        'name': 'Validate: Reschedule Args',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [736, 6096]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json._valid }}', 'value2': True}]}},
+        'id': '44d4e628-564a-4401-9104-9b93f00cbceb',
+        'name': 'IF: Reschedule Args Valid',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [960, 6096]},
+    {   'parameters': {   'method': 'POST',
+                          'url': '=https://www.wixapis.com/bookings/v2/bookings/{{ $json.args.bookingId }}/reschedule',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_RESCHEDULE_BOOKING_BODY,
+                          'options': {}},
+        'id': '3b4ad430-de13-493b-b833-9c82f99b6950',
+        'name': 'Wix: Reschedule Booking',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1184, 6000],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_RESCHEDULE_JS},
+        'id': '4c53f885-118b-49f1-81ec-722182df3fa1',
+        'name': 'Format: Reschedule Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1408, 5904]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': "={{ { success: false, error: 'Validation failed: ' + $json._validationError "
+                                          '} }}',
+                          'options': {}},
+        'id': '3f28cefa-b0b8-48ba-939d-6c1d44239ac3',
+        'name': 'Respond: Reschedule Validation Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1184, 6192]},
+    {   'parameters': {'jsCode': VALIDATE_GET_BOOKING_JS},
+        'id': 'edce2227-92f9-4d84-87c7-ac96fcd9f29a',
+        'name': 'Validate: Get Booking Args',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [736, 6864]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json._valid }}', 'value2': True}]}},
+        'id': '33db63b8-08b4-4d1a-9f00-6c904c5a8033',
+        'name': 'IF: Get Booking Args Valid',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [960, 6864]},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/bookings/v2/bookings/query',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_GET_BOOKING_BODY,
+                          'options': {}},
+        'id': '490a098d-ce3e-4fd2-bfe6-e0addd17e94e',
+        'name': 'Wix: Get Booking',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1184, 6768],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_GET_BOOKING_JS},
+        'id': '7ac1f25c-fa4f-4afd-b803-f578ffe1e4b5',
+        'name': 'Format: Get Booking Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1408, 6672]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': "={{ { success: false, error: 'Validation failed: ' + $json._validationError "
+                                          '} }}',
+                          'options': {}},
+        'id': '57bb8241-bcea-41ba-89ce-2d20af90d890',
+        'name': 'Respond: Get Booking Validation Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1184, 6960]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '={{ { success: false, error: \'Unknown tool: "\' + $json.tool + \'". Valid '
+                                          'tools are: get-services, get-slots, get-staff, book-appointment, '
+                                          "cancel-booking, reschedule-booking, get-booking' } }}",
+                          'options': {}},
+        'id': '3a4a697b-14c1-431a-9615-f43753dbeac3',
+        'name': 'Respond: Unknown Tool Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [736, 6288]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n  "success": false,\n  "error": "Error getting slots"\n}',
+                          'options': {}},
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [1408, 4848],
+        'id': '2a937dbb-25c5-4c5d-8e24-da89628866e9',
+        'name': 'Error: Get Slots'},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n  "success": false,\n  "error": "Error getting staff"\n}',
+                          'options': {}},
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [960, 5136],
+        'id': 'c07856aa-d435-412b-93e3-dd737394c23b',
+        'name': 'Error: Get Staff'},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n  "success": false,\n  "error": "Error booking service"\n}',
+                          'options': {}},
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [2976, 5328],
+        'id': 'ff6822d5-b9d9-4e0f-9d8d-0ac92fc6e438',
+        'name': 'Error: Create Booking'},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n  "success": false,\n  "error": "Error cancelling booking"\n}',
+                          'options': {}},
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [1408, 5712],
+        'id': '2fd21723-696d-4066-b996-ced2695584f5',
+        'name': 'Error: Cancel Booking'},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n  "success": false,\n  "error": "Error rescheduling booking"\n}',
+                          'options': {}},
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [1408, 6096],
+        'id': '70d7a2cf-93c3-4935-85a1-59e9cd3c0cea',
+        'name': 'Error: Rescheduling'},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n  "success": false,\n  "error": "Error getting booking"\n}',
+                          'options': {}},
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [1408, 6864],
+        'id': '88fe355f-448f-4fec-9463-e375cae3ffe0',
+        'name': 'Error: Getting Booking'},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': '92a48d76-8c33-4a30-9b95-919790e34690',
+        'name': 'Respond: Get Slots',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1632, 4464]},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': 'a9520b53-c86e-41d4-ac9a-f5eb687d6eff',
+        'name': 'Respond: Get Staff',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1184, 4944]},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': 'ce7fcba6-2aad-45dd-9cd7-40a6ffc5fc8b',
+        'name': 'Respond: Cancel Booking',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1632, 5504]},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': 'b420b431-959e-4c66-9200-c731c69e8fcd',
+        'name': 'Respond: Book Appointment',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [3200, 4976]},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': '05bcacb9-44d7-419c-b6a3-e621d64f76be',
+        'name': 'Respond: Reschedule Booking',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1632, 5904]},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': '4dafdc84-685f-402c-b6c0-5eaf6839e349',
+        'name': 'Respond: Get Booking',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1632, 6672]},
+    {   'parameters': {'jsCode': VALIDATE_FLAG_CALLBACK_JS},
+        'id': '2c141283-2106-40ed-bc3c-be9ab2b9343d',
+        'name': 'Validate: Flag Callback Args',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [736, 6480]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json._valid }}', 'value2': True}]}},
+        'id': '950e1daa-0800-4bd2-a6ba-bd5e3c32a48e',
+        'name': 'IF: Flag Callback Args Valid',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [960, 6480]},
+    {   'parameters': {   'fromEmail': FROM_EMAIL,
+                          'toEmail': CALLBACK_RECIPIENT,
+                          'subject': '={{ $json._emailSubject }}',
+                          'emailFormat': 'text',
+                          'text': '={{ $json._emailBody }}',
+                          'options': {'appendAttribution': False, 'replyTo': 'info@aiemply.com'}},
+        'id': '4052c464-3506-4078-8e30-98e86a166a5c',
+        'name': 'Send Email: Flag Callback',
+        'type': 'n8n-nodes-base.emailSend',
+        'typeVersion': 2.1,
+        'position': [1184, 6384],
+        'webhookId': '942f20a6-9eb5-4c9e-b5b4-033da4dc7f25',
+        'credentials': {'smtp': {'id': SMTP_CREDENTIAL_ID, 'name': SMTP_CREDENTIAL_NAME}},
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_FLAG_CALLBACK_RESPONSE_JS},
+        'id': 'da511f6c-ac89-455d-a5ab-5c48dfc97b0d',
+        'name': 'Format: Flag Callback Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1408, 6288]},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': 'fdc2e822-d689-41c9-bc90-1ef9c32c8b96',
+        'name': 'Respond: Flag Callback',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1632, 6288]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': "={{ { success: false, error: 'Validation failed: ' + $json._validationError "
+                                          '} }}',
+                          'options': {}},
+        'id': '2b1d4056-faba-4393-8c8a-1f140f574e55',
+        'name': 'Respond: Flag Callback Validation Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1184, 6576]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n'
+                                          '  "success": false,\n'
+                                          '  "error": "Failed to send callback notification email"\n'
+                                          '}',
+                          'options': {}},
+        'id': '8238f8c8-57a2-4f53-ab5e-db79afee2c37',
+        'name': 'Error: Flag Callback',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [1408, 6480]},
+    {   'parameters': {'jsCode': VALIDATE_GET_CONTACT_JS},
+        'id': '82e2b80f-55f7-408a-b296-16f81b08400c',
+        'name': 'Validate: Get Contact',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [736, 7232]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json._valid }}', 'value2': True}]}},
+        'id': 'e5b453f8-9bd1-4087-b040-fb8bc3c3abf3',
+        'name': 'IF: Contact Args Valid',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [960, 7232]},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/contacts/v4/contacts/query',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_SEARCH_CONTACT_BODY,
+                          'options': {}},
+        'id': 'e5215f99-d5ea-4014-9544-70456b6615d2',
+        'name': 'Wix: Search Contact',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1184, 7152],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_CONTACT_RESPONSE_JS},
+        'id': '37c17857-4462-4bd7-b4f1-fb11fc28450a',
+        'name': 'Format: Contact Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1408, 7056]},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': '91f08f82-16d8-4a74-a8f8-0678d7ae3fc5',
+        'name': 'Respond: Get Contact',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1632, 7056]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': "={{ { success: false, error: 'Validation failed: ' + $json._validationError "
+                                          '} }}',
+                          'options': {}},
+        'id': 'd56384bb-86a7-42e1-a18c-ae99634bed69',
+        'name': 'Respond: Contact Error',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [1408, 7328]},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/contacts/v4/contacts',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_CREATE_CONTACT_BODY,
+                          'options': {}},
+        'id': 'da6a04ba-870c-4a54-b8b5-8eb8a6d09c37',
+        'name': 'Wix: Create Contact',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1856, 5312],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_CREATE_CONTACT_JS},
+        'id': 'ed3b5e00-0d91-449b-9c5a-b36817707a3a',
+        'name': 'Format: Create Contact',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [2080, 5232]},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/contacts/v4/contacts/query',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_SEARCH_CONTACT_1_BODY,
+                          'options': {}},
+        'id': 'd39cd711-35f2-4a0a-9512-e25c453ec74c',
+        'name': 'Wix: Search Contact1',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1184, 5232],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': FORMAT_CONTACT_RESPONSE_1_JS},
+        'id': '8f721862-b202-4b2b-bc9c-de102ed636d6',
+        'name': 'Format: Contact Response1',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1408, 5040]},
+    {   'parameters': {   'conditions': {   'options': {   'caseSensitive': True,
+                                                           'leftValue': '',
+                                                           'typeValidation': 'strict',
+                                                           'version': 3},
+                                            'conditions': [   {   'id': '6f49af7b-0308-4dad-90b9-d80823256087',
+                                                                  'leftValue': '={{ $json.found }}',
+                                                                  'rightValue': True,
+                                                                  'operator': {   'type': 'boolean',
+                                                                                  'operation': 'equals'}}],
+                                            'combinator': 'and'},
+                          'options': {}},
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 2.3,
+        'position': [1632, 5040],
+        'id': '5adaf0f6-057b-41ff-bd1a-1a89f680cd65',
+        'name': 'If: Contact Found'},
+    {   'parameters': {   'method': 'POST',
+                          'url': 'https://www.wixapis.com/bookings/v2/services/query',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'sendBody': True,
+                          'specifyBody': 'json',
+                          'jsonBody': WIX_QUERY_SERVICES_BODY,
+                          'options': {}},
+        'id': '3ccf9c7e-2def-4adf-8bd9-fa87015f1a6b',
+        'name': 'Wix: Query Services',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [736, 4112],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': EXTRACT_PRICING_IDS_JS},
+        'id': '3c65717b-f1f1-4900-b90e-7e9fb2b2323d',
+        'name': 'Extract Pricing IDs',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [960, 4016]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json.hasVaried }}', 'value2': True}]}},
+        'id': '6c581580-5ea9-49c9-81fb-17dea298e5a2',
+        'name': 'IF: Has Varied',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [1184, 4016]},
+    {   'parameters': {   'url': '=https://www.wixapis.com/bookings/v1/serviceOptionsAndVariants/service_id/{{ '
+                                 '$json.serviceId }}',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'options': {}},
+        'id': '14b40d9f-4584-4878-b73c-02cb4d62da40',
+        'name': 'Wix: Get Pricing Variants',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.1,
+        'position': [1408, 3936],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True,
+        'onError': 'continueErrorOutput'},
+    {   'parameters': {'jsCode': EXTRACT_ADD_ON_IDS_JS},
+        'id': 'ec2344b4-48f6-4d09-a6eb-6269e08e52d6',
+        'name': 'Extract Add-on IDs',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [1632, 4016]},
+    {   'parameters': {'conditions': {'boolean': [{'value1': '={{ $json.hasAddOns }}', 'value2': True}]}},
+        'id': '20726950-5780-4eaf-b1e1-37b9c88b7e3c',
+        'name': 'IF: Has Add-ons',
+        'type': 'n8n-nodes-base.if',
+        'typeVersion': 1,
+        'position': [1856, 4016]},
+    {   'parameters': {   'url': '=https://manage.wix.com/_api/add-ons-service/v1/add-ons/{{ $json.addOnId }}',
+                          'authentication': 'predefinedCredentialType',
+                          'nodeCredentialType': 'wixApi',
+                          'options': {}},
+        'id': '67139663-d54b-4f14-8894-d3cf48b581d4',
+        'name': 'Wix: Get Add-ons',
+        'type': 'n8n-nodes-base.httpRequest',
+        'typeVersion': 4.4,
+        'position': [2080, 3936],
+        'credentials': {'wixApi': {'id': WIX_CREDENTIAL_ID, 'name': WIX_CREDENTIAL_NAME}},
+        'continueOnFail': True},
+    {   'parameters': {'jsCode': FORMAT_SERVICES_RESPONSE_JS},
+        'id': 'a09d7308-f609-4506-bb8a-c5aa6f17d549',
+        'name': 'Format: Services Response',
+        'type': 'n8n-nodes-base.code',
+        'typeVersion': 2,
+        'position': [2304, 4016]},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '{\n  "success": false,\n  "error": "Error getting services"\n}',
+                          'options': {}},
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1.5,
+        'position': [1632, 4208],
+        'id': 'd13422bc-1323-427e-87fe-b968491b37f1',
+        'name': 'Error: Get Services'},
+    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+        'id': '2f163724-97c9-4651-b00c-583aa273c9ac',
+        'name': 'Respond: Get Services',
+        'type': 'n8n-nodes-base.respondToWebhook',
+        'typeVersion': 1,
+        'position': [2528, 4016]},
+    {   'parameters': {   'rules': {   'values': [   {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-get-services',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'get-services',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Get Services'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-get-slots',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'get-slots',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Get Slots'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-get-staff',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'get-staff',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Get Staff'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-book-appointment',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'book-appointment',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Book Appointment'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-cancel-booking',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'cancel-booking',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Cancel Booking'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-reschedule-booking',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'reschedule-booking',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Reschedule Booking'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-get-booking',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'get-booking',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Get Booking'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': 'rule-flag-callback',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'flag-callback',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Flag Callback'},
+                                                     {   'conditions': {   'options': {   'caseSensitive': True,
+                                                                                          'leftValue': '',
+                                                                                          'typeValidation': 'strict',
+                                                                                          'version': 3},
+                                                                           'conditions': [   {   'id': '0138ed3c-4efc-4ce4-a7a9-cef8e1fc01de',
+                                                                                                 'leftValue': '={{ '
+                                                                                                              '$json.tool '
+                                                                                                              '}}',
+                                                                                                 'rightValue': 'get-contact',
+                                                                                                 'operator': {   'type': 'string',
+                                                                                                                 'operation': 'equals',
+                                                                                                                 'name': 'filter.operator.equals'}}],
+                                                                           'combinator': 'and'},
+                                                         'renameOutput': True,
+                                                         'outputKey': 'Get Contact'}]},
+                          'options': {'fallbackOutput': 'extra', 'renameFallbackOutput': 'Fallback'}},
+        'id': '8bbdac8e-7499-413d-8fbd-35b2a4887336',
+        'name': 'Route by Tool',
+        'type': 'n8n-nodes-base.switch',
+        'typeVersion': 3.4,
+        'position': [512, 5776]}]
+
+
+# -----------------------------------------------------------------------------
+# Connections (full canonical wiring)
+# -----------------------------------------------------------------------------
+
+CONNECTIONS = {   'Webhook — Retell Tool Call': {'main': [[{'node': 'Parse Retell Payload', 'type': 'main', 'index': 0}]]},
+    'Parse Retell Payload': {'main': [[{'node': 'Route by Tool', 'type': 'main', 'index': 0}]]},
+    'Validate: Slots Args': {'main': [[{'node': 'IF: Slots Args Valid', 'type': 'main', 'index': 0}]]},
+    'IF: Slots Args Valid': {   'main': [   [{'node': 'Wix: Query Time Slots', 'type': 'main', 'index': 0}],
+                                            [{'node': 'Respond: Slots Validation Error', 'type': 'main', 'index': 0}]]},
+    'Wix: Query Time Slots': {   'main': [   [{'node': 'Format: Time Slots Response', 'type': 'main', 'index': 0}],
+                                             [{'node': 'Error: Get Slots', 'type': 'main', 'index': 0}]]},
+    'Format: Time Slots Response': {'main': [[{'node': 'Respond: Get Slots', 'type': 'main', 'index': 0}]]},
+    'Wix: Query Staff Members': {   'main': [   [{'node': 'Format: Staff Response', 'type': 'main', 'index': 0}],
+                                                [{'node': 'Error: Get Staff', 'type': 'main', 'index': 0}]]},
+    'Format: Staff Response': {'main': [[{'node': 'Respond: Get Staff', 'type': 'main', 'index': 0}]]},
+    'Validate: Booking Args': {'main': [[{'node': 'IF: Booking Args Valid', 'type': 'main', 'index': 0}]]},
+    'IF: Booking Args Valid': {   'main': [   [{'node': 'Wix: Search Contact1', 'type': 'main', 'index': 0}],
+                                              [   {   'node': 'Respond: Booking Validation Error',
+                                                      'type': 'main',
+                                                      'index': 0}]]},
+    'Wix: Create Booking': {   'main': [   [{'node': 'IF: Booking Created OK', 'type': 'main', 'index': 0}],
+                                           [{'node': 'Error: Create Booking', 'type': 'main', 'index': 0}]]},
+    'IF: Booking Created OK': {   'main': [   [{'node': 'Wix: Confirm Booking', 'type': 'main', 'index': 0}],
+                                              [{'node': 'Error: Create Booking', 'type': 'main', 'index': 0}]]},
+    'Wix: Confirm Booking': {   'main': [   [{'node': 'Format: Booking Confirmation', 'type': 'main', 'index': 0}],
+                                            [{'node': 'Error: Create Booking', 'type': 'main', 'index': 0}]]},
+    'Format: Booking Confirmation': {'main': [[{'node': 'Respond: Book Appointment', 'type': 'main', 'index': 0}]]},
+    'Validate: Cancel Args': {'main': [[{'node': 'IF: Cancel Args Valid', 'type': 'main', 'index': 0}]]},
+    'IF: Cancel Args Valid': {   'main': [   [{'node': 'Wix: Cancel Booking', 'type': 'main', 'index': 0}],
+                                             [   {   'node': 'Respond: Cancel Validation Error',
+                                                     'type': 'main',
+                                                     'index': 0}]]},
+    'Wix: Cancel Booking': {   'main': [   [{'node': 'Format: Cancel Response', 'type': 'main', 'index': 0}],
+                                           [{'node': 'Error: Cancel Booking', 'type': 'main', 'index': 0}]]},
+    'Format: Cancel Response': {'main': [[{'node': 'Respond: Cancel Booking', 'type': 'main', 'index': 0}]]},
+    'Validate: Reschedule Args': {'main': [[{'node': 'IF: Reschedule Args Valid', 'type': 'main', 'index': 0}]]},
+    'IF: Reschedule Args Valid': {   'main': [   [{'node': 'Wix: Reschedule Booking', 'type': 'main', 'index': 0}],
+                                                 [   {   'node': 'Respond: Reschedule Validation Error',
+                                                         'type': 'main',
+                                                         'index': 0}]]},
+    'Wix: Reschedule Booking': {   'main': [   [{'node': 'Format: Reschedule Response', 'type': 'main', 'index': 0}],
+                                               [{'node': 'Error: Rescheduling', 'type': 'main', 'index': 0}]]},
+    'Format: Reschedule Response': {'main': [[{'node': 'Respond: Reschedule Booking', 'type': 'main', 'index': 0}]]},
+    'Validate: Get Booking Args': {'main': [[{'node': 'IF: Get Booking Args Valid', 'type': 'main', 'index': 0}]]},
+    'IF: Get Booking Args Valid': {   'main': [   [{'node': 'Wix: Get Booking', 'type': 'main', 'index': 0}],
+                                                  [   {   'node': 'Respond: Get Booking Validation Error',
+                                                          'type': 'main',
+                                                          'index': 0}]]},
+    'Wix: Get Booking': {   'main': [   [{'node': 'Format: Get Booking Response', 'type': 'main', 'index': 0}],
+                                        [{'node': 'Error: Getting Booking', 'type': 'main', 'index': 0}]]},
+    'Format: Get Booking Response': {'main': [[{'node': 'Respond: Get Booking', 'type': 'main', 'index': 0}]]},
+    'Validate: Flag Callback Args': {'main': [[{'node': 'IF: Flag Callback Args Valid', 'type': 'main', 'index': 0}]]},
+    'IF: Flag Callback Args Valid': {   'main': [   [{'node': 'Send Email: Flag Callback', 'type': 'main', 'index': 0}],
+                                                    [   {   'node': 'Respond: Flag Callback Validation Error',
+                                                            'type': 'main',
+                                                            'index': 0}]]},
+    'Send Email: Flag Callback': {   'main': [   [   {   'node': 'Format: Flag Callback Response',
+                                                         'type': 'main',
+                                                         'index': 0}],
+                                                 [{'node': 'Error: Flag Callback', 'type': 'main', 'index': 0}]]},
+    'Format: Flag Callback Response': {'main': [[{'node': 'Respond: Flag Callback', 'type': 'main', 'index': 0}]]},
+    'Validate: Get Contact': {'main': [[{'node': 'IF: Contact Args Valid', 'type': 'main', 'index': 0}]]},
+    'IF: Contact Args Valid': {   'main': [   [{'node': 'Wix: Search Contact', 'type': 'main', 'index': 0}],
+                                              [{'node': 'Respond: Contact Error', 'type': 'main', 'index': 0}]]},
+    'Wix: Search Contact': {   'main': [   [{'node': 'Format: Contact Response', 'type': 'main', 'index': 0}],
+                                           [{'node': 'Respond: Contact Error', 'type': 'main', 'index': 0}]]},
+    'Format: Contact Response': {'main': [[{'node': 'Respond: Get Contact', 'type': 'main', 'index': 0}]]},
+    'Wix: Create Contact': {   'main': [   [{'node': 'Format: Create Contact', 'type': 'main', 'index': 0}],
+                                           [{'node': 'Error: Create Booking', 'type': 'main', 'index': 0}]]},
+    'Format: Create Contact': {'main': [[{'node': 'Wix: Create Booking', 'type': 'main', 'index': 0}]]},
+    'Wix: Search Contact1': {   'main': [   [{'node': 'Format: Contact Response1', 'type': 'main', 'index': 0}],
+                                            [{'node': 'Wix: Create Contact', 'type': 'main', 'index': 0}]]},
+    'Format: Contact Response1': {'main': [[{'node': 'If: Contact Found', 'type': 'main', 'index': 0}]]},
+    'If: Contact Found': {   'main': [   [{'node': 'Wix: Create Booking', 'type': 'main', 'index': 0}],
+                                         [{'node': 'Wix: Create Contact', 'type': 'main', 'index': 0}]]},
+    'Wix: Query Services': {   'main': [   [{'node': 'Extract Pricing IDs', 'type': 'main', 'index': 0}],
+                                           [{'node': 'Error: Get Services', 'type': 'main', 'index': 0}]]},
+    'Extract Pricing IDs': {'main': [[{'node': 'IF: Has Varied', 'type': 'main', 'index': 0}]]},
+    'IF: Has Varied': {   'main': [   [{'node': 'Wix: Get Pricing Variants', 'type': 'main', 'index': 0}],
+                                      [{'node': 'Extract Add-on IDs', 'type': 'main', 'index': 0}]]},
+    'Wix: Get Pricing Variants': {   'main': [   [{'node': 'Extract Add-on IDs', 'type': 'main', 'index': 0}],
+                                                 [{'node': 'Error: Get Services', 'type': 'main', 'index': 0}]]},
+    'Extract Add-on IDs': {'main': [[{'node': 'IF: Has Add-ons', 'type': 'main', 'index': 0}]]},
+    'IF: Has Add-ons': {   'main': [   [{'node': 'Wix: Get Add-ons', 'type': 'main', 'index': 0}],
+                                       [{'node': 'Format: Services Response', 'type': 'main', 'index': 0}]]},
+    'Wix: Get Add-ons': {'main': [[{'node': 'Format: Services Response', 'type': 'main', 'index': 0}]]},
+    'Format: Services Response': {'main': [[{'node': 'Respond: Get Services', 'type': 'main', 'index': 0}]]},
+    'Route by Tool': {   'main': [   [{'node': 'Wix: Query Services', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Validate: Slots Args', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Wix: Query Staff Members', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Validate: Booking Args', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Validate: Cancel Args', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Validate: Reschedule Args', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Validate: Get Booking Args', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Validate: Flag Callback Args', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Validate: Get Contact', 'type': 'main', 'index': 0}],
+                                     [{'node': 'Respond: Unknown Tool Error', 'type': 'main', 'index': 0}]]}}
+
+
+# -----------------------------------------------------------------------------
+# Meta + pinData
+# -----------------------------------------------------------------------------
+
+META = {'instanceId': 'ac196cde23a3d6ef70e5e219252c1746cd31eed638b30f72c27ae62726c49a9f'}
+
+PIN_DATA = {}
+
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+
+def main():
+    wf = {
+        "nodes": NODES,
+        "connections": CONNECTIONS,
+        "pinData": PIN_DATA,
+        "meta": META,
+    }
+    WF_PATH.write_text(
+        json.dumps(wf, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(f"Wrote {WF_PATH}")
+    print(f"  Nodes: {len(NODES)}")
+    route_rules = next(
+        (n['parameters']['rules']['values']
+         for n in NODES if n.get('name') == 'Route by Tool'),
+        [],
+    )
+    print(f"  Switch rules: {len(route_rules)}")
+    print(f"  Flag-callback recipient: {CALLBACK_RECIPIENT}")
+
+
+if __name__ == "__main__":
+    main()

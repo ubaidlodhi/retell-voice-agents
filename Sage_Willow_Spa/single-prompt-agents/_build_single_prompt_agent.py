@@ -141,7 +141,7 @@ CUSTOM_TOOLS = [
             "type": "object",
             "properties": {
                 "serviceId":  {"type": "string"},
-                "variantId":  {"type": "string", "description": "pricingVariants[].id from get_services for the chosen duration."},
+                "variantId":  {"type": "string", "description": "pricingVariants[].id from get_services for the chosen duration. Only include when the service has a pricingVariants array. Omit entirely for services with no pricingVariants — those expose a flat top-level price field instead (e.g. 30-Minute Focus)."},
                 "staffId":    {"type": "string", "description": "Optional. Pass for specific therapist; omit for 'no preference'."},
                 "scheduleId": {"type": "string"},
                 "startDate":  {"type": "string", "description": "ISO local start."},
@@ -163,7 +163,7 @@ CUSTOM_TOOLS = [
                     "description": "Optional. Each entry requires id + groupId only.",
                 },
             },
-            "required": ["serviceId", "variantId", "scheduleId", "startDate",
+            "required": ["serviceId", "scheduleId", "startDate",
                          "endDate", "firstName", "lastName", "email", "phone"],
         },
         response_variables={
@@ -343,7 +343,7 @@ GENERAL_PROMPT = PROMPT_PATH.read_text(encoding="utf-8")
 AGENT = {
     "agent_id": "",
     "channel": "voice",
-    "agent_name": "Aria — Sage & Willow Spa — Single Prompt V1",
+    "agent_name": "Aria — Sage & Willow Spa — Single Prompt V3",
     "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU"],
     # Mirror conversation-flow agent voice + perf settings so it sounds the same.
     "voice_id": "custom_voice_573dab78e535ca398ccb542f7e",
@@ -352,7 +352,7 @@ AGENT = {
     "max_call_duration_ms": 1800000,
     "interruption_sensitivity": 0.9,
     "responsiveness": 1,
-    "begin_message_delay_ms": 800,
+    "begin_message_delay_ms": 400,
     "ring_duration_ms": 30000,
     "normalize_for_speech": True,
     "stt_mode": "accurate",
@@ -361,14 +361,14 @@ AGENT = {
     "post_call_analysis_model": "gpt-4.1-mini",
     "is_published": False,
     "handbook_config": {
-        "echo_verification": False,
+        "echo_verification": True,
         "speech_normalization": True,
-        "default_personality": False,
+        "default_personality": True,
         "scope_boundaries": True,
         "natural_filler_words": True,
         "nato_phonetic_alphabet": True,
         "high_empathy": True,
-        "ai_disclosure": False,
+        "ai_disclosure": True,
         "smart_matching": True,
     },
     "post_call_analysis_data": POST_CALL_ANALYSIS,

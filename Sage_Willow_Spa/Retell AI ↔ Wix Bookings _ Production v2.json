@@ -162,7 +162,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// Trim incoming string args — Retell sometimes passes stray whitespace/newlines\n// which break Wix's strict-equality filters on email/phone fields.\nfunction trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }\n['firstName','lastName','email','phone','serviceId','variantId','scheduleId','staffId','startDate','endDate']\n  .forEach(k => { if (args[k] !== undefined) args[k] = trim(args[k]); });\n\n// 1. Slot Context (staffId is optional — caller may have said \"no preference\")\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.email) errors.push('email is required');\nif (!args.phone) errors.push('phone is required');\nif (!args.variantId) errors.push('variantId is required for this service');\n\n// Date format checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\n// addOns: array of { id, groupId } — both required per entry\nif (args.addOns) {\n    if (!Array.isArray(args.addOns)) {\n        errors.push('addOns must be an array of {id, groupId} objects');\n    } else {\n        args.addOns.forEach((a, i) => {\n            if (!a || typeof a !== 'object') errors.push(`addOns[${i}] must be an object`);\n            else {\n                if (!a.id) errors.push(`addOns[${i}].id is required`);\n                if (!a.groupId) errors.push(`addOns[${i}].groupId is required`);\n            }\n        });\n    }\n}\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Slot Context (staffId is optional — caller may have said \"no preference\")\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.email) errors.push('email is required');\nif (!args.phone) errors.push('phone is required');\n\n// Date format checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\n// addOns: array of { id, groupId } — both required per entry\nif (args.addOns) {\n    if (!Array.isArray(args.addOns)) {\n        errors.push('addOns must be an array of {id, groupId} objects');\n    } else {\n        args.addOns.forEach((a, i) => {\n            if (!a || typeof a !== 'object') errors.push(`addOns[${i}] must be an object`);\n            else {\n                if (!a.id) errors.push(`addOns[${i}].id is required`);\n                if (!a.groupId) errors.push(`addOns[${i}].groupId is required`);\n            }\n        });\n    }\n}\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
       },
       "id": "41516601-6d7a-421b-ad7b-544249a9b9aa",
       "name": "Validate: Booking Args",
@@ -201,7 +201,7 @@
         "nodeCredentialType": "wixApi",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      \"variantId\": \"{{ $('IF: Booking Args Valid').item.json.args.variantId }}\",\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n        \"timezone\": \"America/Los_Angeles\",\n        \"location\": {\n          \"locationType\": \"OWNER_BUSINESS\",\n          \"id\": \"a345d3c7-2a89-4816-ad3a-277ea40730a7\"\n        }\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n      }\n    },\n    \"contactDetails\": {\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      \"email\": \"{{ $('IF: Booking Args Valid').item.json.args.email }}\",\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1\n    {{ $('IF: Booking Args Valid').item.json.args.notes ? ',\"additionalFields\": { \"fields\": [{ \"fieldId\": \"field:note\", \"value\": { \"stringValue\": \"' + $('IF: Booking Args Valid').item.json.args.notes + '\" } }] }' : '' }}\n    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
+        "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      {{ $('IF: Booking Args Valid').item.json.args.variantId ? '\"variantId\": \"' + $('IF: Booking Args Valid').item.json.args.variantId + '\",' : '' }}\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n        \"timezone\": \"America/Los_Angeles\",\n        \"location\": {\n          \"locationType\": \"OWNER_BUSINESS\",\n          \"id\": \"a345d3c7-2a89-4816-ad3a-277ea40730a7\"\n        }\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n      }\n    },\n    \"contactDetails\": {\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      \"email\": \"{{ $('IF: Booking Args Valid').item.json.args.email || 'sagewillowspa@gmail.com' }}\",\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1\n    {{ $('IF: Booking Args Valid').item.json.args.notes ? ',\"additionalFields\": { \"fields\": [{ \"fieldId\": \"field:note\", \"value\": { \"stringValue\": \"' + $('IF: Booking Args Valid').item.json.args.notes + '\" } }] }' : '' }}\n    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
         "options": {}
       },
       "id": "55d5dc78-c645-4b60-b51b-f93518edae3a",
@@ -299,7 +299,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// Trim — Retell occasionally passes stray whitespace.\nfunction trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }\nargs.bookingId = trim(args.bookingId);\nargs.revision  = trim(args.revision);\n\nif (!args.bookingId) errors.push('bookingId is required');\n// Wix V2 cancel requires revision — without it the API returns 400.\nif (!args.revision) errors.push('revision is required (from get_booking)');\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\nif (!args.bookingId) errors.push('bookingId is required');\n\nreturn [{ json: { ...$input.first().json, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"
       },
       "id": "99fa7bb6-678e-4254-8301-795772ecb937",
       "name": "Validate: Cancel Args",
@@ -477,7 +477,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\n// Trim incoming strings — Retell occasionally passes values with stray\n// newlines/whitespace which break Wix's strict-equality filters.\nfunction trim(v) { return (v === undefined || v === null) ? v : String(v).trim(); }\nargs.email     = trim(args.email);\nargs.phone     = trim(args.phone);\nargs.bookingId = trim(args.bookingId);\n\n// Resolve inputs\nconst phoneToSearch = args.phone || callerPhone || null;\nconst emailToSearch = args.email || null;\nconst bookingId = args.bookingId || null;\n\n// Determine lookup mode (Email is now Priority #1)\nlet lookupMode = '';\nif (emailToSearch) lookupMode = 'by-email';\nelse if (bookingId) lookupMode = 'by-id';\nelse if (phoneToSearch) lookupMode = 'by-phone';\nelse errors.push('Either bookingId, email, or phone number is required');\n\nreturn [{ json: {\n  ...$input.first().json,\n  args: { ...args, _resolvedPhone: phoneToSearch, _resolvedEmail: emailToSearch, _resolvedBookingId: bookingId },\n  _valid: errors.length === 0,\n  _validationError: errors.join('; '),\n  _lookupMode: lookupMode\n} }];\n"
+        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\n// Resolve inputs\nconst phoneToSearch = args.phone || callerPhone || null;\nconst emailToSearch = args.email || null;\nconst bookingId = args.bookingId || null;\n\n// Determine lookup mode (Email is now Priority #1)\nlet lookupMode = '';\nif (emailToSearch) lookupMode = 'by-email';\nelse if (bookingId) lookupMode = 'by-id';\nelse if (phoneToSearch) lookupMode = 'by-phone';\nelse errors.push('Either bookingId, email, or phone number is required');\n\nreturn [{ json: {\n  ...$input.first().json,\n  args: { ...args, _resolvedPhone: phoneToSearch, _resolvedEmail: emailToSearch, _resolvedBookingId: bookingId },\n  _valid: errors.length === 0,\n  _validationError: errors.join('; '),\n  _lookupMode: lookupMode\n} }];\n"
       },
       "id": "edce2227-92f9-4d84-87c7-ac96fcd9f29a",
       "name": "Validate: Get Booking Args",
@@ -763,13 +763,13 @@
       "parameters": {
         "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\nconst reason = (args.reason || '').toString().trim();\nif (!reason) errors.push('reason is required');\n\nconst callerName = (args.callerName || '').toString().trim() || 'Unknown';\nconst phoneToContact = (args.callerPhone || '').toString().trim() || callerPhone || 'Unknown';\nconst questionDetail = (args.questionDetail || '').toString().trim();\n\nconst subject = `New callback request from ${callerName} (${phoneToContact})`;\n\nconst lines = [\n    `A caller asked Aria for a callback. Please follow up.`,\n    ``,\n    `Caller name: ${callerName}`,\n    `Phone:       ${phoneToContact}`,\n    `Reason:      ${reason}`,\n];\nif (questionDetail) {\n    lines.push(``);\n    lines.push(`Question / detail:`);\n    lines.push(questionDetail);\n}\nlines.push(``);\nlines.push(`— Sent automatically by the Sage & Willow Spa AI receptionist`);\n\nconst body = lines.join('\\n');\n\nreturn [{ json: {\n    ...$input.first().json,\n    args,\n    _valid: errors.length === 0,\n    _validationError: errors.join('; '),\n    _emailSubject: subject,\n    _emailBody: body,\n    _callerName: callerName,\n    _callerPhone: phoneToContact,\n    _reason: reason\n} }];\n"
       },
-      "id": "node-validate-flag-callback",
+      "id": "2c141283-2106-40ed-bc3c-be9ab2b9343d",
       "name": "Validate: Flag Callback Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -800,
-        3000
+        736,
+        6480
       ]
     },
     {
@@ -783,35 +783,36 @@
           ]
         }
       },
-      "id": "node-if-flag-callback-valid",
+      "id": "950e1daa-0800-4bd2-a6ba-bd5e3c32a48e",
       "name": "IF: Flag Callback Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -576,
-        3000
+        960,
+        6480
       ]
     },
     {
       "parameters": {
-        "fromEmail": "Aria <contact@aiemply.com>",
-        "toEmail": "engineering@aiemply.com",
+        "fromEmail": "Aria <engineering@aiemply.com>",
+        "toEmail": "sagewillowspa@gmail.com",
         "subject": "={{ $json._emailSubject }}",
         "emailFormat": "text",
         "text": "={{ $json._emailBody }}",
         "options": {
           "appendAttribution": false,
-          "replyTo": "contact@aiemply.com"
+          "replyTo": "info@aiemply.com"
         }
       },
-      "id": "node-send-flag-callback-email",
+      "id": "4052c464-3506-4078-8e30-98e86a166a5c",
       "name": "Send Email: Flag Callback",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        -352,
-        2960
+        1184,
+        6384
       ],
+      "webhookId": "942f20a6-9eb5-4c9e-b5b4-033da4dc7f25",
       "credentials": {
         "smtp": {
           "id": "m0mbibKf6il36id5",
@@ -824,13 +825,13 @@
       "parameters": {
         "jsCode": "const v = $('Validate: Flag Callback Args').first().json;\nreturn [{ json: {\n    success: true,\n    flagged: true,\n    message: 'Callback request sent to the team — they will follow up with the caller.',\n    callerName: v._callerName,\n    callerPhone: v._callerPhone,\n    reason: v._reason\n} }];\n"
       },
-      "id": "node-format-flag-callback-response",
+      "id": "da511f6c-ac89-455d-a5ab-5c48dfc97b0d",
       "name": "Format: Flag Callback Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -128,
-        2960
+        1408,
+        6288
       ]
     },
     {
@@ -839,13 +840,13 @@
         "responseBody": "={{ $json }}",
         "options": {}
       },
-      "id": "node-respond-flag-callback",
+      "id": "fdc2e822-d689-41c9-bc90-1ef9c32c8b96",
       "name": "Respond: Flag Callback",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        96,
-        2960
+        1632,
+        6288
       ]
     },
     {
@@ -854,13 +855,13 @@
         "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
         "options": {}
       },
-      "id": "node-respond-flag-callback-validation-error",
+      "id": "2b1d4056-faba-4393-8c8a-1f140f574e55",
       "name": "Respond: Flag Callback Validation Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        -352,
-        3140
+        1184,
+        6576
       ]
     },
     {
@@ -869,13 +870,13 @@
         "responseBody": "{\n  \"success\": false,\n  \"error\": \"Failed to send callback notification email\"\n}",
         "options": {}
       },
-      "id": "node-error-flag-callback",
+      "id": "8238f8c8-57a2-4f53-ab5e-db79afee2c37",
       "name": "Error: Flag Callback",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        -128,
-        3120
+        1408,
+        6480
       ]
     },
     {
@@ -1525,32 +1526,6 @@
         512,
         5776
       ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.wixapis.com/bookings/v2/resources/resource-types/query",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{\n  \"query\": {\n    \"cursorPaging\": {\n      \"limit\": 100\n    }\n  }\n}",
-        "options": {}
-      },
-      "id": "node-wix-query-resource-types",
-      "name": "Wix: Query Resource Types",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        -1008,
-        800
-      ],
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      }
     }
   ],
   "connections": {
@@ -2302,7 +2277,9 @@
             "node": "Validate: Get Contact",
             "type": "main",
             "index": 0
-          },
+          }
+        ],
+        [
           {
             "node": "Respond: Unknown Tool Error",
             "type": "main",
@@ -2312,602 +2289,7 @@
       ]
     }
   },
-  "pinData": {
-    "Webhook — Retell Tool Call": [
-      {
-        "headers": {
-          "host": "automation.aiemply.com",
-          "x-real-ip": "100.20.5.228",
-          "connection": "upgrade",
-          "x-forwarded-for": "100.20.5.228",
-          "x-forwarded-proto": "https",
-          "content-length": "202",
-          "accept": "application/json, text/plain, */*",
-          "content-type": "application/json",
-          "x-retell-signature": "v=1778715480214,d=4bfc594f6a37ac87eaa6bd098f272278aea916686641e853fdf3b6fed5319f99",
-          "tool": "get-slots",
-          "user-agent": "axios/1.15.2",
-          "accept-encoding": "gzip, compress, deflate, br",
-          "sentry-trace": "bf34c11353a042d79da4e5e31c4e7875-baaf21426dcab8ae",
-          "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=bf34c11353a042d79da4e5e31c4e7875,sentry-org_id=4511141371183104"
-        },
-        "params": {},
-        "query": {},
-        "body": {
-          "endDate": "2026-05-15",
-          "limit": 6,
-          "earliestFirst": null,
-          "serviceId": "de1ee05d-1e67-47e1-b6ac-54e6ebdfcb73",
-          "startDate": "2026-05-15",
-          "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-          "timeOfDay": "morning"
-        },
-        "webhookUrl": "https://automation.aiemply.com/webhook/retell-wix",
-        "executionMode": "production"
-      }
-    ],
-    "Parse Retell Payload": [
-      {
-        "tool": "get-slots",
-        "args": {
-          "endDate": "2026-05-15",
-          "limit": 6,
-          "earliestFirst": null,
-          "serviceId": "de1ee05d-1e67-47e1-b6ac-54e6ebdfcb73",
-          "startDate": "2026-05-15",
-          "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-          "timeOfDay": "morning"
-        }
-      }
-    ],
-    "Validate: Slots Args": [
-      {
-        "tool": "get-slots",
-        "args": {
-          "endDate": "2026-05-15T23:59:59.000",
-          "limit": 6,
-          "earliestFirst": false,
-          "serviceId": "de1ee05d-1e67-47e1-b6ac-54e6ebdfcb73",
-          "startDate": "2026-05-15T00:00:00.000",
-          "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-          "timeOfDay": "morning"
-        },
-        "_valid": true,
-        "_validationError": ""
-      }
-    ],
-    "Wix: Query Staff Members": [
-      {
-        "staffMembers": [
-          {
-            "id": "c3e20114-bc68-46d7-af19-b297c221ba53",
-            "name": "Wahaj Niggah",
-            "email": "wahajkhan108@gmail.com",
-            "resourceId": "f159185f-2f73-420c-b04a-65b1e9aae701",
-            "associatedWixIdentity": {
-              "identificationData": {
-                "contactId": "4c931d1f-4054-4a01-be86-66b51ddfd537",
-                "identityType": "WIX_USER",
-                "wixUserId": "bfebeb7e-368c-40ee-9a62-909700e06cf2"
-              },
-              "connectionStatus": "UNKNOWN"
-            },
-            "default": true,
-            "revision": "6",
-            "createdDate": "2026-05-01T17:24:26.222Z",
-            "updatedDate": "2026-05-01T19:50:33.482Z",
-            "gender": "UNKNOWN_GENDER"
-          },
-          {
-            "id": "fefe2e5b-4eed-4bcf-a41e-485646da13b4",
-            "name": "Ubaid Niggahh",
-            "email": "ubaidlodhi2667@gmail.com",
-            "resourceId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-            "associatedWixIdentity": {
-              "identificationData": {
-                "contactId": "fdabe871-eaf8-4883-ab71-68791956f930",
-                "identityType": "WIX_USER",
-                "wixUserId": "d754ecf5-bfe4-4724-85cf-3a1b253429c6"
-              },
-              "connectionStatus": "UNKNOWN"
-            },
-            "default": false,
-            "revision": "3",
-            "createdDate": "2026-05-01T21:52:45.394Z",
-            "updatedDate": "2026-05-01T22:01:54.212Z",
-            "gender": "UNKNOWN_GENDER"
-          }
-        ],
-        "pagingMetadata": {
-          "count": 2,
-          "cursors": {},
-          "hasNext": false
-        }
-      }
-    ],
-    "Format: Staff Response": [
-      {
-        "success": true,
-        "count": 2,
-        "staff": [
-          {
-            "id": "c3e20114-bc68-46d7-af19-b297c221ba53",
-            "resourceId": "f159185f-2f73-420c-b04a-65b1e9aae701",
-            "name": "Wahaj Niggah",
-            "email": "wahajkhan108@gmail.com"
-          },
-          {
-            "id": "fefe2e5b-4eed-4bcf-a41e-485646da13b4",
-            "resourceId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-            "name": "Ubaid Niggahh",
-            "email": "ubaidlodhi2667@gmail.com"
-          }
-        ]
-      }
-    ],
-    "Wix: Cancel Booking": [
-      {
-        "booking": {
-          "id": "5a9082e7-6b2c-4f3e-b734-371353281ded",
-          "bookedEntity": {
-            "slot": {
-              "sessionId": "2mmoW0vwKcSFyxtOfCdKTeqoU19Ut0zWC7ve4DWOMVsuU5013PoI00LDaTOOJuZVqww3pZeXX0Fi4jgQ3K7tHBUefQQWtyBKuc17",
-              "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
-              "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
-              "eventId": "5a96f3a2-2e61-4b4c-a9fc-8703f9ef023b",
-              "startDate": "2026-05-02T12:45:00.000-07:00",
-              "endDate": "2026-05-02T14:15:00.000-07:00",
-              "timezone": "America/Los_Angeles",
-              "resource": {
-                "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-                "name": "Ubaid Niggahh",
-                "nameTranslated": "Ubaid Niggahh",
-                "email": "ubaidlodhi2667@gmail.com",
-                "scheduleId": "50964d5e-e88a-41b3-90d8-17b208146729",
-                "explicitlyRequested": true,
-                "type": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                "transparency": "UNKNOWN_TRANSPARENCY"
-              },
-              "location": {
-                "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-                "name": "Rowland Boulevard",
-                "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
-                "formattedAddressTranslated": "400 Rowland Blvd, Novato, CA, USA",
-                "locationType": "OWNER_BUSINESS"
-              },
-              "additionalResources": [],
-              "resourceSelections": [
-                {
-                  "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                  "selectionMethod": "SPECIFIC_RESOURCE"
-                }
-              ],
-              "allDay": false
-            },
-            "title": "Deep Tissue Massage",
-            "titleTranslated": "Deep Tissue Massage",
-            "tags": [
-              "INDIVIDUAL"
-            ]
-          },
-          "contactDetails": {
-            "firstName": "Harami",
-            "lastName": "Niggah",
-            "email": "wahajkhan108@gmail.com",
-            "phone": "1234567890"
-          },
-          "additionalFields": [],
-          "numberOfParticipants": 1,
-          "status": "CANCELED",
-          "paymentStatus": "UNDEFINED",
-          "selectedPaymentOption": "UNDEFINED",
-          "createdDate": "2026-05-01T23:34:34.303Z",
-          "participantNotification": {
-            "notifyParticipants": true,
-            "metadata": {}
-          },
-          "revision": "5",
-          "createdBy": {
-            "identityType": "APP",
-            "appId": "d75be48a-33bc-475b-bfef-c5794482949b"
-          },
-          "startDate": "2026-05-02T19:45:00Z",
-          "endDate": "2026-05-02T21:15:00Z",
-          "flowControlSettings": {
-            "ignoreBookingWindow": false,
-            "skipAvailabilityValidation": false,
-            "skipBusinessConfirmation": false,
-            "skipSelectedPaymentOptionValidation": false,
-            "withRefund": false,
-            "skipAddOnValidation": false,
-            "skipOrderConfirmation": false
-          },
-          "updatedDate": "2026-05-02T00:17:35.341Z",
-          "totalParticipants": 1,
-          "v2Availability": false,
-          "canceledDate": "2026-05-02T00:17:35.338Z",
-          "formId": "00000000-0000-0000-0000-000000000000",
-          "bookedAddOns": [],
-          "appId": "13d21c63-b5ec-5912-8397-c3a5ddb27a97",
-          "createdByAppId": "d75be48a-33bc-475b-bfef-c5794482949b"
-        }
-      }
-    ],
-    "Format: Cancel Response": [
-      {
-        "success": true,
-        "message": "Booking has been successfully cancelled.",
-        "bookingId": "5a9082e7-6b2c-4f3e-b734-371353281ded",
-        "status": "CANCELED"
-      }
-    ],
-    "Wix: Reschedule Booking": [
-      {
-        "booking": {
-          "id": "5a9082e7-6b2c-4f3e-b734-371353281ded",
-          "bookedEntity": {
-            "slot": {
-              "sessionId": "2mmoW0vwKcSFyxtOfCdKTeqoU19Ut0zWC7ve4DWOMVsuU5013PoI00LDaTOOJuZVqww3pZeXX0Fi4jgQ3K7tHBUefQQWtyBKuc17",
-              "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
-              "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
-              "eventId": "5a96f3a2-2e61-4b4c-a9fc-8703f9ef023b",
-              "startDate": "2026-05-02T12:45:00.000-07:00",
-              "endDate": "2026-05-02T14:15:00.000-07:00",
-              "timezone": "America/Los_Angeles",
-              "resource": {
-                "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-                "name": "Ubaid Niggahh",
-                "nameTranslated": "Ubaid Niggahh",
-                "email": "ubaidlodhi2667@gmail.com",
-                "scheduleId": "50964d5e-e88a-41b3-90d8-17b208146729",
-                "explicitlyRequested": true,
-                "type": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                "transparency": "UNKNOWN_TRANSPARENCY"
-              },
-              "location": {
-                "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-                "name": "Rowland Boulevard",
-                "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
-                "formattedAddressTranslated": "400 Rowland Blvd, Novato, CA, USA",
-                "locationType": "OWNER_BUSINESS"
-              },
-              "additionalResources": [],
-              "resourceSelections": [
-                {
-                  "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                  "selectionMethod": "SPECIFIC_RESOURCE"
-                }
-              ],
-              "allDay": false
-            },
-            "title": "Deep Tissue Massage",
-            "titleTranslated": "Deep Tissue Massage",
-            "tags": [
-              "INDIVIDUAL"
-            ]
-          },
-          "contactDetails": {
-            "firstName": "Harami",
-            "lastName": "Niggah",
-            "email": "wahajkhan108@gmail.com",
-            "phone": "1234567890"
-          },
-          "additionalFields": [],
-          "numberOfParticipants": 1,
-          "status": "CONFIRMED",
-          "paymentStatus": "UNDEFINED",
-          "selectedPaymentOption": "UNDEFINED",
-          "createdDate": "2026-05-01T23:34:34.303Z",
-          "participantNotification": {
-            "notifyParticipants": true,
-            "metadata": {}
-          },
-          "revision": "4",
-          "createdBy": {
-            "identityType": "APP",
-            "appId": "d75be48a-33bc-475b-bfef-c5794482949b"
-          },
-          "startDate": "2026-05-02T19:45:00Z",
-          "endDate": "2026-05-02T21:15:00Z",
-          "flowControlSettings": {
-            "ignoreBookingWindow": false,
-            "skipAvailabilityValidation": false,
-            "skipBusinessConfirmation": false,
-            "skipSelectedPaymentOptionValidation": false,
-            "withRefund": false,
-            "skipAddOnValidation": false,
-            "skipOrderConfirmation": false
-          },
-          "updatedDate": "2026-05-02T00:13:02.685Z",
-          "totalParticipants": 1,
-          "v2Availability": false,
-          "formId": "00000000-0000-0000-0000-000000000000",
-          "bookedAddOns": [],
-          "appId": "13d21c63-b5ec-5912-8397-c3a5ddb27a97",
-          "createdByAppId": "d75be48a-33bc-475b-bfef-c5794482949b"
-        }
-      }
-    ],
-    "Validate: Get Booking Args": [
-      {
-        "tool": "get-booking",
-        "args": {
-          "bookingId": null,
-          "email": "john@gmail.com",
-          "_resolvedPhone": null,
-          "_resolvedEmail": "john@gmail.com",
-          "_resolvedBookingId": null
-        },
-        "_valid": true,
-        "_validationError": "",
-        "_lookupMode": "by-email"
-      }
-    ],
-    "Wix: Get Booking": [
-      {
-        "bookings": [
-          {
-            "id": "3f6ef95d-3ee3-4a58-90dd-67efca18a156",
-            "bookedEntity": {
-              "slot": {
-                "sessionId": "2mmoW0vwKcSFyxtOfCdKDk0V0lO2Bbp6UCPT1SQew6tOVqXDcLzXhLdoxh3RgZ6hppFBWtdVsWL8n4jbeBzZFyXWmnAEzqByly4j",
-                "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
-                "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
-                "eventId": "020de190-ed73-4795-8369-466f68979711",
-                "startDate": "2026-05-05T11:30:00.000-07:00",
-                "endDate": "2026-05-05T12:30:00.000-07:00",
-                "timezone": "America/Los_Angeles",
-                "resource": {
-                  "id": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-                  "name": "Lily (Female)",
-                  "nameTranslated": "Lily (Female)",
-                  "email": "ubaidlodhi2667@gmail.com",
-                  "scheduleId": "50964d5e-e88a-41b3-90d8-17b208146729",
-                  "explicitlyRequested": true,
-                  "type": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                  "transparency": "UNKNOWN_TRANSPARENCY"
-                },
-                "location": {
-                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-                  "name": "Rowland Boulevard",
-                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
-                  "formattedAddressTranslated": "400 Rowland Blvd, Novato, CA, USA",
-                  "locationType": "OWNER_BUSINESS"
-                },
-                "additionalResources": [],
-                "resourceSelections": [
-                  {
-                    "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                    "selectionMethod": "SPECIFIC_RESOURCE"
-                  }
-                ],
-                "allDay": false
-              },
-              "title": "Deep Tissue Massage",
-              "titleTranslated": "Deep Tissue Massage",
-              "tags": [
-                "INDIVIDUAL"
-              ]
-            },
-            "contactDetails": {
-              "firstName": "John",
-              "lastName": "Miller",
-              "email": "john@gmail.com",
-              "phone": "4255295398"
-            },
-            "additionalFields": [],
-            "numberOfParticipants": 1,
-            "status": "CONFIRMED",
-            "paymentStatus": "UNDEFINED",
-            "selectedPaymentOption": "UNDEFINED",
-            "createdDate": "2026-05-04T12:01:35.048Z",
-            "participantNotification": {
-              "notifyParticipants": true,
-              "metadata": {}
-            },
-            "revision": "3",
-            "createdBy": {
-              "identityType": "APP",
-              "appId": "d75be48a-33bc-475b-bfef-c5794482949b"
-            },
-            "startDate": "2026-05-05T18:30:00Z",
-            "endDate": "2026-05-05T19:30:00Z",
-            "flowControlSettings": {
-              "ignoreBookingWindow": false,
-              "skipAvailabilityValidation": false,
-              "skipBusinessConfirmation": false,
-              "skipSelectedPaymentOptionValidation": false,
-              "withRefund": false,
-              "skipAddOnValidation": false,
-              "skipOrderConfirmation": false
-            },
-            "updatedDate": "2026-05-04T12:01:36.562Z",
-            "totalParticipants": 1,
-            "v2Availability": false,
-            "formId": "00000000-0000-0000-0000-000000000000",
-            "bookedAddOns": [],
-            "appId": "13d21c63-b5ec-5912-8397-c3a5ddb27a97",
-            "createdByAppId": "d75be48a-33bc-475b-bfef-c5794482949b"
-          },
-          {
-            "id": "bd990fcf-522b-4d66-aaa0-7b571c169f23",
-            "bookedEntity": {
-              "slot": {
-                "sessionId": "2mmoW0vwKcSFyxtOfCdKELxJWlTAas7SWeHksoNaRAEEj96HX8sWaBOTkOW8ZU36WMgSK27Iw9bRsRN1NHCIkKawAcaQS2WMcvev",
-                "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
-                "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
-                "eventId": "0e83c5ce-8b3d-4a08-8c22-7e9f663745f0",
-                "startDate": "2026-05-04T11:30:00.000-07:00",
-                "endDate": "2026-05-04T12:30:00.000-07:00",
-                "timezone": "America/Los_Angeles",
-                "resource": {
-                  "id": "f159185f-2f73-420c-b04a-65b1e9aae701",
-                  "name": "Rocky (Male)",
-                  "nameTranslated": "Rocky (Male)",
-                  "email": "wahajkhan108@gmail.com",
-                  "scheduleId": "4e821261-0d52-4b3f-b9d1-eea10410f8f7",
-                  "explicitlyRequested": true,
-                  "type": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                  "transparency": "UNKNOWN_TRANSPARENCY"
-                },
-                "location": {
-                  "id": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-                  "name": "Rowland Boulevard",
-                  "formattedAddress": "400 Rowland Blvd, Novato, CA, USA",
-                  "formattedAddressTranslated": "400 Rowland Blvd, Novato, CA, USA",
-                  "locationType": "OWNER_BUSINESS"
-                },
-                "additionalResources": [],
-                "resourceSelections": [
-                  {
-                    "resourceTypeId": "1cd44cf8-756f-41c3-bd90-3e2ffcaf1155",
-                    "selectionMethod": "SPECIFIC_RESOURCE"
-                  }
-                ],
-                "allDay": false
-              },
-              "title": "Swedish Massage",
-              "titleTranslated": "Swedish Massage",
-              "tags": [
-                "INDIVIDUAL"
-              ]
-            },
-            "contactDetails": {
-              "firstName": "John",
-              "lastName": "Miller",
-              "email": "john@gmail.com",
-              "phone": "+14255295398"
-            },
-            "additionalFields": [],
-            "numberOfParticipants": 1,
-            "status": "CONFIRMED",
-            "paymentStatus": "UNDEFINED",
-            "selectedPaymentOption": "UNDEFINED",
-            "createdDate": "2026-05-03T12:20:38.256Z",
-            "participantNotification": {
-              "notifyParticipants": true,
-              "metadata": {}
-            },
-            "revision": "3",
-            "createdBy": {
-              "identityType": "APP",
-              "appId": "d75be48a-33bc-475b-bfef-c5794482949b"
-            },
-            "startDate": "2026-05-04T18:30:00Z",
-            "endDate": "2026-05-04T19:30:00Z",
-            "flowControlSettings": {
-              "ignoreBookingWindow": false,
-              "skipAvailabilityValidation": false,
-              "skipBusinessConfirmation": false,
-              "skipSelectedPaymentOptionValidation": false,
-              "withRefund": false,
-              "skipAddOnValidation": false,
-              "skipOrderConfirmation": false
-            },
-            "updatedDate": "2026-05-03T12:20:38.949Z",
-            "totalParticipants": 1,
-            "v2Availability": false,
-            "formId": "00000000-0000-0000-0000-000000000000",
-            "bookedAddOns": [],
-            "appId": "13d21c63-b5ec-5912-8397-c3a5ddb27a97",
-            "createdByAppId": "d75be48a-33bc-475b-bfef-c5794482949b"
-          }
-        ],
-        "pagingMetadata": {
-          "count": 2,
-          "hasNext": false
-        }
-      }
-    ],
-    "Format: Get Booking Response": [
-      {
-        "success": true,
-        "count": 2,
-        "bookings": [
-          {
-            "bookingId": "3f6ef95d-3ee3-4a58-90dd-67efca18a156",
-            "status": "CONFIRMED",
-            "revision": "3",
-            "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
-            "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
-            "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-            "timezone": "America/Los_Angeles",
-            "locationId": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-            "locationType": "OWNER_BUSINESS",
-            "startDate": "2026-05-05T11:30:00.000-07:00",
-            "endDate": "2026-05-05T12:30:00.000-07:00",
-            "firstName": "John",
-            "lastName": "Miller",
-            "phone": "4255295398",
-            "email": "john@gmail.com",
-            "createdDate": "2026-05-04T12:01:35.048Z"
-          },
-          {
-            "bookingId": "bd990fcf-522b-4d66-aaa0-7b571c169f23",
-            "status": "CONFIRMED",
-            "revision": "3",
-            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
-            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
-            "staffId": "f159185f-2f73-420c-b04a-65b1e9aae701",
-            "timezone": "America/Los_Angeles",
-            "locationId": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-            "locationType": "OWNER_BUSINESS",
-            "startDate": "2026-05-04T11:30:00.000-07:00",
-            "endDate": "2026-05-04T12:30:00.000-07:00",
-            "firstName": "John",
-            "lastName": "Miller",
-            "phone": "+14255295398",
-            "email": "john@gmail.com",
-            "createdDate": "2026-05-03T12:20:38.256Z"
-          }
-        ]
-      }
-    ],
-    "Respond: Get Booking": [
-      {
-        "success": true,
-        "count": 2,
-        "bookings": [
-          {
-            "bookingId": "3f6ef95d-3ee3-4a58-90dd-67efca18a156",
-            "status": "CONFIRMED",
-            "revision": "3",
-            "serviceId": "02ae59f9-c058-42cf-85d7-6a3b7d476464",
-            "scheduleId": "d86ae4db-b0f1-4a04-ae0f-800ba4b1c13b",
-            "staffId": "8053dba3-cedc-4249-82e0-832ccde8ab4d",
-            "timezone": "America/Los_Angeles",
-            "locationId": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-            "locationType": "OWNER_BUSINESS",
-            "startDate": "2026-05-05T11:30:00.000-07:00",
-            "endDate": "2026-05-05T12:30:00.000-07:00",
-            "firstName": "John",
-            "lastName": "Miller",
-            "phone": "4255295398",
-            "email": "john@gmail.com",
-            "createdDate": "2026-05-04T12:01:35.048Z"
-          },
-          {
-            "bookingId": "bd990fcf-522b-4d66-aaa0-7b571c169f23",
-            "status": "CONFIRMED",
-            "revision": "3",
-            "serviceId": "85c70bd3-ca3b-42cf-93f6-d60cbc9535ce",
-            "scheduleId": "0cc37408-574a-49c1-a954-2572bc24dcbc",
-            "staffId": "f159185f-2f73-420c-b04a-65b1e9aae701",
-            "timezone": "America/Los_Angeles",
-            "locationId": "a345d3c7-2a89-4816-ad3a-277ea40730a7",
-            "locationType": "OWNER_BUSINESS",
-            "startDate": "2026-05-04T11:30:00.000-07:00",
-            "endDate": "2026-05-04T12:30:00.000-07:00",
-            "firstName": "John",
-            "lastName": "Miller",
-            "phone": "+14255295398",
-            "email": "john@gmail.com",
-            "createdDate": "2026-05-03T12:20:38.256Z"
-          }
-        ]
-      }
-    ]
-  },
+  "pinData": {},
   "meta": {
     "instanceId": "ac196cde23a3d6ef70e5e219252c1746cd31eed638b30f72c27ae62726c49a9f"
   }

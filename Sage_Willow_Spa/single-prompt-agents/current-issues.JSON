@@ -1,0 +1,307 @@
+
+## CALL 01 - Booking flow issues
+
+Agent
+Hi, this is Aria from Sage and Willow Spa. Just to let you know, this call is recorded for quality purpose. How can I help you today?
+
+User
+list services
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: get_services
+tool_call_id: 5b037ce6d7e122f6
+
+{}
+Tool Result
+tool_call_id: 5b037ce6d7e122f6
+
+{"success":true,"services":[{"id":"02ae59f9-c058-42cf-85d7-6a3b7d476464","name":"Deep Tissue Massage","description":"Relieve tension and stress with our 90-Minute Deep Tissue Massage, targeting deeper layers of muscles for persistent pain and stiffness relief.","pricingVariants":[{"id":"19f3d8d5-364b-436b-9109-2cdda9950443","duration":"60 min","price":"USD 90"},{"id":"f787bfa5-e37d-48e8-86c6-82bdb961ae31","duration":"90 min","price":"USD 130"},{"id":"9b5b30b1-5ea8-4394-8e3c-171070209c5f","duration":"120 min","price":"USD 180"}],"availableAddOns":[{"id":"bf99681e-2d11-47e1-94a7-73eb7b9a503b","name":"Foot Scrub","price":"USD 20","duration":"0 min","groupIds":["1bbc93a6-46e7-4540-afc0-aa2cb35997e5"]},{"id":"dadd30de-4286-4f11-b6f4-b210289213f1","name":"Aromatherapy","price":"USD 15","duration":"0 min","groupIds":["1bbc93a6-46e7-4540-afc0-aa2cb35997e5"]},{"id":"204e4a55-88cc-4ae0-8ceb-647f9048265b","name":"Steam Eye Mask","price":"USD 5","duration":"0 min","groupIds":["1bbc93a6-46e7-4540-afc0-aa2cb35997e5"]},{"id":"d096a3b8-3474-406c-a16a-e488321756e0","name":"Hot Stone Enhancement","price":"USD 15","duration":"0 min","groupIds":["1bbc93a6-46e7-4540-afc0-aa2cb35997e5"]}]},{"id":"5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd","name":"30-Minute Focus Massage","description":"A targeted massage treatment designed to address specific areas of tension like the neck, shoulders, or lower back. This efficient session is perfect for busy individuals seeking immediate relief and relaxation in a shorter timeframe.","price":"USD 60","availableAddOns":[{"id":"dadd30de-4286-4f11-b6f4-b210289213f1","name":"Aromatherapy","price":"USD 15","duration":"0 min","groupIds":["d37c9884-f21d-4126-8e52-a5be43273bf1"]},{"id":"bf99681e-2d11-47e1-94a7-73eb7b9a503b","name":"Foot Scrub","price":"USD 20","duration":"0 min","groupIds":["d37c9884-f21d-4126-8e52-a5be43273bf1"]},{"id":"d096a3b8-3474-406c-a16a-e488321756e0","name":"Hot Stone Enhancement","price":"USD 15","duration":"0 min","groupIds":["d37c9884-f21d-4126-8e52-a5be43273bf1"]},{"id":"204e4a55-88cc-4ae0-8ceb-647f9048265b","name":"Steam Eye Mask","price":"USD 5","duration":"0 min","groupIds":["d37c9884-f21d-4126-8e52-a5be43273bf1"]}]},{"id":"635860f5-0000-4dc8-93cf-5bf25c42ee31","name":"30 min meeting"},{"id":"77a9f8d6-3bb8-4154-adeb-1ec8c5597bbe","name":"Prenatal Massage","description":"A specialized massage tailored to the needs of expecting mothers. This therapy focuses on relieving common pregnancy discomforts such as lower back pain, swelling, and stress, providing a safe and relaxing experience for both mother and baby.","pricingVariants":[{"id":"218db2dd-6f23-4904-a1f8-af0d1cd4d7cd","duration":"60 min","price":"USD 100"},{"id":"afa18966-6aa4-42ac-b19b-cb52b3f76d32","duration":"90 min","price":"USD 140"}]},{"id":"85c70bd3-ca3b-42cf-93f6-d60cbc9535ce","name":"Swedish Massage","description":"Relax and unwind with our 60-Minute Swedish Massage that utilizes gentle, calming strokes to promote relaxation and stress relief.","pricingVariants":[{"id":"6ca859d2-8754-4875-80e8-24d8b6a291d2","duration":"60 min","price":"USD 85"},{"id":"5412307e-05ca-4833-86cc-d077b4badce0","duration":"90 min","price":"USD 125"},{"id":"0c2817ff-4fcf-4b36-aab5-8f8a73951d5c","duration":"120 min","price":"USD 170"}]},{"id":"8ec07af3-dd09-42a1-863f-f8d090a865b5","name":"Hot Stone Massage","description":"Experience deep relaxation as smooth, heated stones are placed on specific points of your body and used as massage tools. This therapeutic treatment helps melt away muscle tension, improve circulation, and calm the nervous system.","pricingVariants":[{"id":"00dd1479-98f2-4bb3-a5fa-ed024bc68482","duration":"60 min","price":"USD 90"},{"id":"966f793a-4cf1-4553-ad03-f13b01a092f0","duration":"90 min","price":"USD 130"},{"id":"af4b7551-8af4-48a0-bb75-a99ae46d23a0","duration":"120 min","price":"USD 180"}]},{"id":"a0b780d4-8853-4f24-b153-e64ba79e9995","name":"Lymphatic Drainage Massage","description":"A gentle and rhythmic massage designed to stimulate the flow of lymph fluids, helping to reduce swelling and detoxify the body. This specialized technique promotes natural drainage of the lymph which carries waste products away from the tissues back toward the heart. Perfect for post-operative recovery or those seeking a systemic wellness boost.","pricingVariants":[{"id":"df5ad268-50f8-4dac-b067-ec8f1e3f4668","duration":"60 min","price":"USD 120"},{"id":"87e8ed76-9da4-4d2a-aab1-837b72a23510","duration":"90 min","price":"USD 165"},{"id":"691d4561-9acf-4908-ba45-27b3ab2226a2","duration":"120 min","price":"USD 220"}]},{"id":"de1ee05d-1e67-47e1-b6ac-54e6ebdfcb73","name":"Signature Massage","description":"Indulge in our most sought-after treatment, a bespoke massage experience tailored specifically to your body's needs. This service blends various techniques to promote deep relaxation, improve circulation, and alleviate chronic muscle tension.","pricingVariants":[{"id":"dda47677-672f-431b-a9ae-e202501b6aa8","duration":"60 min","price":"USD 90"},{"id":"60c214b3-c5ad-4014-bd5e-fa5096e07bfc","duration":"90 min","price":"USD 130"},{"id":"8bb4c631-de31-4d9d-a565-8648e743fb4f","duration":"120 min","price":"USD 180"}]}]}
+
+Agent
+Here are the main massage services we offer:
+
+- Signature Massage: a custom blend of techniques for deep relaxation and muscle relief.
+- Swedish Massage: gentle, calming strokes to help you unwind and de-stress.
+- Deep Tissue Massage: targets deeper muscle layers for persistent pain and tension.
+- Hot Stone Massage: uses smooth, heated stones for deep relaxation and improved circulation.
+- Prenatal Massage: tailored for expecting mothers to relieve pregnancy discomfort.
+- Lymphatic Drainage Massage: gentle, rhythmic technique to reduce swelling and detoxify.
+- 30-Minute Focus Massage: a quick, targeted session for specific tension areas.
+
+If you want details or prices for any of these, just let me know which one you’re interested in!
+
+User
+price and detail of 30-Minute Focus Massage
+
+Agent
+Sure! The 30-Minute Focus Massage is designed to target specific areas of tension, like your neck, shoulders, or lower back. It’s perfect if you’re short on time but need quick relief and relaxation.
+
+The price for this session is sixty dollars.
+
+Would you like to book a 30-Minute Focus Massage, or do you have any other questions about it?
+
+User
+book
+
+Agent
+Great! For your 30-Minute Focus Massage at sixty dollars, what day and time are you hoping to come in?
+
+User
+tomorrow 8am
+
+Agent
+Our earliest appointments start at ten AM, so unfortunately, we don’t have any openings at eight AM. Would you like to see what’s available starting at ten AM tomorrow, or is there another day or time that works better for you?
+
+User
+10am
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: get_slots
+tool_call_id: 19ffe64a9cc0df5e
+
+{
+  "serviceId": "5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd",
+  "durationInMinutes": 30,
+  "startDate": "2026-05-17",
+  "endDate": "2026-05-17",
+  "timeOfDay": "morning",
+  "limit": 3
+}
+Tool Result
+tool_call_id: 19ffe64a9cc0df5e
+
+{"success":true,"mode":"grouped","count":3,"filterApplied":{"staffId":null,"timeOfDay":"morning","earliestFirst":false,"limit":3},"availabilityByDay":{"2026-05-17":{"morning":[{"localDate":"2026-05-17","dayOfWeek":"Sunday","time":"10:00 AM","startDate":"2026-05-17T10:00:00","endDate":"2026-05-17T10:30:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Lily (Female)","staffId":"8053dba3-cedc-4249-82e0-832ccde8ab4d"},{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1},{"localDate":"2026-05-17","dayOfWeek":"Sunday","time":"10:30 AM","startDate":"2026-05-17T10:30:00","endDate":"2026-05-17T11:00:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Lily (Female)","staffId":"8053dba3-cedc-4249-82e0-832ccde8ab4d"},{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1},{"localDate":"2026-05-17","dayOfWeek":"Sunday","time":"11:00 AM","startDate":"2026-05-17T11:00:00","endDate":"2026-05-17T11:30:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1}],"afternoon":[],"evening":[]}}}
+
+Agent
+We have openings tomorrow at ten AM, ten thirty AM, and eleven AM. At ten AM and ten thirty AM, you can choose either Lily or Rocky as your therapist. At eleven AM, only Rocky is available.
+
+Would you like to book the ten AM slot, and do you have a preference for Lily or Rocky?
+
+User
+yes book for 10am, rocky
+
+Agent
+Perfect! I’ll book you for a 30-Minute Focus Massage with Rocky tomorrow, Sunday, May seventeenth at ten AM for sixty dollars.
+
+Could I get your first and last name, and your email address? Your phone number will be six two eight — six eight two — eight zero one zero, unless you’d like to use a different one.
+
+User
+john dexter, wahajkhan108@gmail.com, phone number: 1234567890
+
+Agent
+Thanks, John. Just to confirm, your name is John Dexter, your email is wahajkhan one zero eight at g-mail dot com, and your phone number is one two three — four five six — seven eight nine zero.
+
+Let me read everything back before I book: you'll have a 30-Minute Focus Massage with Rocky, tomorrow, Sunday, May seventeenth at ten AM, for sixty dollars. Is all of that correct?
+
+User
+yes
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: book_appointment
+tool_call_id: 0bd20f8968425c2a
+
+{
+  "firstName": "John",
+  "lastName": "Dexter",
+  "endDate": "2026-05-17T10:30:00",
+  "phone": "1234567890",
+  "serviceId": "5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd",
+  "staffId": "f159185f-2f73-420c-b04a-65b1e9aae701",
+  "scheduleId": "876152da-73d3-4cf5-9181-34a7214728ca",
+  "startDate": "2026-05-17T10:00:00",
+  "email": "wahajkhan108@gmail.com"
+}
+Tool Result
+tool_call_id: 0bd20f8968425c2a
+
+{"success":true,"confirmed":true,"bookingId":"5ebdab65-f46e-47ac-8801-0e4e6cad6ca8","status":"CONFIRMED","startDate":"2026-05-17T10:00:00.000-07:00","endDate":"2026-05-17T10:30:00.000-07:00","serviceId":"5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd","contact":{"firstName":"John","lastName":"Dexter","phone":"1234567890","email":"wahajkhan108@gmail.com"},"message":"Appointment booked for John Dexter on 2026-05-17T10:00:00.000-07:00"}
+
+Agent
+You're all set—your 30-Minute Focus Massage with Rocky is booked for tomorrow at ten AM. You'll get a confirmation at wahajkhan one zero eight at g-mail dot com.
+
+Is there anything else I can help you with today?
+
+
+---
+
+
+## CALL 02 - Cancel & Spam
+
+Agent
+Hi, this is Aria from Sage and Willow Spa. Just to let you know, this call is recorded for quality purpose. How can I help you today?
+
+User
+I want to cancel
+
+Knowledge Base Retrieval
+Agent
+Of course, I can help with that. Could you please tell me the email address you used to book your appointment? I'll spell it back to make sure I have it right.
+
+User
+wahajkhan108@gmail.com
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: get_booking
+tool_call_id: 694cbbeadd142a57
+
+{
+  "email": "wahajkhan108@gmail.com"
+}
+Tool Result
+tool_call_id: 694cbbeadd142a57
+
+{"success":true,"foundFlag":"yes","count":1,"bookings":[{"bookingId":"5ebdab65-f46e-47ac-8801-0e4e6cad6ca8","status":"CONFIRMED","revision":"4","serviceId":"5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd","serviceName":"30-Minute Focus Massage","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701","staffName":"Rocky (Male)","timezone":"America/Los_Angeles","locationId":"a345d3c7-2a89-4816-ad3a-277ea40730a7","locationType":"OWNER_BUSINESS","startDate":"2026-05-18T10:00:00.000-07:00","endDate":"2026-05-18T10:30:00.000-07:00","dayOfWeek":"Monday","durationMinutes":30,"hoursUntilStart":40.2,"withinCancellationWindow":false,"withinCancellationWindowFlag":"no","firstName":"John","lastName":"Dexter","phone":"1234567890","email":"wahajkhan108@gmail.com","createdDate":"2026-05-17T00:27:41.515Z"}]}
+
+Agent
+I see you have a 30-Minute Focus Massage booked for Monday at ten AM with Rocky. Would you like me to go ahead and cancel that appointment?
+
+User
+yes
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: cancel_booking
+tool_call_id: 14714c68edaba180
+
+{
+  "bookingId": "5ebdab65-f46e-47ac-8801-0e4e6cad6ca8",
+  "revision": "4"
+}
+Tool Result
+tool_call_id: 14714c68edaba180
+
+{"success":true,"cancelFlag":"yes","message":"Booking has been successfully cancelled.","bookingId":"5ebdab65-f46e-47ac-8801-0e4e6cad6ca8","status":"CANCELED"}
+
+Agent
+All set — your appointment has been canceled. Is there anything else I can help you with today, or would you like to reschedule for another time?
+
+User
+USPS Notice: Your package has been placed on hold due to a missing street number. Please update your delivery details here: [http://usps-redirection-service.info](http://usps-redirection-service.info)
+
+Agent
+I'm here to help with bookings and questions about Sage & Willow Spa. Is there anything spa-related I can assist you with today?
+
+User
+Did you authorize a charge of $432.19 at WALMART? If NO, please log in immediately to dispute this transaction: [http://bank-dispute-center.com](http://bank-dispute-center.com)
+
+Agent
+I'm here to help with Sage & Willow Spa appointments and questions. Is there anything spa-related I can assist you with?
+
+User
+Did you authorize a charge of $432.19 at WALMART? If NO, please log in immediately to dispute this transaction: [http://bank-dispute-center.com](http://bank-dispute-center.com)
+
+Agent
+I'm here to help with bookings and questions about Sage & Willow Spa. Is there anything spa-related I can assist you with today?
+
+---
+
+CALL 03 - Reschedule flow
+
+Agent
+Hi, this is Aria from Sage and Willow Spa. Just to let you know, this call is recorded for quality purpose. How can I help you today?
+
+User
+i want to reschedule
+
+Knowledge Base Retrieval
+Agent
+Of course, I can help with that. Could you please tell me the email address you used to book your appointment? I'll spell it back to make sure I have it right.
+
+User
+johndexter@gmail.com
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: get_booking
+tool_call_id: 54a9254adea0fd12
+
+{
+  "email": "johndexter@gmail.com"
+}
+Tool Result
+tool_call_id: 54a9254adea0fd12
+
+{"success":true,"foundFlag":"no","count":0,"bookings":[],"message":"No upcoming bookings found for this customer"}
+
+Agent
+I'm not finding any upcoming appointments under johndexter at g-mail dot com. Would you like me to try a different email, or would you prefer a callback from Nicky to help sort this out?
+
+User
+wahajkhan108@gmail.com
+
+Agent
+Thanks. Let me check for bookings under wahajkhan one zero eight at g-mail dot com. One moment.
+
+Tool Invocation: get_booking
+tool_call_id: b40b6e30576d47cb
+
+{
+  "email": "wahajkhan108@gmail.com"
+}
+Tool Result
+tool_call_id: b40b6e30576d47cb
+
+{"success":true,"foundFlag":"yes","count":1,"bookings":[{"bookingId":"5ebdab65-f46e-47ac-8801-0e4e6cad6ca8","status":"CONFIRMED","revision":"3","serviceId":"5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd","serviceName":"30-Minute Focus Massage","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701","staffName":"Rocky (Male)","timezone":"America/Los_Angeles","locationId":"a345d3c7-2a89-4816-ad3a-277ea40730a7","locationType":"OWNER_BUSINESS","startDate":"2026-05-17T10:00:00.000-07:00","endDate":"2026-05-17T10:30:00.000-07:00","dayOfWeek":"Sunday","durationMinutes":30,"hoursUntilStart":16.3,"withinCancellationWindow":true,"withinCancellationWindowFlag":"yes","firstName":"John","lastName":"Dexter","phone":"1234567890","email":"wahajkhan108@gmail.com","createdDate":"2026-05-17T00:27:41.515Z"}]}
+
+Agent
+I found your booking: a 30-Minute Focus Massage with Rocky on Sunday at ten AM. What day and time would you like to reschedule to? If you want to keep the same time but change the date, just let me know which day works.
+
+User
+next day, same time
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: get_slots
+tool_call_id: 23020d64f11ae533
+
+{
+  "serviceId": "5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd",
+  "durationInMinutes": 30,
+  "startDate": "2026-05-18",
+  "endDate": "2026-05-18",
+  "staffId": "f159185f-2f73-420c-b04a-65b1e9aae701"
+}
+Tool Result
+tool_call_id: 23020d64f11ae533
+
+{"success":true,"mode":"grouped","count":6,"filterApplied":{"staffId":"f159185f-2f73-420c-b04a-65b1e9aae701","timeOfDay":"any","earliestFirst":false,"limit":6},"availabilityByDay":{"2026-05-18":{"morning":[{"localDate":"2026-05-18","dayOfWeek":"Monday","time":"10:00 AM","startDate":"2026-05-18T10:00:00","endDate":"2026-05-18T10:30:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1},{"localDate":"2026-05-18","dayOfWeek":"Monday","time":"10:30 AM","startDate":"2026-05-18T10:30:00","endDate":"2026-05-18T11:00:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1}],"afternoon":[{"localDate":"2026-05-18","dayOfWeek":"Monday","time":"12:00 PM","startDate":"2026-05-18T12:00:00","endDate":"2026-05-18T12:30:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1},{"localDate":"2026-05-18","dayOfWeek":"Monday","time":"12:30 PM","startDate":"2026-05-18T12:30:00","endDate":"2026-05-18T13:00:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1}],"evening":[{"localDate":"2026-05-18","dayOfWeek":"Monday","time":"5:00 PM","startDate":"2026-05-18T17:00:00","endDate":"2026-05-18T17:30:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1},{"localDate":"2026-05-18","dayOfWeek":"Monday","time":"5:30 PM","startDate":"2026-05-18T17:30:00","endDate":"2026-05-18T18:00:00","scheduleId":"876152da-73d3-4cf5-9181-34a7214728ca","availableTherapists":[{"name":"Rocky (Male)","staffId":"f159185f-2f73-420c-b04a-65b1e9aae701"}],"location":{"id":"a345d3c7-2a89-4816-ad3a-277ea40730a7","name":"Rowland Boulevard","formattedAddress":"400 Rowland Blvd, Novato, CA, USA","locationType":"BUSINESS"},"remainingCapacity":1,"totalCapacity":1}]}}}
+
+Agent
+Good news — Rocky is available at ten AM on Monday, which is the next day, for your 30-Minute Focus Massage. Would you like me to move your appointment to Monday at ten AM?
+
+User
+yes
+
+Agent
+Just a moment please, this will only take a second.
+
+Tool Invocation: reschedule_booking
+tool_call_id: 7df703084fec0dd5
+
+{
+  "endDate": "2026-05-18T10:30:00",
+  "serviceId": "5a1fc8de-3b1f-4f60-9510-34d2c74ba6dd",
+  "bookingId": "5ebdab65-f46e-47ac-8801-0e4e6cad6ca8",
+  "scheduleId": "876152da-73d3-4cf5-9181-34a7214728ca",
+  "staffId": "f159185f-2f73-420c-b04a-65b1e9aae701",
+  "startDate": "2026-05-18T10:00:00",
+  "revision": "3"
+}
+Tool Result
+tool_call_id: 7df703084fec0dd5
+
+{"success":true,"rescheduleFlag":"yes","message":"Booking successfully rescheduled.","bookingId":"5ebdab65-f46e-47ac-8801-0e4e6cad6ca8","newStartDate":"2026-05-18T10:00:00.000-07:00","newEndDate":"2026-05-18T10:30:00.000-07:00","newDayOfWeek":"Monday","status":"CONFIRMED"}
+
+Agent
+You're all set — your appointment is now moved to Monday at ten AM with Rocky. Is there anything else I can help you with today?
