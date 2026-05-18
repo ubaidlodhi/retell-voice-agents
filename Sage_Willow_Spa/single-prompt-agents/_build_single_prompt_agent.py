@@ -33,12 +33,17 @@ PROMPT_PATH = Path(__file__).parent / "system_prompt_single.md"
 N8N_BASE_URL = "https://automation.aiemply.com/webhook/retell-wix"
 EXEC_MSG = "Just a moment please, this will only take a second."
 
+# Bump this on EVERY meaningful build (prompt edits, tool changes, handbook
+# tweaks, etc.) so the client can tell which revision they're testing.
+AGENT_VERSION = "V9"
+
 
 # -----------------------------------------------------------------------------
 # Tool helper
 # -----------------------------------------------------------------------------
 
-def tool(name, header, description, parameters, response_variables=None):
+def tool(name, header, description, parameters, response_variables=None,
+         execution_message_type="prompt", enable_typing_sound=True):
     t = {
         "type": "custom",
         "name": name,
@@ -46,11 +51,14 @@ def tool(name, header, description, parameters, response_variables=None):
         "method": "POST",
         "url": N8N_BASE_URL,
         "headers": {"tool": header},
+        "query_params": {},
+        "parameter_type": "json",
         "timeout_ms": 120000,
         "speak_during_execution": True,
         "speak_after_execution": True,
-        "execution_message_type": "static_text",
+        "execution_message_type": execution_message_type,
         "execution_message_description": EXEC_MSG,
+        "enable_typing_sound": enable_typing_sound,
         "parameters": parameters,
     }
     if response_variables:
@@ -76,6 +84,8 @@ CUSTOM_TOOLS = [
         "Live therapist roster. Call when caller asks about specific therapists. "
         "Use the returned `resourceId` as `staffId` downstream.",
         {"type": "object", "properties": {}, "required": []},
+        execution_message_type="static_text",
+        enable_typing_sound=False,
     ),
     tool(
         "get_contact",
@@ -102,11 +112,16 @@ CUSTOM_TOOLS = [
     tool(
         "get_slots",
         "get-slots",
-        "Available time slots. Narrow with staffId, timeOfDay, earliestFirst, "
-        "or limit when the caller's request implies it. Returns slots with "
-        "startDate, endDate, scheduleId, and availableTherapists[{name, staffId}]. "
-        "Use the chosen entry's staffId for book_appointment; omit if caller has "
-        "no preference (Wix auto-assigns).",
+        "Available time slots. Narrow with staffId, timeOfDay, earliestFirst, or "
+        "limit when the caller's request implies it. If caller gave a day but no "
+        "time hint, ASK them first ('morning, afternoon, or evening?') before "
+        "calling — don't fetch all-day slots blindly. For RESCHEDULES where the "
+        "caller said 'same time,' pass timeOfDay matching the original booking's "
+        "hour (10AM-12PM=morning, 12PM-5PM=afternoon, 5PM-8PM=evening) so the "
+        "search returns slots in the same block. Returns slots with startDate, "
+        "endDate, scheduleId, and availableTherapists[{name, staffId}]. Use the "
+        "chosen entry's staffId for book_appointment; omit if caller has no "
+        "preference (Wix auto-assigns).",
         {
             "type": "object",
             "properties": {
@@ -212,8 +227,9 @@ CUSTOM_TOOLS = [
     tool(
         "cancel_booking",
         "cancel-booking",
-        "Cancel a booking. Needs bookingId and revision from get_booking. Only "
-        "call after explicit caller confirmation.",
+        "Cancel a booking. Only call AFTER the caller has said an explicit yes "
+        "to the readback (\"I see your [service] on [day] at [time] — want me to "
+        "cancel that?\" → yes). Needs bookingId and revision from get_booking.",
         {
             "type": "object",
             "properties": {
@@ -231,8 +247,10 @@ CUSTOM_TOOLS = [
     tool(
         "reschedule_booking",
         "reschedule-booking",
-        "Reschedule a booking. Needs original bookingId/revision/serviceId plus "
-        "new scheduleId, staffId, startDate, endDate from get_slots.",
+        "Reschedule a booking. Only call AFTER the caller has explicitly "
+        "confirmed the new slot (\"Moving your [service] to [new day] at [new "
+        "time] — confirm?\" → yes). Needs original bookingId/revision/serviceId "
+        "plus new scheduleId, staffId, startDate, endDate from get_slots.",
         {
             "type": "object",
             "properties": {
@@ -258,9 +276,13 @@ CUSTOM_TOOLS = [
     tool(
         "flag_callback",
         "flag-callback",
-        "Email Nicky a callback request. Use when caller insists on a human, has "
-        "a question you can't answer, or a tool failed. Always include callerName "
-        "— ask the caller's name first if you don't have it.",
+        "Email Nicky a callback request. Use when: (1) caller INSISTS on a human "
+        "after you've already offered to help directly (first soft 'can I talk to "
+        "someone?' → offer to help, NOT this tool; second insistent ask → this "
+        "tool), (2) caller has a question you genuinely can't answer with KB or "
+        "tools, or (3) a tool call failed and you couldn't complete the task. "
+        "Always include callerName — ASK the caller's name first if you don't "
+        "have it. callerPhone defaults to {{user_number}}.",
         {
             "type": "object",
             "properties": {
@@ -279,9 +301,22 @@ CUSTOM_TOOLS = [
 END_CALL_TOOL = {
     "name": "end_call",
     "type": "end_call",
-    "description": "End the call gracefully after the closing line. Use when the "
-                   "caller says goodbye, when emergency / crisis / spam / "
-                   "recording-decline triggers, or after a silence timeout.",
+    "description": (
+        "End the call AFTER the closing line, based on the caller's INTENT (not "
+        "single words). Triggers:\n"
+        "  - Caller says goodbye / bye / 'that's all' / 'I'm good' / 'nothing "
+        "else,' or confirms 'no' after 'anything else?'\n"
+        "  - EMERGENCY (after 911) or CRISIS (after 988).\n"
+        "  - SPAM / phishing — after ONE decline; end next turn if they persist.\n"
+        "  - INAPPROPRIATE (full service, happy ending, flirting) — after ONE "
+        "deflection; end if they repeat or escalate.\n"
+        "  - OFF-TOPIC — after a SECOND push following your redirect.\n"
+        "  - RECORDING DECLINE.\n"
+        "  - Silence timeout.\n"
+        "Do NOT end on a standalone 'thanks' — often said mid-conversation "
+        "('thanks, can I also book…'). Wait for an actual done-signal. Don't "
+        "loop deflections — one deflection, then end on any further persistence."
+    ),
     "speak_during_execution": False,
     "speak_after_execution": False,
 }
@@ -343,7 +378,7 @@ GENERAL_PROMPT = PROMPT_PATH.read_text(encoding="utf-8")
 AGENT = {
     "agent_id": "",
     "channel": "voice",
-    "agent_name": "Aria — Sage & Willow Spa — Single Prompt V3",
+    "agent_name": f"Aria — Sage & Willow Spa — Single Prompt {AGENT_VERSION}",
     "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU"],
     # Mirror conversation-flow agent voice + perf settings so it sounds the same.
     "voice_id": "custom_voice_573dab78e535ca398ccb542f7e",
@@ -401,6 +436,7 @@ def main():
         encoding="utf-8",
     )
     print(f"Wrote {OUT_PATH}")
+    print(f"  Agent version: {AGENT_VERSION}")
     print(f"  Prompt size: {len(GENERAL_PROMPT)} chars / {len(GENERAL_PROMPT.split())} words")
     print(f"  Tools: {len(CUSTOM_TOOLS) + 1} ({len(CUSTOM_TOOLS)} custom + 1 end_call)")
     print(f"  Post-call analysis fields: {len(POST_CALL_ANALYSIS)}")
