@@ -1,0 +1,313 @@
+{
+  "name": "Aubrey - Lookup Tickets",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aubrey-lookup-tickets",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        176
+      ],
+      "id": "71e355e1-d4f1-48a0-84aa-45a408455cd8",
+      "name": "Webhook",
+      "webhookId": "aubrey-lookup-tickets"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "has-ticket-id",
+                    "leftValue": "={{ $json.body.ticket_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "By Ticket ID"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "no-ticket-id",
+                    "leftValue": "={{ $json.body.ticket_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "By Phone + Type"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        144,
+        176
+      ],
+      "id": "e5d66951-4314-40a2-9e5c-920692450115",
+      "name": "Has Ticket ID?"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "getByColumnValue",
+        "boardId": "18409649964",
+        "columnId": "pulse_id_mm3b65ke",
+        "columnValue": "={{ $json.body.ticket_id }}"
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -32
+      ],
+      "id": "5accdf7c-9a52-4143-a554-65c47de06051",
+      "name": "Get Ticket by ID",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "getByColumnValue",
+        "boardId": "18409649964",
+        "columnId": "phone_mm2m7bhz",
+        "columnValue": "={{ $('Webhook').item.json.body.phone_number || $('Webhook').item.json.query.caller_phone || '' }}",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        480,
+        368
+      ],
+      "id": "ca34a470-11ec-4c81-aee7-3a0eb9ac747f",
+      "name": "Get Tickets by Phone",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ticket found by ID\nconst items = $input.all();\nconst firstItem = items?.[0]?.json;\n\nif (!items || items.length === 0 || !firstItem || !firstItem.column_values) {\n  return [{ json: { found: false, results: '[]', message: 'Ticket not found. The ticket number may be incorrect.' } }];\n}\n\nconst g = (id) => firstItem.column_values?.find(c => c.id === id)?.text || '';\n\nconst result = {\n  ticket_id: firstItem.id,\n  call_type: g('dropdown_mm2rjfbk'),\n  status: g('status'),\n  created_at: firstItem.created_at,\n  summary: g('long_text_mm2my16x'),\n  caller_name: g('text_mm2mrhy6')\n};\n\nreturn [{ json: {\n  found: true,\n  results: JSON.stringify([result]),\n  message: 'Ticket found.'\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -32
+      ],
+      "id": "05e21bd5-e85e-443b-a21c-7360975ffe85",
+      "name": "Format Ticket by ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tickets found by phone — filter by call_type\nconst items = $input.all();\nconst body = $('Webhook').item.json.body || {};\nconst callType = body.call_type || '';\nconst firstItem = items?.[0]?.json;\n\nif (!items || items.length === 0 || !firstItem || !firstItem.column_values) {\n  return [{ json: { found: false, results: '[]', message: 'No tickets found for this phone number.' } }];\n}\n\nconst get = (item, id) => item.json.column_values?.find(c => c.id === id)?.text || '';\n\nlet filtered = items.filter(i => i.json?.column_values);\n\nif (callType) {\n  filtered = filtered.filter(i => {\n    const ct = get(i, 'dropdown_mm2rjfbk');\n    return ct === callType;\n  });\n}\n\n// Sort by most recent first, cap at 10\nfiltered.sort((a, b) => new Date(b.json.created_at) - new Date(a.json.created_at));\nfiltered = filtered.slice(0, 10);\n\nif (filtered.length === 0) {\n  return [{ json: { found: false, results: '[]', message: callType ? 'No ' + callType + ' tickets found.' : 'No tickets found for this number.' } }];\n}\n\nconst results = filtered.map(i => {\n  const g = (id) => i.json.column_values?.find(c => c.id === id)?.text || '';\n  return {\n    ticket_id: i.json.id,\n    call_type: g('dropdown_mm2rjfbk'),\n    status: g('status'),\n    created_at: i.json.created_at,\n    summary: g('long_text_mm2my16x'),\n    caller_name: g('text_mm2mrhy6')\n  };\n});\n\nreturn [{ json: {\n  found: true,\n  results: JSON.stringify(results),\n  message: 'Found ' + results.length + ' ticket(s).'\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        368
+      ],
+      "id": "b277d795-ff9f-41ab-ae49-fcf81f0a8b93",
+      "name": "Filter by Type & Format"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ found: $json.found, results: $json.results, message: $json.message }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        176
+      ],
+      "id": "fdd9e079-6102-454b-9f35-e5d636955ead",
+      "name": "Respond to Retell"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "keyline.app.n8n.cloud",
+            "user-agent": "axios/1.15.2",
+            "content-length": "71",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, br",
+            "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=ad61670e40a44ac2a72277e79b1b15a3,sentry-org_id=4511141371183104",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "100.20.5.228",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "9fc631a3dc6eb298-PDX",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "sentry-trace": "ad61670e40a44ac2a72277e79b1b15a3-ba90c1f41588025e",
+            "x-forwarded-for": "100.20.5.228, 104.23.160.180",
+            "x-forwarded-host": "keyline.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-57-84ffcf945d-44xp2",
+            "x-is-trusted": "yes",
+            "x-real-ip": "100.20.5.228",
+            "x-retell-signature": "v=1778890588752,d=6252b8e0b1c2b5df63f6e79d407f8ca731df274b92e7ac92251e9ebe5be67ae2"
+          },
+          "params": {},
+          "query": {
+            "caller_phone": "+12532681856"
+          },
+          "body": {
+            "ticket_id": null,
+            "call_type": "incident",
+            "phone_number": "+12532681856"
+          },
+          "webhookUrl": "https://keyline.app.n8n.cloud/webhook/aubrey-lookup-tickets",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Has Ticket ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Ticket ID?": {
+      "main": [
+        [
+          {
+            "node": "Get Ticket by ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Tickets by Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Ticket by ID": {
+      "main": [
+        [
+          {
+            "node": "Format Ticket by ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Tickets by Phone": {
+      "main": [
+        [
+          {
+            "node": "Filter by Type & Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ticket by ID": {
+      "main": [
+        [
+          {
+            "node": "Respond to Retell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter by Type & Format": {
+      "main": [
+        [
+          {
+            "node": "Respond to Retell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4e14d7ca-a161-4bfd-a3fa-2aa9d9819dd7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"
+  },
+  "id": "G9X0FqXfCJJbijTt",
+  "tags": []
+}

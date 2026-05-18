@@ -13,10 +13,10 @@
       "type": "n8n-nodes-base.mondayCom",
       "typeVersion": 1,
       "position": [
-        -1664,
-        416
+        -1232,
+        832
       ],
-      "id": "6d032643-642a-417c-831a-113d973d4e5f",
+      "id": "0adb0d11-9a93-4fb6-9f8c-6a0ef24df031",
       "name": "Create Ticket in Monday.com",
       "alwaysOutputData": true,
       "credentials": {
@@ -54,10 +54,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -1408,
-        416
+        -976,
+        832
       ],
-      "id": "6205374c-d259-461d-974d-e6357f4bfa20",
+      "id": "c3ff57e0-b0cd-4d83-92ce-aa3b6951c68f",
       "name": "Is Fatality?"
     },
     {
@@ -96,10 +96,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -1408,
-        672
+        -976,
+        1088
       ],
-      "id": "698ca1fb-efaf-4a59-bc3c-2515e1d578bb",
+      "id": "ebf17c8d-e4df-4684-be0c-aed9c81c0185",
       "name": "Needs Email?"
     },
     {
@@ -113,10 +113,10 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        -1168,
-        320
+        -736,
+        736
       ],
-      "id": "b5f90991-5b2d-4a4a-9cb1-e4552ecc5041",
+      "id": "70494568-7d1c-4d26-891a-bfc2a8276785",
       "name": "Send Fatality Alert Email",
       "webhookId": "9fd9073f-4729-49f3-924b-07cedf60e9f7",
       "credentials": {
@@ -137,10 +137,10 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        -1168,
-        672
+        -736,
+        1088
       ],
-      "id": "67776ac7-2bcb-4bee-ad0f-48f285f7026f",
+      "id": "100856d3-af76-4671-a44f-e2ef7a683ae8",
       "name": "Send Admin Email",
       "webhookId": "900bca54-f63b-4daa-8c91-5db70c4b1d34",
       "credentials": {
@@ -159,10 +159,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -928,
-        448
+        -496,
+        864
       ],
-      "id": "86cb9173-4faf-4953-9402-01214bb2ad01",
+      "id": "fb85a3e5-36be-40ee-a789-42822bae7705",
       "name": "Respond to Retell"
     },
     {
@@ -175,10 +175,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -2128,
-        416
+        -1696,
+        832
       ],
-      "id": "dd8c439f-dc6b-4119-83e5-a3f68cbc0cb8",
+      "id": "7a9bdedb-0980-4c80-8f6e-978b6aead2b7",
       "name": "Webhook",
       "webhookId": "4870eeff-266e-4f77-b8ba-e67cf20a7777"
     },
@@ -193,10 +193,10 @@
       "type": "n8n-nodes-base.mondayCom",
       "typeVersion": 1,
       "position": [
-        -1408,
-        928
+        -976,
+        1344
       ],
-      "id": "acba65ff-80ef-40f5-a701-f886451df8df",
+      "id": "fb257138-d728-47e2-b378-d8bc3c1da17a",
       "name": "Get Caller Board Row",
       "alwaysOutputData": true,
       "credentials": {
@@ -235,10 +235,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -1168,
-        928
+        -736,
+        1344
       ],
-      "id": "061ae184-e347-4fe1-81ce-3cef9d533406",
+      "id": "854df090-5d51-4c49-b171-c4ed99dd98b2",
       "name": "Caller Exists?"
     },
     {
@@ -248,10 +248,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -944,
-        832
+        -512,
+        1248
       ],
-      "id": "a3f1c8d2-7b44-4e91-9a02-1b2c3d4e5f60",
+      "id": "8452f9c4-6e47-4efd-8404-3d6cb72e9be8",
       "name": "Merge Caller Fields"
     },
     {
@@ -265,10 +265,10 @@
       "type": "n8n-nodes-base.mondayCom",
       "typeVersion": 1,
       "position": [
-        -688,
-        832
+        -256,
+        1248
       ],
-      "id": "00673e0c-7fe6-4bbe-888d-824885eece6c",
+      "id": "49886ef7-5a15-4a81-a148-80f80f199077",
       "name": "Update Caller Data",
       "alwaysOutputData": true,
       "credentials": {
@@ -292,10 +292,10 @@
       "type": "n8n-nodes-base.mondayCom",
       "typeVersion": 1,
       "position": [
-        -912,
-        1056
+        -480,
+        1472
       ],
-      "id": "fa7ec8dd-708d-4bbe-8634-a6e0896efd67",
+      "id": "08896444-c5fe-48a6-b149-638880453aea",
       "name": "Create Caller Data",
       "alwaysOutputData": true,
       "credentials": {
@@ -305,6 +305,28 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "from": "+14242772381",
+        "to": "={{ $('Webhook').item.json.body.caller_phone }}",
+        "message": "=Hi! Your Keyline Home Care request has been submitted.\n\nTicket Number: {{ $('Create Ticket in Monday.com').item.json.id }}\n\nOur team will follow up within 1-2 business days.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        576
+      ],
+      "id": "b1c4f7e0-2a93-4d51-9c5a-8e7d6b3f4a91",
+      "name": "Send Ticket Confirmation SMS",
+      "credentials": {
+        "twilioApi": {
+          "id": "Lqar34yGkhmDNI6w",
+          "name": "Twilio account"
+        }
+      }
     }
   ],
   "connections": {
@@ -323,6 +345,11 @@
           },
           {
             "node": "Get Caller Board Row",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Ticket Confirmation SMS",
             "type": "main",
             "index": 0
           }
@@ -422,65 +449,47 @@
     }
   },
   "pinData": {
-    "Create Ticket in Monday.com": [
-      {
-        "id": "12016541963"
-      }
-    ],
-    "Respond to Retell": [
-      {
-        "id": "12016541963"
-      }
-    ],
     "Webhook": [
       {
         "headers": {
           "host": "keyline.app.n8n.cloud",
           "user-agent": "axios/1.15.2",
-          "content-length": "321",
+          "content-length": "381",
           "accept": "application/json, text/plain, */*",
           "accept-encoding": "gzip, br",
-          "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=f1d8aa54862f49f58133d67198d6861b,sentry-org_id=4511141371183104",
+          "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=7b9f56962b65415caebe365c26f196d8,sentry-org_id=4511141371183104",
           "cdn-loop": "cloudflare; loops=1; subreqs=1",
           "cf-connecting-ip": "100.20.5.228",
           "cf-ew-via": "15",
           "cf-ipcountry": "US",
-          "cf-ray": "9fb458b87c145f03-PDX",
+          "cf-ray": "9fdb4f6469f0efb8-PDX",
           "cf-visitor": "{\"scheme\":\"https\"}",
           "cf-worker": "n8n.cloud",
           "content-type": "application/json",
-          "sentry-trace": "f1d8aa54862f49f58133d67198d6861b-a199338ad66e7dc7",
-          "x-forwarded-for": "100.20.5.228, 104.23.160.181",
+          "sentry-trace": "7b9f56962b65415caebe365c26f196d8-b66f215bb7f13ffc",
+          "x-forwarded-for": "100.20.5.228, 172.68.175.45",
           "x-forwarded-host": "keyline.app.n8n.cloud",
           "x-forwarded-port": "443",
           "x-forwarded-proto": "https",
-          "x-forwarded-server": "traefik-prod-users-gwc-57-84ffcf945d-gp9x8",
+          "x-forwarded-server": "traefik-prod-users-gwc-57-84ffcf945d-4pfgx",
           "x-is-trusted": "yes",
           "x-real-ip": "100.20.5.228",
-          "x-retell-signature": "v=1778703445663,d=9d4a6a63d24f8bdec0494b3042134f1d07dc8c6d4c026288d4eaeddb34757c4b"
+          "x-retell-signature": "v=1779112008229,d=389cdfe1ed588e7ed9d195a76c98317e084db276dd34ac3f0dcb1693b90d4f7b"
         },
         "params": {},
         "query": {},
         "body": {
-          "caller_name": "John Doe",
+          "caller_name": "Nia Long",
           "collected_fields": null,
-          "caller_phone": "+12532624137",
-          "caller_state": "Texas",
-          "caller_email": "ubaid@gmail.com",
+          "caller_phone": "+16785228838",
+          "caller_state": "Georgia",
+          "caller_email": null,
           "priority": "normal",
-          "call_type": "missed_clockout",
-          "call_summary": "John Doe missed his clock out for client Dave Smith today, May thirteenth, because his CareBravo app was not working."
+          "call_type": "travel",
+          "call_summary": "Caregiver Nia Long is requesting travel from Georgia to Tallahassee, Florida, from June first to June tenth. She will be traveling with the patient and staying at 552 Monroe Street, zip code 30331."
         },
         "webhookUrl": "https://keyline.app.n8n.cloud/webhook/4870eeff-266e-4f77-b8ba-e67cf20a7777",
         "executionMode": "production"
-      }
-    ],
-    "Get Caller Board Row": [
-      {}
-    ],
-    "Create Caller Data": [
-      {
-        "id": "12016559288"
       }
     ]
   },

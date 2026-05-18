@@ -1,0 +1,372 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aubrey-send-sms",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1312,
+        2336
+      ],
+      "id": "01f3f5af-42af-4db0-b48f-fabb073f3db8",
+      "name": "Webhook",
+      "webhookId": "aubrey-send-sms"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "app-link-rule",
+                    "leftValue": "={{ $json.body.message_type }}",
+                    "rightValue": "app_link",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "App Link"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "travel-rule",
+                    "leftValue": "={{ $json.body.message_type }}",
+                    "rightValue": "travel_link",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Travel Link"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "prospect-rule",
+                    "leftValue": "={{ $json.body.message_type }}",
+                    "rightValue": "prospect_link",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Prospect Link"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "ticket-rule",
+                    "leftValue": "={{ $json.body.message_type }}",
+                    "rightValue": "ticket_confirmation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ticket Confirmation"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -1088,
+        2288
+      ],
+      "id": "1b29d3d5-04dc-4e84-bd65-bf71c3f2b150",
+      "name": "Message Type"
+    },
+    {
+      "parameters": {
+        "from": "+14242772381",
+        "to": "={{ $json.query.caller_phone }}",
+        "message": "Hi! Here is your Keyline Home Care app link for travel requests and other services: https://bit.ly/3KcDhAB",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        2240
+      ],
+      "id": "68c4e1ed-31c9-412c-94cd-8a089551707c",
+      "name": "Send Travel Link",
+      "credentials": {
+        "twilioApi": {
+          "id": "Lqar34yGkhmDNI6w",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "+14242772381",
+        "to": "={{ $json.query.caller_phone }}",
+        "message": "Hi! Here is your Keyline Home Care application link to get started: https://bit.ly/47BLoyB",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        2432
+      ],
+      "id": "71f5d921-7b77-4765-8434-08ab18859578",
+      "name": "Send Prospect Link",
+      "credentials": {
+        "twilioApi": {
+          "id": "Lqar34yGkhmDNI6w",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "+14242772381",
+        "to": "={{ $json.query.caller_phone }}",
+        "message": "=Hi! Your Keyline Home Care request has been submitted.\n\nTicket Number: {{ $('Webhook').item.json.body.ticket_id }}\n\nOur team will follow up within 1-2 business days.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        2624
+      ],
+      "id": "c4a7e28d-069e-4085-8526-7206482b1b2b",
+      "name": "Send Ticket Confirmation",
+      "credentials": {
+        "twilioApi": {
+          "id": "Lqar34yGkhmDNI6w",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message_type: $('Webhook').item.json.body.message_type }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -640,
+        2336
+      ],
+      "id": "2a8ce8d7-e1db-4bfd-bdb5-194294fd4a9f",
+      "name": "Respond Success"
+    },
+    {
+      "parameters": {
+        "from": "+14242772381",
+        "to": "={{ $json.query.caller_phone }}",
+        "message": "Hi! Here is your Keyline Home Care caregiver app link: https://bit.ly/3KcDhAB\n\nUse the app to submit incident reports, view pay stubs, update your info, and more.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        2048
+      ],
+      "id": "93813df1-9c2f-46d8-b808-58c2f9c6bee7",
+      "name": "Send App Link",
+      "credentials": {
+        "twilioApi": {
+          "id": "Lqar34yGkhmDNI6w",
+          "name": "Twilio account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Message Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Type": {
+      "main": [
+        [
+          {
+            "node": "Send App Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Travel Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Prospect Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Ticket Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Travel Link": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Prospect Link": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Ticket Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send App Link": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "keyline.app.n8n.cloud",
+          "user-agent": "axios/1.15.2",
+          "content-length": "30",
+          "accept": "application/json, text/plain, */*",
+          "accept-encoding": "gzip, br",
+          "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=fc12dc0f4e8b4800a42915596348b782,sentry-org_id=4511141371183104",
+          "cdn-loop": "cloudflare; loops=1; subreqs=1",
+          "cf-connecting-ip": "100.20.5.228",
+          "cf-ew-via": "15",
+          "cf-ipcountry": "US",
+          "cf-ray": "9f8977463972f3b4-PDX",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "cf-worker": "n8n.cloud",
+          "content-type": "application/json",
+          "sentry-trace": "fc12dc0f4e8b4800a42915596348b782-a3fd1bddb700f081",
+          "x-forwarded-for": "100.20.5.228, 104.23.160.181",
+          "x-forwarded-host": "keyline.app.n8n.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "traefik-prod-users-gwc-57-84ffcf945d-2vqzb",
+          "x-is-trusted": "yes",
+          "x-real-ip": "100.20.5.228",
+          "x-retell-signature": "v=1778253809477,d=e77646c2eebfb33e2c60f2798f2cadac4c3eb8526f1791d2cb1dfae44591a4a4"
+        },
+        "params": {},
+        "query": {
+          "caller_phone": "+12532681856"
+        },
+        "body": {
+          "message_type": "travel_link"
+        },
+        "webhookUrl": "https://keyline.app.n8n.cloud/webhook/aubrey-send-sms",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"
+  }
+}
