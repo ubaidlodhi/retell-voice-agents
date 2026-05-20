@@ -30,7 +30,9 @@ SMTP_CRED_ID = "m0mbibKf6il36id5"
 SMTP_CRED_NAME = "SMTP account"
 
 # Email config — already parameterized in the prior script.
-TO_EMAIL_VALUE = "sagewillowspa@gmail.com"
+# NOTE: temporarily routed to engineering for testing — flip back to
+# sagewillowspa@gmail.com before client go-live.
+TO_EMAIL_VALUE = "engineering@aiemply.com"
 FROM_EMAIL_VALUE = "Aria <engineering@aiemply.com>"
 
 # Map Code-type node names -> Python constant names (so big JS blobs land in

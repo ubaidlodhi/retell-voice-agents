@@ -21,7 +21,7 @@ SMTP_CREDENTIAL_ID  = 'm0mbibKf6il36id5'
 SMTP_CREDENTIAL_NAME = 'SMTP account'
 
 # Flag-callback email destination + sender identity
-CALLBACK_RECIPIENT = 'sagewillowspa@gmail.com'
+CALLBACK_RECIPIENT = 'engineering@aiemply.com'
 FROM_EMAIL         = 'Aria <engineering@aiemply.com>'
 
 
@@ -179,15 +179,6 @@ function parseLocalDateTime(localDateTime) {
     };
 }
 
-// Day-of-week from "YYYY-MM-DD" local date (independent of server timezone).
-const DOW_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-function localDayOfWeek(localDate) {
-    if (!localDate) return null;
-    const m = String(localDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return null;
-    return DOW_NAMES[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()];
-}
-
 function formatTimeLabel(hour, minute) {
     const suffix = hour >= 12 ? 'PM' : 'AM';
     const h = hour % 12 === 0 ? 12 : hour % 12;
@@ -244,8 +235,6 @@ function mergeTherapists(agg, candidate) {
 
 function buildAgg(s) {
     return {
-        localDate: s.localDate,
-        dayOfWeek: localDayOfWeek(s.localDate),
         time: s.time,
         startDate: s.startDate,
         endDate: s.endDate,
@@ -253,10 +242,7 @@ function buildAgg(s) {
         // The agent uses the staffId from the chosen entry of availableTherapists
         // when caller picks a specific therapist; OMITS staffId entirely when
         // caller has no preference (Wix auto-assigns at confirmation).
-        availableTherapists: s.therapists.map(t => ({ name: t.name, staffId: t.staffId })),
-        location: s.location,
-        remainingCapacity: s.remainingCapacity,
-        totalCapacity: s.totalCapacity
+        availableTherapists: s.therapists.map(t => ({ name: t.name, staffId: t.staffId }))
     };
 }
 
@@ -275,10 +261,7 @@ let slots = entries
             endDate: e.localEndDate,
             therapists,
             therapistIds: therapists.map(t => t.staffId).filter(Boolean),
-            scheduleId: e.scheduleId || null,
-            location: e.location || null,
-            remainingCapacity: e.remainingCapacity ?? null,
-            totalCapacity: e.totalCapacity ?? null
+            scheduleId: e.scheduleId || null
         };
     });
 
@@ -342,8 +325,7 @@ for (const date of sortedDates) {
     }
 }
 
-return [{ json: { success: true, mode: 'grouped', count: totalReturned, filterApplied, availabilityByDay } }];
-"""
+return [{ json: { success: true, mode: 'grouped', count: totalReturned, filterApplied, availabilityByDay } }];"""
 
 FORMAT_STAFF_JS = r"""const data = $input.first().json;
 
@@ -799,13 +781,11 @@ return Array.from(uniqueAddOnIds).map(id => ({
 }));"""
 
 FORMAT_SERVICES_RESPONSE_JS = r"""const servicesData = $('Wix: Query Services').first().json;
-
+const serviceName = $('Webhook — Retell Tool Call').first().json.body.args.serviceName
 if (servicesData.message || servicesData.details || !servicesData.services) {
   return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];
 }
-
 const services = servicesData.services || [];
-
 // 1. Map Pricing Variants
 const pricingLookup = {};
 try {
@@ -823,7 +803,6 @@ try {
 } catch (e) {
   console.error("Pricing map skipped or failed.");
 }
-
 // 2. Map Add-ons (Base Details Only: Name, Price, Duration)
 const addOnLookup = {};
 try {
@@ -841,60 +820,45 @@ try {
 } catch (e) {
   console.error("Error mapping Add-on base details:", e);
 }
-
 // 3. Final Lean Mapping (Extracts Group IDs directly from original data)
 const formattedServices = services.map(s => {
   let availableAddOns = [];
-
-  // Check if the service has add-on groups attached
   if (s.addOnGroups && s.addOnGroups.length > 0) {
-    
-    // Map Addon IDs to their corresponding Group IDs for THIS specific service
     const localGroupMap = {};
-    
     s.addOnGroups.forEach(group => {
-      const groupId = group.id; // This is the groupId
+      const groupId = group.id;
       const addOnIds = group.addOnIds || [];
-      
       addOnIds.forEach(addOnId => {
         if (!localGroupMap[addOnId]) {
           localGroupMap[addOnId] = [];
         }
-        // Push the groupId, avoiding duplicates
         if (!localGroupMap[addOnId].includes(groupId)) {
           localGroupMap[addOnId].push(groupId);
         }
       });
     });
-
     const uniqueIds = Object.keys(localGroupMap);
-
     availableAddOns = uniqueIds.map(id => {
-      // Get base details from Step 2
       const details = addOnLookup[id] || {
         name: "Unknown",
         price: "USD 0",
         duration: "0 min"
       };
-
       return {
         id,
         name: details.name,
         price: details.price,
         duration: details.duration,
-        groupIds: localGroupMap[id] // Map the dynamically created group IDs
+        groupIds: localGroupMap[id]
       };
     });
   }
-
   const isVaried = s.payment?.rateType === 'VARIED';
   const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;
-
   const fixedPrice =
     !isVaried && s.payment?.fixed?.price?.value
       ? "USD " + s.payment.fixed.price.value
       : undefined;
-
   return {
     id: s.id,
     name: s.name,
@@ -905,7 +869,15 @@ const formattedServices = services.map(s => {
   };
 });
 
-return [{ json: { success: true, services: formattedServices } }];"""
+// 4. Filter by serviceName if provided and a match exists
+const normalizedInput = (serviceName || '').trim().toLowerCase();
+const matchedServices = normalizedInput
+  ? formattedServices.filter(s => s.name.toLowerCase().includes(normalizedInput))
+  : [];
+
+const finalServices = matchedServices.length > 0 ? matchedServices : formattedServices;
+
+return [{ json: { success: true, services: finalServices } }];"""
 
 
 # -----------------------------------------------------------------------------
@@ -1404,7 +1376,10 @@ NODES = [   {   'parameters': {'httpMethod': 'POST', 'path': 'retell-wix', 'resp
         'position': [1408, 6864],
         'id': '88fe355f-448f-4fec-9463-e375cae3ffe0',
         'name': 'Error: Getting Booking'},
-    {   'parameters': {'respondWith': 'json', 'responseBody': '={{ $json }}', 'options': {}},
+    {   'parameters': {   'respondWith': 'json',
+                          'responseBody': '={{ { success: $json.success, mode: $json.mode, count: $json.count, '
+                                          'availabilityByDay: $json.availabilityByDay } }}',
+                          'options': {}},
         'id': '92a48d76-8c33-4a30-9b95-919790e34690',
         'name': 'Respond: Get Slots',
         'type': 'n8n-nodes-base.respondToWebhook',

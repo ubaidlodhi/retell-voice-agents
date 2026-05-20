@@ -35,7 +35,7 @@ EXEC_MSG = "Just a moment please, this will only take a second."
 
 # Bump this on EVERY meaningful build (prompt edits, tool changes, handbook
 # tweaks, etc.) so the client can tell which revision they're testing.
-AGENT_VERSION = "V9"
+AGENT_VERSION = "V10"
 
 
 # -----------------------------------------------------------------------------
@@ -53,6 +53,9 @@ def tool(name, header, description, parameters, response_variables=None,
         "headers": {"tool": header},
         "query_params": {},
         "parameter_type": "json",
+        # Send tool args at the payload root (matches the dashboard config and
+        # the n8n "Parse Retell Payload" node, which reads args_at_root shape).
+        "args_at_root": True,
         "timeout_ms": 120000,
         "speak_during_execution": True,
         "speak_after_execution": True,
@@ -380,10 +383,11 @@ AGENT = {
     "channel": "voice",
     "agent_name": f"Aria — Sage & Willow Spa — Single Prompt {AGENT_VERSION}",
     "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU"],
-    # Mirror conversation-flow agent voice + perf settings so it sounds the same.
-    "voice_id": "custom_voice_573dab78e535ca398ccb542f7e",
+    # Voice + perf settings (synced from the Retell dashboard).
+    "voice_id": "11labs-Brynne",
     "voice_temperature": 0.7,
-    "voice_speed": 1,
+    "voice_speed": 0.9,
+    "volume": 1,
     "max_call_duration_ms": 1800000,
     "interruption_sensitivity": 0.9,
     "responsiveness": 1,
@@ -391,9 +395,15 @@ AGENT = {
     "ring_duration_ms": 30000,
     "normalize_for_speech": True,
     "stt_mode": "accurate",
+    "allow_user_dtmf": True,
+    "user_dtmf_options": {},
     "denoising_mode": "noise-and-background-speech-cancellation",
     "data_storage_setting": "everything",
     "post_call_analysis_model": "gpt-4.1-mini",
+    "pii_config": {
+        "mode": "post_call",
+        "categories": [],
+    },
     "is_published": False,
     "handbook_config": {
         "echo_verification": True,
@@ -415,7 +425,10 @@ AGENT = {
     "retellLlmData": {
         "llm_id": "",
         "version": 0,
-        "model": "gpt-4.1",
+        "model": "gpt-4.1-mini",
+        "model_temperature": 0.1,
+        "model_high_priority": True,
+        "tool_call_strict_mode": False,
         "general_prompt": GENERAL_PROMPT,
         "general_tools": CUSTOM_TOOLS + [END_CALL_TOOL],
         "start_speaker": "agent",
