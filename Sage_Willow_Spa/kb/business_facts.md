@@ -22,7 +22,7 @@ The spa is open **ten AM to eight PM, every day of the week**. Pacific time.
 
 Sage & Willow Spa is a relaxing massage spa dedicated to wellness, offering personalized treatments in a calm and peaceful environment.
 
-The spa has been open since **September of twenty twenty-four**. It is owned and run by Nicky, a licensed massage therapist who works full-time, with two part-time therapists supporting her.
+The spa has been open since **September of twenty twenty-four**. The team is small and hands-on: a full-time licensed massage therapist plus two part-time therapists, all focused on personalized one-on-one care.
 
 **What makes Sage & Willow different:** personalized, one-on-one care, with treatments tailored to each client's needs in a quiet and private spa environment.
 

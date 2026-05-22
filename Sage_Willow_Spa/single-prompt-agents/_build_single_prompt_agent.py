@@ -33,9 +33,13 @@ PROMPT_PATH = Path(__file__).parent / "system_prompt_single.md"
 N8N_BASE_URL = "https://automation.aiemply.com/webhook/retell-wix"
 EXEC_MSG = "Just a moment please, this will only take a second."
 
+# Personal line for "talk to a real person" cold transfers.
+# NOTE: temporary number — swap for the spa's real forwarding number before go-live.
+PERSONAL_TRANSFER_NUMBER = "+14064764193"
+
 # Bump this on EVERY meaningful build (prompt edits, tool changes, handbook
 # tweaks, etc.) so the client can tell which revision they're testing.
-AGENT_VERSION = "V10"
+AGENT_VERSION = "V17"
 
 
 # -----------------------------------------------------------------------------
@@ -43,7 +47,7 @@ AGENT_VERSION = "V10"
 # -----------------------------------------------------------------------------
 
 def tool(name, header, description, parameters, response_variables=None,
-         execution_message_type="prompt", enable_typing_sound=True):
+         execution_message_type="static_text", enable_typing_sound=True):
     t = {
         "type": "custom",
         "name": name,
@@ -78,8 +82,29 @@ CUSTOM_TOOLS = [
         "get_services",
         "get-services",
         "Live service catalog with IDs, durations, prices, and add-ons. Call "
-        "before quoting any price, before get_slots, and before book_appointment.",
-        {"type": "object", "properties": {}, "required": []},
+        "before quoting any price, before get_slots, and before book_appointment. "
+        "Pass serviceName when the caller asks about ONE specific service (e.g. "
+        "'how much is a deep tissue?') to get just that service back; omit it to "
+        "get the full catalog (e.g. when they ask 'what do you offer?').",
+        {
+            "type": "object",
+            "properties": {
+                "serviceName": {
+                    "type": "string",
+                    "enum": [
+                        "Signature Massage",
+                        "Swedish Massage",
+                        "Deep Tissue Massage",
+                        "Hot Stone Massage",
+                        "Prenatal Massage",
+                        "Lymphatic Drainage Massage",
+                        "30-Minute Focus Massage",
+                    ],
+                    "description": "Optional. The single service the caller asked about. Pass the matching value when they name ONE service (e.g. 'how much is a deep tissue?' → 'Deep Tissue Massage'); omit to return the full catalog.",
+                },
+            },
+            "required": [],
+        },
     ),
     tool(
         "get_staff",
@@ -221,7 +246,6 @@ CUSTOM_TOOLS = [
             "booking_end":            "$.bookings[0].endDate",
             "booking_day_of_week":    "$.bookings[0].dayOfWeek",
             "booking_duration_min":   "$.bookings[0].durationMinutes",
-            "booking_within_24h_flag":"$.bookings[0].withinCancellationWindowFlag",
             "booking_first_name":     "$.bookings[0].firstName",
             "booking_last_name":      "$.bookings[0].lastName",
             "booking_phone":          "$.bookings[0].phone",
@@ -322,6 +346,29 @@ END_CALL_TOOL = {
     ),
     "speak_during_execution": False,
     "speak_after_execution": False,
+}
+
+
+# Cold transfer to the personal line when a caller wants a real person.
+TRANSFER_TOOL = {
+    "type": "transfer_call",
+    "name": "transfer_to_human",
+    "description": (
+        "Cold-transfer the call to the personal line when the caller clearly "
+        "wants a real person / to speak with someone directly. Say a brief hold "
+        "line first (\"Sure — hold on please, let me connect you\"), then call "
+        "this. Do NOT reveal who the line belongs to or that there's an owner. "
+        "If the transfer fails or no one answers, take a callback via "
+        "flag_callback instead."
+    ),
+    "transfer_destination": {
+        "type": "predefined",
+        "number": PERSONAL_TRANSFER_NUMBER,
+    },
+    "transfer_option": {
+        "type": "cold_transfer",
+        "show_transferee_as_caller": False,
+    },
 }
 
 
@@ -430,7 +477,7 @@ AGENT = {
         "model_high_priority": True,
         "tool_call_strict_mode": False,
         "general_prompt": GENERAL_PROMPT,
-        "general_tools": CUSTOM_TOOLS + [END_CALL_TOOL],
+        "general_tools": CUSTOM_TOOLS + [END_CALL_TOOL, TRANSFER_TOOL],
         "start_speaker": "agent",
         "begin_message": "Hi, this is Aria from Sage and Willow Spa. Just to let you know, this call is recorded for quality purpose. How can I help you today?",
         "default_dynamic_variables": {},
@@ -451,7 +498,7 @@ def main():
     print(f"Wrote {OUT_PATH}")
     print(f"  Agent version: {AGENT_VERSION}")
     print(f"  Prompt size: {len(GENERAL_PROMPT)} chars / {len(GENERAL_PROMPT.split())} words")
-    print(f"  Tools: {len(CUSTOM_TOOLS) + 1} ({len(CUSTOM_TOOLS)} custom + 1 end_call)")
+    print(f"  Tools: {len(CUSTOM_TOOLS) + 2} ({len(CUSTOM_TOOLS)} custom + end_call + transfer_to_human)")
     print(f"  Post-call analysis fields: {len(POST_CALL_ANALYSIS)}")
 
 

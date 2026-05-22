@@ -781,7 +781,11 @@ return Array.from(uniqueAddOnIds).map(id => ({
 }));"""
 
 FORMAT_SERVICES_RESPONSE_JS = r"""const servicesData = $('Wix: Query Services').first().json;
-const serviceName = $('Webhook — Retell Tool Call').first().json.body.args.serviceName
+// Read the normalized args from Parse Retell Payload (handles args_at_root:
+// true, where there is no body.args wrapper). Reading body.args directly off
+// the raw webhook throws under args_at_root: true.
+const args = $('Parse Retell Payload').first().json.args || {};
+const serviceName = args.serviceName;
 if (servicesData.message || servicesData.details || !servicesData.services) {
   return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];
 }
@@ -1378,7 +1382,7 @@ NODES = [   {   'parameters': {'httpMethod': 'POST', 'path': 'retell-wix', 'resp
         'name': 'Error: Getting Booking'},
     {   'parameters': {   'respondWith': 'json',
                           'responseBody': '={{ { success: $json.success, mode: $json.mode, count: $json.count, '
-                                          'availabilityByDay: $json.availabilityByDay } }}',
+                                          'availabilityByDay: $json.availabilityByDay, slots: $json.slots } }}',
                           'options': {}},
         'id': '92a48d76-8c33-4a30-9b95-919790e34690',
         'name': 'Respond: Get Slots',
