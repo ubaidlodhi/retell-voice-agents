@@ -39,7 +39,7 @@ PERSONAL_TRANSFER_NUMBER = "+14064764193"
 
 # Bump this on EVERY meaningful build (prompt edits, tool changes, handbook
 # tweaks, etc.) so the client can tell which revision they're testing.
-AGENT_VERSION = "V17"
+AGENT_VERSION = "V22"
 
 
 # -----------------------------------------------------------------------------
@@ -116,28 +116,6 @@ CUSTOM_TOOLS = [
         enable_typing_sound=False,
     ),
     tool(
-        "get_contact",
-        "get-contact",
-        "Returning-client lookup. Call when caller says they've been here before. "
-        "Try phone first (defaults to {{user_number}}); fall back to email if not found.",
-        {
-            "type": "object",
-            "properties": {
-                "phone": {"type": "string", "description": "Caller's phone in E.164 — default to {{user_number}}."},
-                "email": {"type": "string", "description": "Email used at the spa, if phone lookup didn't match."},
-            },
-            "required": [],
-        },
-        response_variables={
-            "contact_found":      "$.found",
-            "contact_id":         "$.contact.contactId",
-            "contact_first_name": "$.contact.firstName",
-            "contact_last_name":  "$.contact.lastName",
-            "contact_email":      "$.contact.email",
-            "contact_phone":      "$.contact.phone",
-        },
-    ),
-    tool(
         "get_slots",
         "get-slots",
         "Available time slots. Narrow with staffId, timeOfDay, earliestFirst, or "
@@ -176,10 +154,8 @@ CUSTOM_TOOLS = [
         "book_appointment",
         "book-appointment",
         "Create a booking. Only call after caller has confirmed slot + name + "
-        "email + phone. Email is mandatory — Wix uses it for the confirmation "
-        "AND as the only lookup key for future cancel/reschedule. Never substitute "
-        "a spa-owned email; offer a callback if caller declines. Pass addOns only "
-        "if get_services returned them for this service.",
+        "phone. We don't collect email — omit it (the backend fills a default for "
+        "Wix). Pass addOns only if get_services returned them for this service.",
         {
             "type": "object",
             "properties": {
@@ -191,7 +167,6 @@ CUSTOM_TOOLS = [
                 "endDate":    {"type": "string", "description": "ISO local end."},
                 "firstName":  {"type": "string"},
                 "lastName":   {"type": "string"},
-                "email":      {"type": "string"},
                 "phone":      {"type": "string", "description": "E.164."},
                 "addOns": {
                     "type": "array",
@@ -207,7 +182,7 @@ CUSTOM_TOOLS = [
                 },
             },
             "required": ["serviceId", "scheduleId", "startDate",
-                         "endDate", "firstName", "lastName", "email", "phone"],
+                         "endDate", "firstName", "lastName", "phone"],
         },
         response_variables={
             "new_booking_id":    "$.bookingId",
@@ -220,15 +195,14 @@ CUSTOM_TOOLS = [
     tool(
         "get_booking",
         "get-booking",
-        "Look up an existing booking by email. Confirm the email letter-by-letter "
-        "before calling. Returns up to 5 bookings with bookingId, revision, "
-        "dayOfWeek, serviceName, staffName, durationMinutes, "
-        "withinCancellationWindowFlag. Trust the server's dayOfWeek.",
+        "Look up an existing booking by phone (defaults to {{user_number}}). "
+        "Returns up to 5 bookings with bookingId, revision, dayOfWeek, serviceName, "
+        "staffName, durationMinutes. Trust the server's dayOfWeek.",
         {
             "type": "object",
             "properties": {
                 "bookingId": {"type": "string", "description": "If the caller knows their booking ID."},
-                "email":     {"type": "string", "description": "Email used for the original booking."},
+                "phone":     {"type": "string", "description": "Phone the booking is under — default to {{user_number}}."},
             },
             "required": [],
         },
@@ -329,8 +303,10 @@ END_CALL_TOOL = {
     "name": "end_call",
     "type": "end_call",
     "description": (
-        "End the call AFTER the closing line, based on the caller's INTENT (not "
-        "single words). Triggers:\n"
+        "End the call. ALWAYS speak a closing line out loud in the SAME turn "
+        "right before calling this (for a normal goodbye: 'Thank you for calling "
+        "Sage and Willow Spa. Take care.') — never end the call silently. "
+        "Trigger on the caller's INTENT (not single words). Triggers:\n"
         "  - Caller says goodbye / bye / 'that's all' / 'I'm good' / 'nothing "
         "else,' or confirms 'no' after 'anything else?'\n"
         "  - EMERGENCY (after 911) or CRISIS (after 988).\n"
@@ -368,7 +344,9 @@ TRANSFER_TOOL = {
     "transfer_option": {
         "type": "cold_transfer",
         "show_transferee_as_caller": False,
+        "enable_bridge_audio_cue": True,
     },
+    "speak_after_execution": True,
 }
 
 
@@ -429,9 +407,10 @@ AGENT = {
     "agent_id": "",
     "channel": "voice",
     "agent_name": f"Aria — Sage & Willow Spa — Single Prompt {AGENT_VERSION}",
-    "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU"],
+    "language": ["en-US", "es-ES", "en-IN", "es-419", "en-GB", "en-AU", "en-NZ"],
     # Voice + perf settings (synced from the Retell dashboard).
     "voice_id": "11labs-Brynne",
+    "voice_model": "eleven_turbo_v2_5",
     "voice_temperature": 0.7,
     "voice_speed": 0.9,
     "volume": 1,
@@ -472,15 +451,12 @@ AGENT = {
     "retellLlmData": {
         "llm_id": "",
         "version": 0,
-        "model": "gpt-4.1-mini",
-        "model_temperature": 0.1,
-        "model_high_priority": True,
-        "tool_call_strict_mode": False,
+        "model": "gpt-4.1",
+        "model_high_priority": False,
         "general_prompt": GENERAL_PROMPT,
         "general_tools": CUSTOM_TOOLS + [END_CALL_TOOL, TRANSFER_TOOL],
         "start_speaker": "agent",
         "begin_message": "Hi, this is Aria from Sage and Willow Spa. Just to let you know, this call is recorded for quality purpose. How can I help you today?",
-        "default_dynamic_variables": {},
         "knowledge_base_ids": [],
         "kb_config": {
             "top_k": 3,

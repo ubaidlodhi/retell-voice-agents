@@ -358,7 +358,8 @@ if (!args.endDate) errors.push('endDate is required');
 // 3. Customer Details
 if (!args.firstName) errors.push('firstName is required');
 if (!args.lastName) errors.push('lastName is required');
-if (!args.email) errors.push('email is required');
+// Email is no longer collected by the agent — the Wix Create Booking node
+// falls back to the spa email when args.email is absent.
 if (!args.phone) errors.push('phone is required');
 
 // Date format checks
