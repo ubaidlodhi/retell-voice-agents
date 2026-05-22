@@ -4,16 +4,16 @@
       "parameters": {
         "from": "+14242772381",
         "to": "={{ $json.query.caller_phone }}",
-        "message": "Hi! Here is your Keyline Home Care caregiver app link: https://bit.ly/3KcDhAB\n\nUse the app to submit incident reports, view pay stubs, update your info, and more.\n\nKeyline Home Care | 1-855-453-9546",
+        "message": "Hi! Here is your Keyline Home Care caregiver app link: https://bit.ly/3KcDhAB\n\nUse the app to submit incident reports, view pay stubs, update your info, and more.\n\nKeyline Home Care",
         "options": {}
       },
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
       "position": [
-        -960,
-        2048
+        -656,
+        2816
       ],
-      "id": "93813df1-9c2f-46d8-b808-58c2f9c6bee7",
+      "id": "cbb692c0-adb2-4c02-b3a5-8b62b72e55e7",
       "name": "Send App Link",
       "credentials": {
         "twilioApi": {
@@ -31,10 +31,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -736,
-        2336
+        -432,
+        3104
       ],
-      "id": "2a8ce8d7-e1db-4bfd-bdb5-194294fd4a9f",
+      "id": "05fd70e2-3a25-491e-a72e-5391a93e49e2",
       "name": "Respond Success"
     },
     {
@@ -47,10 +47,10 @@
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
       "position": [
-        -960,
-        2432
+        -656,
+        3200
       ],
-      "id": "71f5d921-7b77-4765-8434-08ab18859578",
+      "id": "920f2b66-7109-4b9f-aadd-0388a4ae9d89",
       "name": "Send Prospect Link",
       "credentials": {
         "twilioApi": {
@@ -69,10 +69,10 @@
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
       "position": [
-        -960,
-        2240
+        -656,
+        3008
       ],
-      "id": "68c4e1ed-31c9-412c-94cd-8a089551707c",
+      "id": "04c5930b-4d31-439d-83f0-d1a7cefcdbff",
       "name": "Send Travel Link",
       "credentials": {
         "twilioApi": {
@@ -190,10 +190,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [
-        -1184,
-        2288
+        -880,
+        3056
       ],
-      "id": "1b29d3d5-04dc-4e84-bd65-bf71c3f2b150",
+      "id": "434878a9-8047-49b7-aa5e-714bef4b9d29",
       "name": "Message Type"
     },
     {
@@ -206,10 +206,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -1408,
-        2336
+        -1104,
+        3104
       ],
-      "id": "01f3f5af-42af-4db0-b48f-fabb073f3db8",
+      "id": "b63d6c80-6e53-44df-ab8c-9e950dca0560",
       "name": "Webhook",
       "webhookId": "aubrey-send-sms"
     },
@@ -230,10 +230,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -960,
-        2624
+        -656,
+        3392
       ],
-      "id": "1b132b9d-6857-423a-9a4a-c31135737530",
+      "id": "008347af-5bad-45c4-bb0a-5072ae176e0c",
       "name": "Acknowledge Ticket SMS"
     }
   ],
@@ -326,48 +326,7 @@
       ]
     }
   },
-  "pinData": {
-    "Webhook": [
-      {
-        "headers": {
-          "host": "keyline.app.n8n.cloud",
-          "user-agent": "axios/1.15.2",
-          "content-length": "85",
-          "accept": "application/json, text/plain, */*",
-          "accept-encoding": "gzip, br",
-          "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=7b9f56962b65415caebe365c26f196d8,sentry-org_id=4511141371183104",
-          "cdn-loop": "cloudflare; loops=1; subreqs=1",
-          "cf-connecting-ip": "100.20.5.228",
-          "cf-ew-via": "15",
-          "cf-ipcountry": "US",
-          "cf-ray": "9fdb4f7c899defb8-PDX",
-          "cf-visitor": "{\"scheme\":\"https\"}",
-          "cf-worker": "n8n.cloud",
-          "content-type": "application/json",
-          "sentry-trace": "7b9f56962b65415caebe365c26f196d8-b626e84dfea3929d",
-          "x-forwarded-for": "100.20.5.228, 172.68.175.45",
-          "x-forwarded-host": "keyline.app.n8n.cloud",
-          "x-forwarded-port": "443",
-          "x-forwarded-proto": "https",
-          "x-forwarded-server": "traefik-prod-users-gwc-57-84ffcf945d-4pfgx",
-          "x-is-trusted": "yes",
-          "x-real-ip": "100.20.5.228",
-          "x-retell-signature": "v=1779112012222,d=4394d9cec6bb4929521c87418e6bcd3e87c3332496cae794c02a229c2c5c8a03"
-        },
-        "params": {},
-        "query": {
-          "caller_phone": "+16785228838"
-        },
-        "body": {
-          "ticket_id": "12039261736",
-          "call_type": "travel",
-          "message_type": "ticket_confirmation"
-        },
-        "webhookUrl": "https://keyline.app.n8n.cloud/webhook/aubrey-send-sms",
-        "executionMode": "production"
-      }
-    ]
-  },
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"

@@ -7,7 +7,7 @@
         "groupId": "topics",
         "name": "={{ $json.body.call_type + ' — ' + $json.body.caller_name }}",
         "additionalFields": {
-          "columnValues": "={\"text_mm2mrhy6\": \"{{ $json.body.caller_name || 'Unknown' }}\", \n\"phone_mm2m7bhz\": \"{{ $json.body.caller_phone || '' }}\", \n\"text_mm2majqv\": \"{{ $json.body.caller_state || 'Unknown' }}\", \n\"dropdown_mm2rjfbk\": \"{{ $json.body.call_type || 'Unknown' }}\", \n\"dropdown_mm2seww5\": \"{{ $json.body.priority || 'normal' }}\", \n\"long_text_mm2my16x\": \"{{ $json.body.call_summary || '' }}\",\n\"status\": {\"label\": \"New\"},\n\"text_mm33xp6z\": \"{{ $json.body.caller_email || '' }}\"}"
+          "columnValues": "={\"text_mm2mrhy6\": \"{{ $json.body.caller_name || 'Unknown' }}\", \n\"phone_mm2m7bhz\": \"{{ $json.body.caller_phone || '' }}\", \n\"text_mm2majqv\": \"{{ $json.body.caller_state || 'Unknown' }}\", \n\"dropdown_mm2rjfbk\": \"{{ $json.body.call_type || 'Unknown' }}\", \n\"dropdown_mm2seww5\": \"{{ $json.body.priority || 'normal' }}\", \n\"long_text_mm2my16x\": \"{{ $json.body.call_summary || '' }}\",\n\"status\": {\"label\": \"New\"},\n\"text_mm33xp6z\": \"{{ $json.body.caller_email || '' }}\",\n\"text_mm3krm77\": \"{{ $json.body.patient_name || '' }}\"}"
         }
       },
       "type": "n8n-nodes-base.mondayCom",
@@ -96,8 +96,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -1248,
-        1024
+        -1232,
+        1056
       ],
       "id": "ebf17c8d-e4df-4684-be0c-aed9c81c0185",
       "name": "Needs Email?"
@@ -243,7 +243,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Backfill the caller record: only overwrite a field when this call actually\n// brought a real value. Retell doesn't capture every field on every call, so a\n// blank or 'Unknown' from the new call must NOT wipe a value the record already\n// has — caller records should only get more complete over time, never reset.\nconst body = $('Webhook').item.json.body || {};\nconst existingCols = $('Get Caller Board Row').item.json.column_values || [];\nconst existing = (id) => (existingCols.find(c => c.id === id)?.text) || '';\n\nconst junk = ['', 'unknown', 'there', 'n/a', 'na', 'none'];\nconst clean = (v) => (v == null ? '' : String(v).trim());\nconst coalesce = (incoming, current) => {\n  const inc = clean(incoming);\n  if (inc && !junk.includes(inc.toLowerCase())) return inc;\n  return clean(current);\n};\n\nreturn [{ json: {\n  caller_name:  coalesce(body.caller_name,  existing('text_mm2mrhy6')),\n  caller_state: coalesce(body.caller_state, existing('text_mm2majqv')),\n  caller_email: coalesce(body.caller_email, existing('text_mm33xp6z')),\n  // Last call type/summary always reflect the most recent call — straight overwrite.\n  last_call_type:    clean(body.call_type),\n  last_call_summary: clean(body.call_summary)\n}}];"
+        "jsCode": "// Backfill the caller record: only overwrite a field when this call actually\n// brought a real value. Retell doesn't capture every field on every call, so a\n// blank or 'Unknown' from the new call must NOT wipe a value the record already\n// has — caller records should only get more complete over time, never reset.\nconst body = $('Webhook').item.json.body || {};\nconst existingCols = $('Get Caller Board Row').item.json.column_values || [];\nconst existing = (id) => (existingCols.find(c => c.id === id)?.text) || '';\n\nconst junk = ['', 'unknown', 'there', 'n/a', 'na', 'none'];\nconst clean = (v) => (v == null ? '' : String(v).trim());\nconst coalesce = (incoming, current) => {\n  const inc = clean(incoming);\n  if (inc && !junk.includes(inc.toLowerCase())) return inc;\n  return clean(current);\n};\n\nreturn [{ json: {\n  caller_name:  coalesce(body.caller_name,  existing('text_mm2mrhy6')),\n  caller_state: coalesce(body.caller_state, existing('text_mm2majqv')),\n  caller_email: coalesce(body.caller_email, existing('text_mm33xp6z')),\n  caller_patient_name: coalesce(body.patient_name, existing('text_mm3kaddw')),\n  // Last call type/summary always reflect the most recent call — straight overwrite.\n  last_call_type:    clean(body.call_type),\n  last_call_summary: clean(body.call_summary)\n}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -260,7 +260,7 @@
         "operation": "changeMultipleColumnValues",
         "boardId": "18413254159",
         "itemId": "={{ $('Get Caller Board Row').item.json.id }}",
-        "columnValues": "={\"text_mm2mrhy6\": \"{{ $json.caller_name }}\", \"text_mm2majqv\": \"{{ $json.caller_state }}\", \"text_mm33xp6z\": \"{{ $json.caller_email }}\", \"text_mm3bvv8e\": \"{{ $json.last_call_summary }}\", \"text_mm3bpvag\": \"{{ $json.last_call_type }}\"}"
+        "columnValues": "={\"text_mm2mrhy6\": \"{{ $json.caller_name }}\", \"text_mm2majqv\": \"{{ $json.caller_state }}\", \"text_mm33xp6z\": \"{{ $json.caller_email }}\", \"text_mm3bvv8e\": \"{{ $json.last_call_summary }}\", \"text_mm3bpvag\": \"{{ $json.last_call_type }}\", \"text_mm3kaddw\": \"{{ $json.caller_patient_name }}\"}"
       },
       "type": "n8n-nodes-base.mondayCom",
       "typeVersion": 1,
@@ -286,7 +286,7 @@
         "groupId": "group_mm3bz36d",
         "name": "={{ $('Webhook').item.json.body.caller_name || 'Unknown Caller' }}",
         "additionalFields": {
-          "columnValues": "={\"text_mm2mrhy6\": \"{{ $('Webhook').item.json.body.caller_name || 'Unknown' }}\", \"phone_mm2m7bhz\": \"{{ $('Webhook').item.json.body.caller_phone || '' }}\", \"text_mm2majqv\": \"{{ $('Webhook').item.json.body.caller_state || 'Unknown' }}\", \"text_mm33xp6z\": \"{{ $('Webhook').item.json.body.caller_email || '' }}\", \"text_mm3bvv8e\": \"{{ $('Webhook').item.json.body.call_summary || '' }}\", \"text_mm3bpvag\": \"{{ $('Webhook').item.json.body.call_type || '' }}\"}"
+          "columnValues": "={\"text_mm2mrhy6\": \"{{ $('Webhook').item.json.body.caller_name || 'Unknown' }}\", \"phone_mm2m7bhz\": \"{{ $('Webhook').item.json.body.caller_phone || '' }}\", \"text_mm2majqv\": \"{{ $('Webhook').item.json.body.caller_state || 'Unknown' }}\", \"text_mm33xp6z\": \"{{ $('Webhook').item.json.body.caller_email || '' }}\", \"text_mm3bvv8e\": \"{{ $('Webhook').item.json.body.call_summary || '' }}\", \"text_mm3bpvag\": \"{{ $('Webhook').item.json.body.call_type || '' }}\", \"text_mm3kaddw\": \"{{ $('Webhook').item.json.body.patient_name || '' }}\"}"
         }
       },
       "type": "n8n-nodes-base.mondayCom",
@@ -310,13 +310,13 @@
       "parameters": {
         "from": "+14242772381",
         "to": "={{ $('Webhook').item.json.body.caller_phone }}",
-        "message": "=Hi! Your Keyline Home Care request has been submitted.\n\nTicket Number: {{ $('Create Ticket in Monday.com').item.json.id }}\n\nOur team will follow up within 1-2 business days.\n\nKeyline Home Care | 1-855-453-9546",
+        "message": "=Hi! Your Keyline Home Care request has been submitted.\n\nTicket Number: {{ $('Create Ticket in Monday.com').item.json.id }}\n\nOur team will follow up within 1-2 business days.\n\nKeyline Home Care",
         "options": {}
       },
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
       "position": [
-        -1248,
+        -1216,
         1216
       ],
       "id": "8678e1d9-b0dd-42a7-915b-c689880baa87",

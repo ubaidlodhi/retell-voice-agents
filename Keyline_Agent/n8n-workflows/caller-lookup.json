@@ -10,10 +10,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        448,
-        128
+        1904,
+        288
       ],
-      "id": "9e41037a-d3fc-474a-8ac8-9dd3370df480",
+      "id": "b5e0d3f6-3d51-4993-8c0e-e9f4beb45a51",
       "name": "Webhook",
       "webhookId": "d869cfc5-4227-4cdf-b049-a98fb7ec550b"
     },
@@ -22,16 +22,16 @@
         "resource": "boardItem",
         "operation": "getByColumnValue",
         "boardId": "18413254159",
-        "columnId": "phone_mm2m7bhz",
-        "columnValue": "={{ $json.body.call_inbound.from_number }}"
+        "columnId": "text_mm2mrhy6",
+        "columnValue": "={{ \"Nia Long\" || $json.body.call_inbound.from_number }}"
       },
       "type": "n8n-nodes-base.mondayCom",
       "typeVersion": 1,
       "position": [
-        768,
-        128
+        2128,
+        288
       ],
-      "id": "cbc03319-7d07-4f5f-94bc-8485d02bf128",
+      "id": "19a6df2e-1318-4af6-a6cf-e98a1eb1ce21",
       "name": "Get items item by column value",
       "alwaysOutputData": true,
       "credentials": {
@@ -48,24 +48,24 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1216,
-        128
+        2576,
+        288
       ],
-      "id": "e1c2d90c-8889-4ec5-bceb-386f78c6d272",
+      "id": "841cd5ed-f577-4752-897f-5a62983aeaea",
       "name": "Respond to Webhook"
     },
     {
       "parameters": {
-        "jsCode": "// Caller lookup against the Caller Database board (18413254159).\n// One row per caller, so no sorting/aggregation needed — just read the matched row.\nconst items = $input.all();\nconst firstItem = items?.[0]?.json;\n\nconst notFound = { json: {\n  call_inbound: {\n    dynamic_variables: {\n      caller_found: \"false\",\n      is_returning_caller: \"false\",\n      caller_name: \"\",\n      caller_state: \"\",\n      caller_type: \"unknown\",\n      caller_email: \"\",\n      app_refused: \"false\",\n      last_call_summary: \"\",\n      caller_tickets: \"[]\"\n    }\n  }\n} };\n\nif (!items || items.length === 0 || !firstItem || !firstItem.column_values) {\n  return [notFound];\n}\n\nconst get = (id) => firstItem.column_values?.find(c => c.id === id)?.text || '';\n\nconst callerName = get('text_mm2mrhy6');\nconst callerState = get('text_mm2majqv');\nconst callerEmail = get('text_mm33xp6z');\nconst callerPhone = get('phone_mm2m7bhz');\nconst lastCallSummary = get('text_mm3bvv8e');\nconst lastCallType = get('text_mm3bpvag');\n\n// Derive caller_type from the most recent call type stored on the caller row.\nlet callerType = 'unknown';\nif (['missed_clockout','missed_clockin','travel','incident','dd_hold',\n     'income_letter','address_update','nurse_cancel','paystubs_sfc'].includes(lastCallType)) {\n  callerType = 'caregiver';\n} else if (lastCallType === 'prospect') {\n  callerType = 'prospect';\n}\n\nreturn [{ json: {\n  call_inbound: {\n    dynamic_variables: {\n      caller_found: \"true\",\n      is_returning_caller: \"true\",\n      caller_name: callerName,\n      caller_state: callerState,\n      caller_type: callerType,\n      caller_phone: callerPhone,\n      caller_email: callerEmail,\n      app_refused: \"false\",\n      last_call_summary: lastCallSummary,\n    }\n  }\n}}];"
+        "jsCode": "// Caller lookup against the Caller Database board (18413254159).\n// One row per caller, so no sorting/aggregation needed — just read the matched row.\nconst items = $input.all();\nconst firstItem = items?.[0]?.json;\n\nconst notFound = { json: {\n  call_inbound: {\n    dynamic_variables: {\n      caller_found: \"false\",\n      is_returning_caller: \"false\",\n      caller_name: \"\",\n      caller_state: \"\",\n      caller_type: \"unknown\",\n      caller_email: \"\",\n      caller_patient_name: \"\",\n      last_call_summary: \"\"\n    }\n  }\n} };\n\nif (!items || items.length === 0 || !firstItem || !firstItem.column_values) {\n  return [notFound];\n}\n\nconst get = (id) => firstItem.column_values?.find(c => c.id === id)?.text || '';\n\nconst callerName = get('text_mm2mrhy6');\nconst callerState = get('text_mm2majqv');\nconst callerEmail = get('text_mm33xp6z');\nconst callerPhone = get('phone_mm2m7bhz');\nconst lastCallSummary = get('text_mm3bvv8e');\nconst lastCallType = get('text_mm3bpvag');\nconst callerPatientName = get('text_mm3kaddw');\n\n// Derive caller_type from the most recent call type stored on the caller row.\nlet callerType = 'unknown';\nif (['missed_clockout','missed_clockin','travel','incident','dd_hold',\n     'income_letter','address_update','nurse_cancel','paystubs_sfc'].includes(lastCallType)) {\n  callerType = 'caregiver';\n} else if (lastCallType === 'prospect') {\n  callerType = 'prospect';\n}\n\nreturn [{ json: {\n  call_inbound: {\n    dynamic_variables: {\n      caller_found: \"true\",\n      is_returning_caller: \"true\",\n      caller_name: callerName,\n      caller_state: callerState,\n      caller_type: callerType,\n      caller_phone: callerPhone,\n      caller_email: callerEmail,\n      caller_patient_name: callerPatientName,\n      last_call_summary: lastCallSummary,\n    }\n  }\n}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        976,
-        128
+        2352,
+        288
       ],
-      "id": "d42a5a21-a333-43d5-911b-d804c08091a2",
-      "name": "Code in JavaScript"
+      "id": "abd4664b-fae3-4caf-829e-53d03d18091b",
+      "name": "Structure Data"
     }
   ],
   "connections": {
@@ -84,14 +84,14 @@
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Structure Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code in JavaScript": {
+    "Structure Data": {
       "main": [
         [
           {

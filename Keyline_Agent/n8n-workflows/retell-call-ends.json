@@ -1,0 +1,25 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aubrey-retell-call-end-v01",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bec1ceef-88b6-499d-960d-022334ff0e16",
+      "name": "Webhook",
+      "webhookId": "0c558d60-fbb3-414a-8b14-30830c5c02de"
+    }
+  ],
+  "connections": {},
+  "pinData": {},
+  "meta": {
+    "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"
+  }
+}

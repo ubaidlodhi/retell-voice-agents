@@ -1,5 +1,4 @@
 {
-  "name": "Aubrey - Lookup Tickets",
   "nodes": [
     {
       "parameters": {
@@ -176,53 +175,6 @@
       "name": "Respond to Retell"
     }
   ],
-  "pinData": {
-    "Webhook": [
-      {
-        "json": {
-          "headers": {
-            "host": "keyline.app.n8n.cloud",
-            "user-agent": "axios/1.15.2",
-            "content-length": "71",
-            "accept": "application/json, text/plain, */*",
-            "accept-encoding": "gzip, br",
-            "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=ad61670e40a44ac2a72277e79b1b15a3,sentry-org_id=4511141371183104",
-            "cdn-loop": "cloudflare; loops=1; subreqs=1",
-            "cf-connecting-ip": "100.20.5.228",
-            "cf-ew-via": "15",
-            "cf-ipcountry": "US",
-            "cf-ray": "9fc631a3dc6eb298-PDX",
-            "cf-visitor": "{\"scheme\":\"https\"}",
-            "cf-worker": "n8n.cloud",
-            "content-type": "application/json",
-            "sentry-trace": "ad61670e40a44ac2a72277e79b1b15a3-ba90c1f41588025e",
-            "x-forwarded-for": "100.20.5.228, 104.23.160.180",
-            "x-forwarded-host": "keyline.app.n8n.cloud",
-            "x-forwarded-port": "443",
-            "x-forwarded-proto": "https",
-            "x-forwarded-server": "traefik-prod-users-gwc-57-84ffcf945d-44xp2",
-            "x-is-trusted": "yes",
-            "x-real-ip": "100.20.5.228",
-            "x-retell-signature": "v=1778890588752,d=6252b8e0b1c2b5df63f6e79d407f8ca731df274b92e7ac92251e9ebe5be67ae2"
-          },
-          "params": {},
-          "query": {
-            "caller_phone": "+12532681856"
-          },
-          "body": {
-            "ticket_id": null,
-            "call_type": "incident",
-            "phone_number": "+12532681856"
-          },
-          "webhookUrl": "https://keyline.app.n8n.cloud/webhook/aubrey-lookup-tickets",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ]
-  },
   "connections": {
     "Webhook": {
       "main": [
@@ -298,16 +250,9 @@
       ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
-  },
-  "versionId": "4e14d7ca-a161-4bfd-a3fa-2aa9d9819dd7",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"
-  },
-  "id": "G9X0FqXfCJJbijTt",
-  "tags": []
+  }
 }
