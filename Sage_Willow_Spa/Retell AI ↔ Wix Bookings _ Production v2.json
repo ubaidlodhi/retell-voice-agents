@@ -1,4 +1,5 @@
 {
+  "name": "Retell AI ↔ Wix Bookings | Production v2",
   "nodes": [
     {
       "parameters": {
@@ -11,10 +12,7 @@
       "name": "Webhook — Retell Tool Call",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [
-        -1504,
-        7424
-      ],
+      "position": [-1504, 7424],
       "webhookId": "retell-wix-prod-v2"
     },
     {
@@ -25,10 +23,7 @@
       "name": "Parse Retell Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1296,
-        7424
-      ]
+      "position": [-1296, 7424]
     },
     {
       "parameters": {
@@ -38,10 +33,7 @@
       "name": "Validate: Slots Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -848,
-        6176
-      ]
+      "position": [-848, 6176]
     },
     {
       "parameters": {
@@ -58,10 +50,7 @@
       "name": "IF: Slots Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -624,
-        6176
-      ]
+      "position": [-624, 6176]
     },
     {
       "parameters": {
@@ -78,10 +67,7 @@
       "name": "Wix: Query Time Slots",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -400,
-        6080
-      ],
+      "position": [-400, 6080],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -99,10 +85,7 @@
       "name": "Format: Time Slots Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -176,
-        5984
-      ]
+      "position": [-176, 5984]
     },
     {
       "parameters": {
@@ -114,10 +97,7 @@
       "name": "Respond: Slots Validation Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -400,
-        6272
-      ]
+      "position": [-400, 6272]
     },
     {
       "parameters": {
@@ -134,10 +114,7 @@
       "name": "Wix: Query Staff Members",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -848,
-        6560
-      ],
+      "position": [-848, 6560],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -155,10 +132,7 @@
       "name": "Format: Staff Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -624,
-        6464
-      ]
+      "position": [-624, 6464]
     },
     {
       "parameters": {
@@ -168,10 +142,7 @@
       "name": "Validate: Booking Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -848,
-        6848
-      ]
+      "position": [-848, 6848]
     },
     {
       "parameters": {
@@ -188,10 +159,7 @@
       "name": "IF: Booking Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -624,
-        6848
-      ]
+      "position": [-624, 6848]
     },
     {
       "parameters": {
@@ -208,10 +176,7 @@
       "name": "Wix: Create Booking",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        720,
-        6688
-      ],
+      "position": [720, 6688],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -236,10 +201,7 @@
       "name": "IF: Booking Created OK",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        944,
-        6608
-      ]
+      "position": [944, 6608]
     },
     {
       "parameters": {
@@ -256,10 +218,7 @@
       "name": "Wix: Confirm Booking",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        1168,
-        6544
-      ],
+      "position": [1168, 6544],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -277,10 +236,7 @@
       "name": "Format: Booking Confirmation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1392,
-        6496
-      ]
+      "position": [1392, 6496]
     },
     {
       "parameters": {
@@ -292,10 +248,7 @@
       "name": "Respond: Booking Validation Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -400,
-        6944
-      ]
+      "position": [-400, 6944]
     },
     {
       "parameters": {
@@ -305,10 +258,7 @@
       "name": "Validate: Cancel Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -848,
-        7232
-      ]
+      "position": [-848, 7232]
     },
     {
       "parameters": {
@@ -325,10 +275,7 @@
       "name": "IF: Cancel Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -624,
-        7232
-      ]
+      "position": [-624, 7232]
     },
     {
       "parameters": {
@@ -345,10 +292,7 @@
       "name": "Wix: Cancel Booking",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -400,
-        7136
-      ],
+      "position": [-400, 7136],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -366,10 +310,7 @@
       "name": "Format: Cancel Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -176,
-        7024
-      ]
+      "position": [-176, 7024]
     },
     {
       "parameters": {
@@ -381,10 +322,7 @@
       "name": "Respond: Cancel Validation Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -400,
-        7328
-      ]
+      "position": [-400, 7328]
     },
     {
       "parameters": {
@@ -394,10 +332,7 @@
       "name": "Validate: Reschedule Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -848,
-        7616
-      ]
+      "position": [-848, 7616]
     },
     {
       "parameters": {
@@ -414,10 +349,7 @@
       "name": "IF: Reschedule Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -624,
-        7616
-      ]
+      "position": [-624, 7616]
     },
     {
       "parameters": {
@@ -434,10 +366,7 @@
       "name": "Wix: Reschedule Booking",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -400,
-        7520
-      ],
+      "position": [-400, 7520],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -455,10 +384,7 @@
       "name": "Format: Reschedule Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -176,
-        7424
-      ]
+      "position": [-176, 7424]
     },
     {
       "parameters": {
@@ -470,10 +396,7 @@
       "name": "Respond: Reschedule Validation Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -400,
-        7712
-      ]
+      "position": [-400, 7712]
     },
     {
       "parameters": {
@@ -485,10 +408,7 @@
       "name": "Respond: Unknown Tool Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -848,
-        7808
-      ]
+      "position": [-848, 7808]
     },
     {
       "parameters": {
@@ -498,10 +418,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        -176,
-        6368
-      ],
+      "position": [-176, 6368],
       "id": "08d9bec9-9b18-42bf-ba96-3d6286c2654d",
       "name": "Error: Get Slots"
     },
@@ -513,10 +430,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        -624,
-        6656
-      ],
+      "position": [-624, 6656],
       "id": "48ffca27-f0c9-4c00-a501-00eb7de5e0da",
       "name": "Error: Get Staff"
     },
@@ -528,10 +442,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        1392,
-        6848
-      ],
+      "position": [1392, 6848],
       "id": "675dd91a-a80a-48cc-9492-bd38da19665a",
       "name": "Error: Create Booking"
     },
@@ -543,10 +454,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        -176,
-        7232
-      ],
+      "position": [-176, 7232],
       "id": "b9149c48-95a6-4f71-9a25-2c1dfdbfca70",
       "name": "Error: Cancel Booking"
     },
@@ -558,10 +466,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        -176,
-        7616
-      ],
+      "position": [-176, 7616],
       "id": "59d80643-e434-4dd5-9c14-113ebd42b5c4",
       "name": "Error: Rescheduling"
     },
@@ -575,10 +480,7 @@
       "name": "Respond: Get Slots",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        48,
-        5984
-      ]
+      "position": [48, 5984]
     },
     {
       "parameters": {
@@ -590,10 +492,7 @@
       "name": "Respond: Get Staff",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -400,
-        6464
-      ]
+      "position": [-400, 6464]
     },
     {
       "parameters": {
@@ -605,10 +504,7 @@
       "name": "Respond: Cancel Booking",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        48,
-        7024
-      ]
+      "position": [48, 7024]
     },
     {
       "parameters": {
@@ -620,10 +516,7 @@
       "name": "Respond: Book Appointment",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        1616,
-        6496
-      ]
+      "position": [1616, 6496]
     },
     {
       "parameters": {
@@ -635,10 +528,7 @@
       "name": "Respond: Reschedule Booking",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        48,
-        7424
-      ]
+      "position": [48, 7424]
     },
     {
       "parameters": {
@@ -648,10 +538,7 @@
       "name": "Validate: Flag Callback Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -848,
-        8000
-      ]
+      "position": [-848, 8000]
     },
     {
       "parameters": {
@@ -668,10 +555,7 @@
       "name": "IF: Flag Callback Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -624,
-        8000
-      ]
+      "position": [-624, 8000]
     },
     {
       "parameters": {
@@ -689,10 +573,7 @@
       "name": "Send Email: Flag Callback",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [
-        -400,
-        7904
-      ],
+      "position": [-400, 7904],
       "webhookId": "942f20a6-9eb5-4c9e-b5b4-033da4dc7f25",
       "credentials": {
         "smtp": {
@@ -710,10 +591,7 @@
       "name": "Format: Flag Callback Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -176,
-        7808
-      ]
+      "position": [-176, 7808]
     },
     {
       "parameters": {
@@ -725,10 +603,7 @@
       "name": "Respond: Flag Callback",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        48,
-        7808
-      ]
+      "position": [48, 7808]
     },
     {
       "parameters": {
@@ -740,10 +615,7 @@
       "name": "Respond: Flag Callback Validation Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -400,
-        8096
-      ]
+      "position": [-400, 8096]
     },
     {
       "parameters": {
@@ -755,10 +627,7 @@
       "name": "Error: Flag Callback",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        -176,
-        8000
-      ]
+      "position": [-176, 8000]
     },
     {
       "parameters": {
@@ -768,10 +637,7 @@
       "name": "Validate: Get Contact",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -848,
-        9056
-      ]
+      "position": [-848, 9056]
     },
     {
       "parameters": {
@@ -788,10 +654,7 @@
       "name": "IF: Contact Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -624,
-        9056
-      ]
+      "position": [-624, 9056]
     },
     {
       "parameters": {
@@ -808,10 +671,7 @@
       "name": "Wix: Search Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -400,
-        8976
-      ],
+      "position": [-400, 8976],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -829,10 +689,7 @@
       "name": "Format: Contact Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -176,
-        8880
-      ]
+      "position": [-176, 8880]
     },
     {
       "parameters": {
@@ -844,10 +701,7 @@
       "name": "Respond: Get Contact",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        48,
-        8880
-      ]
+      "position": [48, 8880]
     },
     {
       "parameters": {
@@ -859,10 +713,7 @@
       "name": "Respond: Contact Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        -176,
-        9152
-      ]
+      "position": [-176, 9152]
     },
     {
       "parameters": {
@@ -879,10 +730,7 @@
       "name": "Wix: Create Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        272,
-        6832
-      ],
+      "position": [272, 6832],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -900,10 +748,7 @@
       "name": "Format: Create Contact",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        496,
-        6752
-      ]
+      "position": [496, 6752]
     },
     {
       "parameters": {
@@ -920,10 +765,7 @@
       "name": "Wix: Search Contact1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -400,
-        6752
-      ],
+      "position": [-400, 6752],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -941,10 +783,7 @@
       "name": "Format: Contact Response1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -176,
-        6560
-      ]
+      "position": [-176, 6560]
     },
     {
       "parameters": {
@@ -972,10 +811,7 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
-      "position": [
-        48,
-        6560
-      ],
+      "position": [48, 6560],
       "id": "2ca43cde-7e06-4a8d-8885-310034ea460a",
       "name": "If: Contact Found"
     },
@@ -994,10 +830,7 @@
       "name": "Wix: Query Services",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -848,
-        5632
-      ],
+      "position": [-848, 5632],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -1015,10 +848,7 @@
       "name": "Extract Pricing IDs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -624,
-        5536
-      ]
+      "position": [-624, 5536]
     },
     {
       "parameters": {
@@ -1035,10 +865,7 @@
       "name": "IF: Has Varied",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -400,
-        5536
-      ]
+      "position": [-400, 5536]
     },
     {
       "parameters": {
@@ -1051,10 +878,7 @@
       "name": "Wix: Get Pricing Variants",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -176,
-        5456
-      ],
+      "position": [-176, 5456],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -1072,10 +896,7 @@
       "name": "Extract Add-on IDs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        48,
-        5536
-      ]
+      "position": [48, 5536]
     },
     {
       "parameters": {
@@ -1092,10 +913,7 @@
       "name": "IF: Has Add-ons",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        272,
-        5536
-      ]
+      "position": [272, 5536]
     },
     {
       "parameters": {
@@ -1108,10 +926,7 @@
       "name": "Wix: Get Add-ons",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [
-        496,
-        5456
-      ],
+      "position": [496, 5456],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -1128,10 +943,7 @@
       "name": "Format: Services Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        720,
-        5536
-      ]
+      "position": [720, 5536]
     },
     {
       "parameters": {
@@ -1141,10 +953,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        48,
-        5728
-      ],
+      "position": [48, 5728],
       "id": "6333fa7e-0ebf-4f82-b322-05d78bc39f94",
       "name": "Error: Get Services"
     },
@@ -1158,10 +967,7 @@
       "name": "Respond: Get Services",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        944,
-        5536
-      ]
+      "position": [944, 5536]
     },
     {
       "parameters": {
@@ -1403,142 +1209,7 @@
       "name": "Route by Tool",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
-      "position": [
-        -1072,
-        7296
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.wixapis.com/bookings/v2/bookings",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      \"variantId\": \"af4b7551-8af4-48a0-bb75-a99ae46d23a0\",\n      \"slot\": {\n        \"serviceId\": \"8ec07af3-dd09-42a1-863f-f8d090a865b5\",\n        \"scheduleId\": \"b9bf4fc0-7da3-4051-8910-a785eaf5bb38\",\n        \"startDate\": \"2026-06-01T16:30:00\",\n        \"endDate\": \"2026-06-01T18:30:00\",\n        \"timezone\": \"America/Los_Angeles\",\n        \"location\": {\n          \"locationType\": \"OWNER_BUSINESS\",\n          \"id\": \"a345d3c7-2a89-4816-ad3a-277ea40730a7\"\n        }\n        ,\"resource\": { \"id\": \"f159185f-2f73-420c-b04a-65b1e9aae701\" }\n        ,\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]\n      }\n    },\n    \"contactDetails\": {\n\"contactId\": \"35d93758-61b2-4add-89e1-c53f02ba57e6\",\n      \"firstName\": \"George\",\n      \"lastName\": \"Vicky\",\n      \"phone\": \"+16286828016\"\n    },\n    \"numberOfParticipants\": 1\n    \n    ,\"bookedAddOns\": [{\"id\":\"dadd30de-4286-4f11-b6f4-b210289213f1\",\"groupId\":\"13ce6f5d-f647-4c3d-a6b7-69baf820713e\",\"quantity\":1}]\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
-        "options": {}
-      },
-      "id": "331a5d96-80b3-4ed4-989c-d7fb01a3fec8",
-      "name": "Wix: Create Booking1",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1008,
-        7696
-      ],
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      },
-      "continueOnFail": true,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.booking?.id ?? '' }}",
-              "operation": "isNotEmpty"
-            }
-          ]
-        }
-      },
-      "id": "6ed89f46-fd0a-4bd3-ab85-be343eb1cb06",
-      "name": "IF: Booking Created OK1",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        1312,
-        7744
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://www.wixapis.com/bookings/v2/bookings/{{ $json.booking.id }}/confirm",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  },\n  \"revision\": {{ $json.booking.revision }}\n}",
-        "options": {}
-      },
-      "id": "bb3cb70f-af0a-4494-9ef6-1cc405b9f6ce",
-      "name": "Wix: Confirm Booking1",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1536,
-        7680
-      ],
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      },
-      "continueOnFail": true,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.wixapis.com/contacts/v4/contacts",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"info\": {\n    \"name\": {\n      \"first\": \"George\",\n      \"last\": \"Vicky\"\n    },\n    \"phones\": {\n      \"items\": [\n        {\n          \"tag\": \"MAIN\",\n          \"phone\": \"+16286828016\"\n        }\n      ]\n    }\n  }\n}",
-        "options": {}
-      },
-      "id": "17e0da2b-5168-497a-ad54-f94e2d7edf1c",
-      "name": "Wix: Create Contact1",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        2400,
-        7744
-      ],
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      },
-      "continueOnFail": true,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.wixapis.com/bookings/v2/bookings/query",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n        \"contactDetails.contactId\": { \"$in\": [\"35d93758-61b2-4add-89e1-c53f02ba57e6\"] },\n      \"status\": { \"$in\": [\"CONFIRMED\", \"PENDING_APPROVAL\", \"CREATED\", \"PENDING\"] }\n    },\n    \"sort\": [{ \"fieldName\": \"createdDate\", \"order\": \"DESC\" }],\n    \"paging\": { \"limit\": 5 }\n  }\n}",
-        "options": {}
-      },
-      "id": "5c7837d8-ccd4-403c-8ab8-23c4ed2449ec",
-      "name": "Wix: Get Booking1",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        1840,
-        7680
-      ],
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      },
-      "continueOnFail": true,
-      "onError": "continueErrorOutput"
+      "position": [-1072, 7296]
     },
     {
       "parameters": {
@@ -1548,10 +1219,7 @@
       "name": "Validate: Get Booking Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -848,
-        8464
-      ]
+      "position": [-848, 8464]
     },
     {
       "parameters": {
@@ -1568,10 +1236,7 @@
       "name": "IF: Get Booking Args Valid",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -624,
-        8464
-      ]
+      "position": [-624, 8464]
     },
     {
       "parameters": {
@@ -1588,10 +1253,7 @@
       "name": "IF: Lookup by ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -400,
-        8384
-      ]
+      "position": [-400, 8384]
     },
     {
       "parameters": {
@@ -1608,10 +1270,7 @@
       "name": "Wix: Get Booking (by ID)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -128,
-        8256
-      ],
+      "position": [-128, 8256],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -1636,10 +1295,7 @@
       "name": "IF: Contact Found",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        128,
-        8624
-      ]
+      "position": [128, 8624]
     },
     {
       "parameters": {
@@ -1649,10 +1305,7 @@
       "name": "Mock Empty Bookings",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        480,
-        8624
-      ]
+      "position": [480, 8624]
     },
     {
       "parameters": {
@@ -1669,10 +1322,7 @@
       "name": "Wix: Get Booking (by Contact)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        496,
-        8384
-      ],
+      "position": [496, 8384],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -1690,10 +1340,7 @@
       "name": "Format: Get Booking Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        880,
-        8304
-      ]
+      "position": [880, 8304]
     },
     {
       "parameters": {
@@ -1705,10 +1352,7 @@
       "name": "Respond: Get Booking",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        1120,
-        8304
-      ]
+      "position": [1120, 8304]
     },
     {
       "parameters": {
@@ -1720,38 +1364,7 @@
       "name": "Error: Getting Booking",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
-      "position": [
-        240,
-        8384
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.wixapis.com/contacts/v4/contacts/query",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      \"info.phones.phone\": \"+16286828016\"\n    },\n    \"paging\": {\n      \"limit\": 1\n    }\n  }\n}",
-        "options": {}
-      },
-      "id": "11f63021-b27f-4492-b2e2-f8b9cbd0b32d",
-      "name": "Wix: Search Contact Test",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        2096,
-        7792
-      ],
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      },
-      "continueOnFail": true,
-      "onError": "continueErrorOutput"
+      "position": [240, 8384]
     },
     {
       "parameters": {
@@ -1768,10 +1381,7 @@
       "name": "Search Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -128,
-        8528
-      ],
+      "position": [-128, 8528],
       "credentials": {
         "wixApi": {
           "id": "wLpWbblaihcY4xnw",
@@ -1782,6 +1392,7 @@
       "onError": "continueErrorOutput"
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook — Retell Tool Call": {
       "main": [
@@ -2484,28 +2095,6 @@
         ]
       ]
     },
-    "Wix: Create Booking1": {
-      "main": [
-        [
-          {
-            "node": "IF: Booking Created OK1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IF: Booking Created OK1": {
-      "main": [
-        [
-          {
-            "node": "Wix: Confirm Booking1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Validate: Get Booking Args": {
       "main": [
         [
@@ -2629,12 +2218,6 @@
         ]
       ]
     },
-    "Wix: Search Contact Test": {
-      "main": [
-        [],
-        []
-      ]
-    },
     "Search Contact": {
       "main": [
         [
@@ -2654,8 +2237,19 @@
       ]
     }
   },
-  "pinData": {},
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Los_Angeles",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "7d96d81c-6797-4bec-b1bb-a5c1f1f08a38",
   "meta": {
     "instanceId": "ac196cde23a3d6ef70e5e219252c1746cd31eed638b30f72c27ae62726c49a9f"
-  }
+  },
+  "id": "s5dWZOMRl0X7PV65",
+  "tags": []
 }
