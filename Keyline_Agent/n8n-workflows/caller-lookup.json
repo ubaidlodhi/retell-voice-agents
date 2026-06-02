@@ -22,8 +22,8 @@
         "resource": "boardItem",
         "operation": "getByColumnValue",
         "boardId": "18413254159",
-        "columnId": "text_mm2mrhy6",
-        "columnValue": "={{ \"Nia Long\" || $json.body.call_inbound.from_number }}"
+        "columnId": "phone_mm2m7bhz",
+        "columnValue": "={{ $json.body.call_inbound.from_number }}"
       },
       "type": "n8n-nodes-base.mondayCom",
       "typeVersion": 1,

@@ -15,9 +15,92 @@
       "id": "bec1ceef-88b6-499d-960d-022334ff0e16",
       "name": "Webhook",
       "webhookId": "0c558d60-fbb3-414a-8b14-30830c5c02de"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "ticket-id-present",
+              "leftValue": "={{ $json.body.call.call_analysis.custom_analysis_data.ticket_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "a1f01d11-2f3e-4b25-9c81-1e7a3aaaaa01",
+      "name": "Has Ticket ID?"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "changeMultipleColumnValues",
+        "boardId": "18409649964",
+        "itemId": "={{ $('Webhook').item.json.body.call.call_analysis.custom_analysis_data.ticket_id }}",
+        "columnValues": "={\"text_mm3jn9y4\": \"{{ $('Webhook').item.json.body.call.recording_url }}\"}"
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -80
+      ],
+      "id": "a1f01d11-2f3e-4b25-9c81-1e7a3aaaaa02",
+      "name": "Update Recording Link",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mondayComApi": {
+          "id": "jbmYvsP3HZduPPTB",
+          "name": "Monday.com account"
+        }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
-  "connections": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Has Ticket ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Ticket ID?": {
+      "main": [
+        [
+          {
+            "node": "Update Recording Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
   "pinData": {},
   "meta": {
     "instanceId": "e32934b8079ac2351a089bd93561b3e42ef064571e16f0ffda8cb36cae314f32"
