@@ -34,9 +34,9 @@ A deeply relaxing massage that uses **heated stones** combined with massage tech
 
 ## Prenatal Massage
 
-A gentle, soothing massage **designed specifically for expecting mothers** to help relieve muscle tension, reduce stress, and improve overall comfort during pregnancy. Consulting a doctor before booking is recommended.
+A gentle, soothing massage **designed specifically for expecting mothers** to help relieve muscle tension, reduce stress, and improve overall comfort during pregnancy. **Available from the second trimester onward (after 12 weeks).** Consulting a doctor before booking is recommended.
 
-**Best for:** pregnant clients in any trimester.
+**Best for:** pregnant clients from the second trimester (after 12 weeks).
 
 ---
 

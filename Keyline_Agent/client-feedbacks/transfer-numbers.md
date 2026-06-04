@@ -1,8 +1,8 @@
 # Aubrey — Transfer Numbers by Use Case
 
-This is the current map of every transfer destination in the Aubrey agent. Please review each row and let us know if any are wrong or need to change.
+This is the current map of every transfer destination in the Aubrey agent.
 
-## Bernae's three buckets (per 2026-05-30 routing message)
+## Bernae's last feedback shared numbers
 
 | Number | Team | When Aubrey transfers here |
 |---|---|---|
