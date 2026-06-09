@@ -110,7 +110,7 @@ Yes, we offer **prenatal massage** for expecting mothers. We recommend consultin
 
 ### Q: Do you offer couples massage?
 
-Yes, we offer couples massage. Let us know your preferred date and time, and we'll check availability.
+Yes — we offer couples massage and have a dedicated **couples massage room**. Both guests can pick any massage type from the menu (Signature, Swedish, Deep Tissue, etc.). Let us know your preferred date and time, and we'll check availability.
 
 ---
 

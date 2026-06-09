@@ -2,7 +2,7 @@
   "agent_id": "",
   "channel": "voice",
   "last_modification_timestamp": 1780407595992,
-  "agent_name": "Alice 1 - Website form (outbound)",
+  "agent_name": "Alice 1 - Website form (outbound) - V01",
   "version_description": "Added caller details to global prompt as system context.\nImplemented tool for sending consultation link to user while on a call if user hesitates.\nSepareted inbound and outbound agents, as we dont need to add complex logic of outbound agent, we will always have the user contact details.\nUpdated voice of agent.",
   "response_engine": {
     "type": "retell-llm",

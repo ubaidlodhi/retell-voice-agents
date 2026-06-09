@@ -2,7 +2,7 @@
 
 ## Signature Massage
 
-The Signature Massage is a **customized treatment** that blends different massage techniques based on what your body needs that day. The therapist may mix Swedish, deep tissue, hot stone, and other modalities depending on whether you want to focus on relaxation, tension relief, or both.
+The Signature Massage is a **customized treatment** that blends different massage techniques based on what your body needs that day. The therapist may mix Swedish, deep tissue, and other modalities depending on whether you want to focus on relaxation, tension relief, or both.
 
 **Best for:** clients who aren't sure which style they want, or who want the therapist to adapt to how they're feeling that day.
 
@@ -53,6 +53,14 @@ A **gentle, light-pressure** massage that stimulates the lymphatic system to hel
 A **thirty-minute** massage that can be focused on your preferred areas (like back, shoulders, neck, legs, or feet) or used as a quick full-body relaxation session.
 
 **Best for:** people on a tight schedule, lunch breaks, or clients who want spot treatment for a specific tight area.
+
+---
+
+## Couples Massage
+
+A couples massage is two massages booked for the same time slot in our dedicated **couples massage room**. Each guest can pick any massage type from the menu (Signature, Swedish, Deep Tissue, etc.) — both massages run side-by-side.
+
+**Best for:** couples, friends, or family who want to relax together.
 
 ---
 

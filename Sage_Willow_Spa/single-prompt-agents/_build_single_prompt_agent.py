@@ -39,7 +39,7 @@ PERSONAL_TRANSFER_NUMBER = "+14064764193"
 
 # Bump this on EVERY meaningful build (prompt edits, tool changes, handbook
 # tweaks, etc.) so the client can tell which revision they're testing.
-AGENT_VERSION = "V22"
+AGENT_VERSION = "V24"
 
 
 # -----------------------------------------------------------------------------
@@ -168,6 +168,14 @@ CUSTOM_TOOLS = [
                 "firstName":  {"type": "string"},
                 "lastName":   {"type": "string"},
                 "phone":      {"type": "string", "description": "E.164."},
+                "numberOfParticipants": {
+                    "type": "number",
+                    "description": "How many guests for this slot. Default 1. Pass 2 when caller wants a couples massage / two people for the same time.",
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Required. ALWAYS populate — a 2-4 sentence summary of the booking. Include the service + duration, any partner preferences for couples (e.g. 'Partner wants Swedish 60 min with aromatherapy'), focus areas, or any caller-volunteered detail. For vanilla bookings with nothing special, write a short factual summary (e.g. 'Standard Signature massage booking, no special requests').",
+                },
                 "addOns": {
                     "type": "array",
                     "items": {
@@ -182,7 +190,7 @@ CUSTOM_TOOLS = [
                 },
             },
             "required": ["serviceId", "scheduleId", "startDate",
-                         "endDate", "firstName", "lastName", "phone"],
+                         "endDate", "firstName", "lastName", "phone", "notes"],
         },
         response_variables={
             "new_booking_id":    "$.bookingId",

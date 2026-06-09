@@ -265,6 +265,39 @@ def validate(path):
                 f"agents use `\"parameter_type\": \"form\"`."
             )
 
+    # 14. Equation transition_conditions must carry a top-level `operator` combiner
+    # (&& / ||). Retell's import schema requires it even for a SINGLE equation —
+    # omitting it makes the node fail the oneOf with an opaque "must have required
+    # property 'operator'" error. (The bundled asset examples omit it; real imports
+    # reject it.)
+    def iter_edges(node):
+        for e in node.get("edges", []) or []:
+            if isinstance(e, dict):
+                yield e
+        for field in SINGULAR_EDGE_FIELDS:
+            v = node.get(field)
+            if isinstance(v, dict):
+                yield v
+
+    for n in nodes:
+        for e in iter_edges(n):
+            tc = e.get("transition_condition")
+            if not isinstance(tc, dict) or tc.get("type") != "equation":
+                continue
+            if "operator" not in tc:
+                errors.append(
+                    f"Edge {e.get('id','?')} on node {n.get('id','?')}: equation "
+                    f"transition_condition is missing the top-level `operator` (&&/||). "
+                    f"Retell requires it even for a single equation — import fails with an "
+                    f"opaque oneOf error otherwise."
+                )
+            eqs = tc.get("equations")
+            if not isinstance(eqs, list) or not eqs:
+                errors.append(
+                    f"Edge {e.get('id','?')} on node {n.get('id','?')}: equation "
+                    f"transition_condition has no non-empty `equations` list."
+                )
+
     return errors, warnings
 
 

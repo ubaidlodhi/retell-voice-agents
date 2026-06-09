@@ -1,0 +1,1167 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "agent_name": "Alice - Knight Law (Conversation Flow)",
+  "version_description": "Conversation-flow rebuild of the outbound Alice intake agent. Deterministic year + manufacturer-list classification in a single code node (year rule: <=2019 Bad Lead, 2020+ continue). Global FAQ / human / stop nodes. Voice + EN/ES settings carried over from the multi-prompt agent.",
+  "language": [
+    "en-US",
+    "es-ES"
+  ],
+  "webhook_url": "https://services.leadconnectorhq.com/hooks/vHHnJlFVorkeBvqgaqqA/webhook-trigger/f0d4db9b-d02c-4f93-aa50-deed2fa56091",
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
+  "post_call_analysis_model": "gpt-4.1-mini",
+  "voice_id": "custom_voice_315b815f6dadda5247d4921234",
+  "fallback_voice_ids": [],
+  "voice_temperature": 0.8,
+  "voice_speed": 1,
+  "volume": 1.2,
+  "enable_backchannel": false,
+  "backchannel_words": [
+    "yeah",
+    "ok",
+    "uh-huh"
+  ],
+  "reminder_trigger_ms": 20000,
+  "reminder_max_count": 1,
+  "max_call_duration_ms": 3600000,
+  "interruption_sensitivity": 0.9,
+  "ambient_sound": "call-center",
+  "ambient_sound_volume": 0.76,
+  "normalize_for_speech": true,
+  "begin_message_delay_ms": 1000,
+  "voicemail_option": {
+    "action": {
+      "type": "static_text",
+      "text": "Hello, we’re reaching out to assist you with the issues you’ve been experiencing with your vehicle. Please give us a call at (310) 552-2250 at your earliest convenience. Our team is available Monday through Friday from 8 AM to 8 PM Pacific Time. Thank you."
+    }
+  },
+  "stt_mode": "accurate",
+  "custom_stt_config": {
+    "provider": "deepgram",
+    "endpointing_ms": 1000
+  },
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "is_published": false,
+  "post_call_analysis_data": [
+    {
+      "name": "Lead Status",
+      "type": "enum",
+      "choices": [
+        "Retainer Lead",
+        "Non-Retainer Lead",
+        "Bad Lead",
+        "Incomplete Lead"
+      ],
+      "description": "Final classification. Retainer Lead = reached the retainer agreement offer. Non-Retainer Lead = was offered the consultation booking link. Bad Lead = was disqualified. Incomplete Lead = caller hung up, refused, or didn't finish the qualification."
+    },
+    {
+      "name": "Bad Lead Reason",
+      "type": "enum",
+      "choices": [
+        "Non lemon law",
+        "Out of state purchase",
+        "Not in possession of vehicle",
+        "Vehicle year",
+        "Purchased used non CPO",
+        "Does Not Wish To Pursue",
+        "N/A"
+      ],
+      "description": "If the lead was disqualified, the reason given (earliest disqualifier in the call). Otherwise N/A. 'Vehicle year' applies when the vehicle is 2019 or older (before 2020)."
+    },
+    {
+      "name": "Lead Language",
+      "type": "enum",
+      "choices": [
+        "English",
+        "Spanish"
+      ],
+      "description": "Language the caller spoke."
+    },
+    {
+      "name": "Vehicle Year",
+      "type": "number",
+      "description": "The vehicle model year captured, if any."
+    },
+    {
+      "name": "Vehicle Make",
+      "type": "string",
+      "description": "The vehicle manufacturer (make) only."
+    },
+    {
+      "name": "Vehicle Model",
+      "type": "string",
+      "description": "The vehicle model, if captured."
+    },
+    {
+      "name": "Purchased In California",
+      "type": "boolean",
+      "description": "Whether the vehicle was purchased or leased from a California dealership."
+    },
+    {
+      "name": "Still In Possession",
+      "type": "boolean",
+      "description": "Whether the caller still possesses the vehicle."
+    },
+    {
+      "name": "Purchase Condition",
+      "type": "enum",
+      "choices": [
+        "New",
+        "Used CPO",
+        "Used non-CPO",
+        "N/A"
+      ],
+      "description": "New, Used and Certified Pre-Owned, Used and not CPO, or N/A if not reached."
+    },
+    {
+      "name": "Repairs Attempted",
+      "type": "boolean",
+      "description": "Whether the caller took the vehicle to a dealership for repairs."
+    },
+    {
+      "name": "Is Owner",
+      "type": "boolean",
+      "description": "Whether the caller is the owner or signed the sales contract."
+    },
+    {
+      "name": "Full Name",
+      "type": "string",
+      "description": "The caller's full name."
+    },
+    {
+      "name": "Phone Number",
+      "type": "string",
+      "description": "The caller's phone number, normalized to E.164 with +1 and no separators."
+    },
+    {
+      "name": "Email Address",
+      "type": "string",
+      "description": "The caller's email address."
+    },
+    {
+      "name": "Call Summary",
+      "type": "string",
+      "description": "One to three sentence summary of the call and actions taken."
+    },
+    {
+      "name": "Call Successful",
+      "type": "boolean",
+      "description": "Whether the agent completed its task without the call being cut off."
+    }
+  ],
+  "response_engine": {
+    "type": "conversation-flow",
+    "version": 1,
+    "conversation_flow_id": ""
+  },
+  "conversationFlow": {
+    "conversation_flow_id": "",
+    "version": 1,
+    "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded outbound phone call, following up on the caller's website inquiry about their vehicle. This is a voice conversation, not a chat.\n\nYour goal: make the caller feel heard while quickly checking whether their vehicle qualifies for a Lemon Law claim, then route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nPre-loaded for this call:\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (310) 552-2250\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud; use neutral phrasing instead.\n\n## Language\nStart in English. If the caller responds in Spanish, switch to Spanish and continue entirely in Spanish for the rest of the call. Never ask which language they prefer. Be fully fluent and natural in both.\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- If asked whether you're an AI, say once: \"I'm an automated intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers digit by digit with pauses: (310) 552-2250 -> \"three one zero — five five two — two two five zero\".\n- Emails: spell the local part letter by letter (phonetic on ambiguous letters); say common domains naturally (\"at gmail dot com\").\n- Years spoken naturally (\"twenty twenty-two\"). Times include AM/PM. \"@\" = \"at\", \".\" = \"dot\".\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nRead names back spelled out (phonetic on ambiguous letters) and phone numbers digit by digit, and confirm before relying on them.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer briefly, then resume where you left off.\n- HUMAN — caller asks for a person -> give the callback line and offer to keep helping.\n- STOP — caller is busy / driving / wants to call back later -> close warmly.\n\n## System Variables\n{{current_time}} is the single source of truth for date/time. Never guess today's date.",
+    "start_node_id": "node-intro",
+    "start_speaker": "agent",
+    "model_choice": {
+      "type": "cascading",
+      "model": "gpt-4.1"
+    },
+    "knowledge_base_ids": [],
+    "tools": [
+      {
+        "tool_id": "send_consultation_link",
+        "name": "send_consultation_link",
+        "type": "custom",
+        "description": "Sends the Calendly consultation booking link to the caller via SMS and email. Call once for a Non-Retainer lead so they can book a consultation with an Intake Analyst.",
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/hooks/vHHnJlFVorkeBvqgaqqA/webhook-trigger/e658984a-6700-43ce-8b96-e463f8eca620",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {},
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": false,
+        "parameters": {
+          "type": "object",
+          "required": [
+            "user_language",
+            "phone_number",
+            "email_address"
+          ],
+          "properties": {
+            "user_language": {
+              "type": "string",
+              "enum": [
+                "english",
+                "spanish"
+              ],
+              "description": "The language the caller is speaking, strictly 'english' or 'spanish'."
+            },
+            "phone_number": {
+              "type": "string",
+              "description": "The caller's phone number in E.164 format, e.g. +13105551234."
+            },
+            "email_address": {
+              "type": "string",
+              "description": "The caller's email address."
+            }
+          }
+        },
+        "response_variables": {}
+      }
+    ],
+    "nodes": [
+      {
+        "id": "node-intro",
+        "type": "conversation",
+        "name": "Introduction",
+        "instruction": {
+          "type": "prompt",
+          "text": "Start in English: say \"Hi! This is Alice from Knight Law Group, calling on a recorded line. I'm following up on your inquiry about your vehicle — are you currently having issues with it?\" Then wait. If the caller replies in Spanish, switch to Spanish for the rest of the call."
+        },
+        "edges": [
+          {
+            "id": "e-intro-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms they ARE having vehicle issues (yes, yeah, correct, or describes a problem)"
+            },
+            "destination_node_id": "node-q-ca"
+          },
+          {
+            "id": "e-intro-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller clearly states they are NOT having any vehicle issues / the car is running fine"
+            },
+            "destination_node_id": "node-disq-nonlemon"
+          },
+          {
+            "id": "e-intro-busy",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says it's not a good time, they're busy, or asks to be called back later"
+            },
+            "destination_node_id": "node-end-incomplete"
+          }
+        ],
+        "display_position": {
+          "x": 200,
+          "y": 200
+        },
+        "start_speaker": "agent"
+      },
+      {
+        "id": "node-q-ca",
+        "type": "conversation",
+        "name": "Q: California Purchase",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask (caller's language): \"Did you purchase or lease your vehicle from a dealership in California?\" Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-ca-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms they purchased or leased from a California dealership"
+            },
+            "destination_node_id": "node-q-possession"
+          },
+          {
+            "id": "e-ca-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says it was NOT purchased or leased in California (out of state)"
+            },
+            "destination_node_id": "node-disq-oos"
+          }
+        ],
+        "display_position": {
+          "x": 600,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-q-possession",
+        "type": "conversation",
+        "name": "Q: Possession",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask (caller's language): \"And are you still in possession of the vehicle?\" Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-poss-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has answered whether they still have the vehicle (yes or no)"
+            },
+            "destination_node_id": "node-q-vehicle"
+          }
+        ],
+        "display_position": {
+          "x": 1000,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-q-vehicle",
+        "type": "conversation",
+        "name": "Q: Vehicle Year/Make/Model",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask (caller's language): \"Got it. What's the year, make, and model of your vehicle?\" If the caller already mentioned any of these earlier in the call, do NOT re-ask — acknowledge what you already have and only ask for what's missing. Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-veh-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has provided at least the vehicle year and make (model may also be given)"
+            },
+            "destination_node_id": "node-extract-vehicle"
+          }
+        ],
+        "display_position": {
+          "x": 1400,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-extract-vehicle",
+        "type": "extract_dynamic_variables",
+        "name": "Extract Vehicle Vars",
+        "variables": [
+          {
+            "name": "vehicle_year",
+            "type": "number",
+            "description": "The vehicle model year as a 4-digit number (e.g. 2022). Extract from anywhere in the conversation."
+          },
+          {
+            "name": "vehicle_make",
+            "type": "string",
+            "description": "The vehicle manufacturer / make, normalized to the canonical brand name (e.g. 'Ford', 'Mercedes-Benz', 'Ram', 'Volkswagen', 'BMW'). Extract from anywhere in the conversation."
+          },
+          {
+            "name": "vehicle_model",
+            "type": "string",
+            "description": "The vehicle model if stated (e.g. 'F-150', 'Civic'); leave empty if not mentioned."
+          },
+          {
+            "name": "in_possession",
+            "type": "boolean",
+            "description": "True if the caller still has/possesses the vehicle; false only if they clearly said they no longer have it."
+          }
+        ],
+        "edges": [
+          {
+            "id": "e-extract-ok",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Always"
+            },
+            "destination_node_id": "node-code-classify"
+          }
+        ],
+        "else_edge": {
+          "id": "e-extract-else",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          },
+          "destination_node_id": "node-reprompt-vehicle"
+        },
+        "display_position": {
+          "x": 1800,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-code-classify",
+        "type": "code",
+        "name": "Classify Lead (deterministic)",
+        "code": "const rawMakeStr = '{{vehicle_make}}';\nconst rawYearStr = '{{vehicle_year}}';\nif (!rawMakeStr || rawMakeStr.indexOf('{{') !== -1) { return { error: 'no_make' }; }\nconst norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z]/g, '');\nconst aliases = { mercedes: 'mercedesbenz', benz: 'mercedesbenz', mercedesbenz: 'mercedesbenz', vw: 'volkswagen', volkswagon: 'volkswagen', chevy: 'chevrolet' };\nconst rawMake = norm(rawMakeStr);\nconst makeKey = aliases[rawMake] || rawMake;\nconst possess = '{{in_possession}}'.toString().toLowerCase().trim() !== 'false';\nconst optedIn = ['alfaromeo','buick','cadillac','chevrolet','chrysler','dodge','fiat','ford','gmc','hummer','infiniti','jaguar','jeep','kia','landrover','lincoln','maserati','mercedesbenz','mercury','mitsubishi','nissan','pontiac','ram','saturn','smart','hyundai','subaru','genesis','vinfast'];\nconst retainerMakes = ['acura','buick','cadillac','gmc','chevrolet','ford','lincoln','hyundai','kia','nissan','infiniti','volkswagen','jeep','ram','dodge','chrysler','bmw','mercedesbenz','jaguar','landrover','mazda','audi'];\nconst isOptedIn = optedIn.includes(makeKey);\nconst isRetainer = retainerMakes.includes(makeKey);\n// Possession rule is evaluated before year (it does not depend on the year).\nif (!possess && isOptedIn) { return { route: 'bad', bad_reason: 'not_in_possession', lead_status: 'Bad Lead', make_key: makeKey }; }\nconst year = parseInt(rawYearStr, 10);\nif (!year || isNaN(year)) { return { error: 'no_year' }; }\nlet route, bad_reason = 'N/A', lead_status;\nif (year <= 2019) { route = 'bad'; bad_reason = 'vehicle_year'; lead_status = 'Bad Lead'; }\nelse if (isRetainer) { route = 'retainer'; lead_status = 'Retainer Pending'; }\nelse { route = 'non_retainer'; lead_status = 'Non-Retainer Lead'; }\nreturn { route: route, bad_reason: bad_reason, lead_status: lead_status, make_key: makeKey };",
+        "wait_for_result": true,
+        "speak_during_execution": false,
+        "enable_typing_sound": false,
+        "edges": [
+          {
+            "id": "e-code-ok",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Always"
+            },
+            "destination_node_id": "node-branch-route"
+          }
+        ],
+        "else_edge": {
+          "id": "e-code-else",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          },
+          "destination_node_id": "node-reprompt-vehicle"
+        },
+        "display_position": {
+          "x": 2200,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-branch-route",
+        "type": "branch",
+        "name": "Route by Outcome",
+        "edges": [
+          {
+            "id": "e-route-retainer",
+            "transition_condition": {
+              "type": "equation",
+              "operator": "&&",
+              "equations": [
+                {
+                  "left": "{{route}}",
+                  "operator": "==",
+                  "right": "retainer"
+                }
+              ]
+            },
+            "destination_node_id": "node-ret-newused"
+          },
+          {
+            "id": "e-route-nonret",
+            "transition_condition": {
+              "type": "equation",
+              "operator": "&&",
+              "equations": [
+                {
+                  "left": "{{route}}",
+                  "operator": "==",
+                  "right": "non_retainer"
+                }
+              ]
+            },
+            "destination_node_id": "node-nonret-confirm"
+          },
+          {
+            "id": "e-route-bad",
+            "transition_condition": {
+              "type": "equation",
+              "operator": "&&",
+              "equations": [
+                {
+                  "left": "{{route}}",
+                  "operator": "==",
+                  "right": "bad"
+                }
+              ]
+            },
+            "destination_node_id": "node-branch-bad"
+          }
+        ],
+        "else_edge": {
+          "id": "e-route-else",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          },
+          "destination_node_id": "node-nonret-confirm"
+        },
+        "display_position": {
+          "x": 2600,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-branch-bad",
+        "type": "branch",
+        "name": "Route Bad Reason",
+        "edges": [
+          {
+            "id": "e-bad-poss",
+            "transition_condition": {
+              "type": "equation",
+              "operator": "&&",
+              "equations": [
+                {
+                  "left": "{{bad_reason}}",
+                  "operator": "==",
+                  "right": "not_in_possession"
+                }
+              ]
+            },
+            "destination_node_id": "node-disq-possession"
+          },
+          {
+            "id": "e-bad-year",
+            "transition_condition": {
+              "type": "equation",
+              "operator": "&&",
+              "equations": [
+                {
+                  "left": "{{bad_reason}}",
+                  "operator": "==",
+                  "right": "vehicle_year"
+                }
+              ]
+            },
+            "destination_node_id": "node-disq-year"
+          }
+        ],
+        "else_edge": {
+          "id": "e-bad-else",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          },
+          "destination_node_id": "node-disq-year"
+        },
+        "display_position": {
+          "x": 2600,
+          "y": 600
+        }
+      },
+      {
+        "id": "node-reprompt-vehicle",
+        "type": "conversation",
+        "name": "Reprompt Vehicle",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say (caller's language): \"Sorry, I didn't quite catch that — what's the year and make of the vehicle?\" Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-reprompt-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has provided the vehicle year and make"
+            },
+            "destination_node_id": "node-extract-vehicle"
+          }
+        ],
+        "display_position": {
+          "x": 1800,
+          "y": 600
+        }
+      },
+      {
+        "id": "node-ret-newused",
+        "type": "conversation",
+        "name": "Retainer: New or Used",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask (caller's language): \"Did you purchase the car new or used?\" Then wait. Do NOT ask about mileage, number of repairs, or out-of-service days at any point."
+        },
+        "edges": [
+          {
+            "id": "e-ret-new",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says the vehicle was purchased NEW"
+            },
+            "destination_node_id": "node-ret-repairs"
+          },
+          {
+            "id": "e-ret-used",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says the vehicle was purchased USED or pre-owned"
+            },
+            "destination_node_id": "node-ret-cpo"
+          }
+        ],
+        "display_position": {
+          "x": 3000,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-ret-cpo",
+        "type": "conversation",
+        "name": "Retainer: CPO Check",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask (caller's language): \"Is it certified pre-owned, also known as CPO?\" Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-cpo-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms it IS certified pre-owned (yes)"
+            },
+            "destination_node_id": "node-ret-repairs"
+          },
+          {
+            "id": "e-cpo-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says it is NOT certified pre-owned (no)"
+            },
+            "destination_node_id": "node-disq-cpo"
+          }
+        ],
+        "display_position": {
+          "x": 3000,
+          "y": 500
+        }
+      },
+      {
+        "id": "node-ret-repairs",
+        "type": "conversation",
+        "name": "Retainer: Repairs",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask (caller's language): \"Have you visited a dealership to try to get it repaired?\" Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-rep-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says YES, they attempted repairs at a dealership"
+            },
+            "destination_node_id": "node-ret-owner"
+          },
+          {
+            "id": "e-rep-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says NO, they have not attempted repairs"
+            },
+            "destination_node_id": "node-nonret-confirm"
+          }
+        ],
+        "display_position": {
+          "x": 3400,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-ret-owner",
+        "type": "conversation",
+        "name": "Retainer: Ownership",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask (caller's language): \"And are you the owner of the car, or did you sign the sales contract?\" A co-buyer counts as yes. Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-own-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is the owner, signed the contract, or is a co-buyer (yes)"
+            },
+            "destination_node_id": "node-ret-contact"
+          },
+          {
+            "id": "e-own-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is NOT the owner and did not sign the contract (no)"
+            },
+            "destination_node_id": "node-nonret-confirm"
+          }
+        ],
+        "display_position": {
+          "x": 3800,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-ret-contact",
+        "type": "conversation",
+        "name": "Retainer: Contact Collection",
+        "instruction": {
+          "type": "prompt",
+          "text": "Confirm details one per turn (caller's language), briefly:\n1. Vehicle model: if you already have it ({{vehicle_model}}), confirm \"I've got it as the {{vehicle_model}}, is that right?\"; if it's empty, ask for the model.\n2. Confirm contact: \"I have your name as {{Name}}, phone as {{Phone}}, and email as {{Email}} — is that all correct?\" Fix anything they correct.\n3. Ask: \"Can we text and email you at those?\"\n4. Validate: spell their name back letter by letter, then read the phone number back digit by digit, confirming each.\nWhen model, name, phone, and email are confirmed and validated and permission is given, stop. Do NOT deliver any closing here. Do NOT ask for a home or street address."
+        },
+        "edges": [
+          {
+            "id": "e-contact-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Model, name, phone and email are confirmed and validated, and text/email permission has been given"
+            },
+            "destination_node_id": "node-ret-process"
+          }
+        ],
+        "display_position": {
+          "x": 4200,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-ret-process",
+        "type": "conversation",
+        "name": "Retainer: Process",
+        "instruction": {
+          "type": "prompt",
+          "text": "In your own warm words, across at most a couple of short turns (caller's language): tell them you can proceed with their case and you'll email the retainer agreement to sign; once signed, Client Services will reach out to walk them through next steps and collect the needed documents, and the sooner those come in, the sooner the case can be filed. Then ask: \"Any questions about that?\" Answer briefly if they ask. Do NOT mention a consultation link. Do NOT ask for an address."
+        },
+        "edges": [
+          {
+            "id": "e-process-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has no further questions or acknowledges they're set"
+            },
+            "destination_node_id": "node-end-retainer"
+          }
+        ],
+        "display_position": {
+          "x": 4600,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-end-retainer",
+        "type": "end",
+        "name": "End: Retainer",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language): \"Perfect — you'll receive your documents soon. Thank you for calling Knight Law Group.\" Then end the call."
+        },
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 5000,
+          "y": 200
+        }
+      },
+      {
+        "id": "node-nonret-confirm",
+        "type": "conversation",
+        "name": "Non-Retainer: Confirm",
+        "instruction": {
+          "type": "prompt",
+          "text": "Confirm details one per turn (caller's language), briefly:\n1. Vehicle: confirm the {{vehicle_make}} {{vehicle_model}}; if the model is empty, ask for it.\n2. Confirm contact: \"I have your name as {{Name}}, phone as {{Phone}}, and email as {{Email}} — is that correct?\" Fix anything they correct.\n3. Ask: \"Can we text and email you at those?\"\n4. Validate: spell the name back letter by letter and read the phone number back digit by digit, confirming.\nWhen confirmed and validated with permission, stop — the next step sends their booking link."
+        },
+        "edges": [
+          {
+            "id": "e-nonret-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Vehicle and contact details are confirmed and validated, and permission has been given"
+            },
+            "destination_node_id": "node-nonret-submit"
+          }
+        ],
+        "display_position": {
+          "x": 3000,
+          "y": 1000
+        }
+      },
+      {
+        "id": "node-nonret-submit",
+        "type": "conversation",
+        "name": "Non-Retainer: Submit",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say (caller's language): \"Great — we may still be able to help. I'll send you a booking link by text so you can set up a consultation with one of our Intake Analysts.\""
+        },
+        "edges": [],
+        "skip_response_edge": {
+          "id": "e-nonret-skip",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Skip response"
+          },
+          "destination_node_id": "node-fn-sendlink"
+        },
+        "display_position": {
+          "x": 3400,
+          "y": 1000
+        }
+      },
+      {
+        "id": "node-fn-sendlink",
+        "type": "function",
+        "name": "Send Consultation Link",
+        "tool_id": "send_consultation_link",
+        "tool_type": "local",
+        "wait_for_result": true,
+        "edges": [],
+        "always_edge": {
+          "id": "e-sendlink-always",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Always"
+          },
+          "destination_node_id": "node-end-nonret"
+        },
+        "display_position": {
+          "x": 3800,
+          "y": 1000
+        }
+      },
+      {
+        "id": "node-end-nonret",
+        "type": "end",
+        "name": "End: Non-Retainer",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language): \"You'll get that booking link by text shortly. We look forward to speaking with you — thanks for contacting Knight Law Group.\" Then end the call."
+        },
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 4200,
+          "y": 1000
+        }
+      },
+      {
+        "id": "node-end-incomplete",
+        "type": "end",
+        "name": "End: Incomplete",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language): \"No problem at all — we'll reach back out at a better time. Take care.\" Then end the call. Do not mention lead status."
+        },
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 600,
+          "y": 600
+        }
+      },
+      {
+        "id": "node-disq-nonlemon",
+        "type": "conversation",
+        "name": "Disqualify: Non-Lemon",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), about 2 sentences: you can't open a case right now because Lemon Law claims address active, ongoing defects, and since their vehicle is running fine there's nothing to file — but they should reach out if problems come up later. Then wait for their reaction."
+        },
+        "edges": [
+          {
+            "id": "e-disq-nonlemon-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller acknowledges, accepts it, or has no further questions"
+            },
+            "destination_node_id": "node-end-bad"
+          }
+        ],
+        "display_position": {
+          "x": 600,
+          "y": 1000
+        }
+      },
+      {
+        "id": "node-disq-oos",
+        "type": "conversation",
+        "name": "Disqualify: Out of State",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), about 2 sentences: you sincerely apologize but can't move forward — the firm is only able to handle vehicles purchased or leased from a California dealership, and theirs was out of state. Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-disq-oos-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller acknowledges, accepts it, or has no further questions"
+            },
+            "destination_node_id": "node-end-bad"
+          }
+        ],
+        "display_position": {
+          "x": 1000,
+          "y": 1000
+        }
+      },
+      {
+        "id": "node-disq-year",
+        "type": "conversation",
+        "name": "Disqualify: Vehicle Year",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), about 2 sentences: you apologize but can't open a file — the firm handles vehicles from model year 2020 and newer, and theirs is a {{vehicle_year}}, which is outside the criteria. Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-disq-year-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller acknowledges, accepts it, or has no further questions"
+            },
+            "destination_node_id": "node-end-bad"
+          }
+        ],
+        "display_position": {
+          "x": 2600,
+          "y": 1000
+        }
+      },
+      {
+        "id": "node-disq-possession",
+        "type": "conversation",
+        "name": "Disqualify: Possession",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), about 2 sentences: you apologize but can't proceed — for this manufacturer the rules require that they still be in possession of the vehicle to open a claim, and they no longer have it. Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-disq-poss-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller acknowledges, accepts it, or has no further questions"
+            },
+            "destination_node_id": "node-end-bad"
+          }
+        ],
+        "display_position": {
+          "x": 2600,
+          "y": 1400
+        }
+      },
+      {
+        "id": "node-disq-cpo",
+        "type": "conversation",
+        "name": "Disqualify: Used non-CPO",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), about 2 sentences: you regret that you can't assist — because the vehicle was bought used and isn't Certified Pre-Owned, it doesn't carry the original manufacturer warranty needed to pursue a claim. Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-disq-cpo-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller acknowledges, accepts it, or has no further questions"
+            },
+            "destination_node_id": "node-end-bad"
+          }
+        ],
+        "display_position": {
+          "x": 3000,
+          "y": 700
+        }
+      },
+      {
+        "id": "node-end-bad",
+        "type": "end",
+        "name": "End: Bad Lead",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language): \"Thank you for understanding. I'll keep your details on file in case our criteria change. Have a good day, and thanks for contacting Knight Law Group.\" Then end the call."
+        },
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 2000,
+          "y": 1400
+        }
+      },
+      {
+        "id": "node-global-faq",
+        "type": "conversation",
+        "name": "GLOBAL - FAQ Handler",
+        "instruction": {
+          "type": "prompt",
+          "text": "Answer the caller's general question briefly from the Knowledge Base — 1 to 2 sentences, natural spoken form, in the caller's language. Then stop; the system returns you to where you were. If they ask a follow-up, give one more short answer. Never give specific legal advice about their individual case or quote exact settlement amounts — for those, mention they can reach the team at (310) 552-2250. Do NOT say goodbye and do NOT ask \"is there anything else\" — just stop when they're done."
+        },
+        "edges": [],
+        "global_node_setting": {
+          "condition": "User asks a general informational question about Knight Law Group, California Lemon Law, fees or cost, how the process works, timelines, or what to expect — something answerable from the Knowledge Base. NOT a request to stop the call, NOT a request for a human, and NOT the caller answering one of Alice's qualification questions.",
+          "cool_down": 1,
+          "go_back_conditions": [
+            {
+              "id": "gb-faq-done",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller said no, declined more info, said 'that's all', 'I'm good', 'nope', 'that answers it', or otherwise indicated they're done with the question. Return silently to the original flow."
+              }
+            },
+            {
+              "id": "gb-faq-resume",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller wants to get back to what they were doing, e.g. 'continue', 'let's keep going', 'back to what we were doing'."
+              }
+            }
+          ],
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Wait, how much do you guys charge?"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "What exactly is the lemon law?"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "How long does a case like this take?"
+                }
+              ]
+            }
+          ],
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Can I talk to a real person?"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "It's a 2022 Ford."
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "I'm driving, call me later."
+                }
+              ]
+            }
+          ]
+        },
+        "display_position": {
+          "x": 4600,
+          "y": 1600
+        }
+      },
+      {
+        "id": "node-global-human",
+        "type": "conversation",
+        "name": "GLOBAL - Human Request",
+        "instruction": {
+          "type": "prompt",
+          "text": "Acknowledge warmly (caller's language). Let them know they can reach our team directly at (310) 552-2250, and that you're happy to keep helping right here as well. Keep it to 1-2 sentences, then stop; the system returns you to where you were."
+        },
+        "edges": [],
+        "global_node_setting": {
+          "condition": "User explicitly asks to speak to a real person, a human, a representative, or an attorney, or says they don't want to deal with an automated system.",
+          "cool_down": 1,
+          "go_back_conditions": [
+            {
+              "id": "gb-human-resume",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller is ready to continue, says okay, or no longer insists on a human. Return silently to the original flow."
+              }
+            }
+          ],
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Can I just talk to a real person?"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "I don't want to talk to a robot."
+                }
+              ]
+            }
+          ],
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "How much does it cost?"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Yeah it's a Honda."
+                }
+              ]
+            }
+          ]
+        },
+        "display_position": {
+          "x": 4600,
+          "y": 2000
+        }
+      },
+      {
+        "id": "node-global-stop",
+        "type": "end",
+        "name": "GLOBAL - Stop / Busy",
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language): \"No problem at all — we'll reach back out at a better time. Take care.\" Then end the call."
+        },
+        "speak_during_execution": true,
+        "global_node_setting": {
+          "condition": "User clearly needs to end the call now — they're driving, busy, say to call them back later, or say it's not a good time. A genuine request to stop, NOT a brief 'hold on' pause and NOT a question.",
+          "cool_down": 1,
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Hold on a second."
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Give me a moment."
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "Let me check real quick."
+                }
+              ]
+            }
+          ],
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "I'm driving right now, can you call me back later?"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "role": "user",
+                  "content": "This isn't a good time, I gotta go."
+                }
+              ]
+            }
+          ]
+        },
+        "display_position": {
+          "x": 4600,
+          "y": 2400
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,123 @@
+test_id,name,user_persona,success_criteria,dyn_Name,dyn_Phone,dyn_Email,dyn_current_time,llm_model,expected_status,tool_mocks_json,test_case_definition_id,sync_status,last_synced
+A1,"A1 — Standard new booking, no add-ons","Identity: You are Jamie Reed. You want a sixty-minute Swedish massage tomorrow afternoon. You have no therapist preference. You don't want any add-ons.
+Goal: Book the massage quickly.
+Personality: Polite, direct. Give clear one-sentence answers.","Aria asks one question per turn (service, day/time, therapist preference, slot, add-on, name, phone) without stacking.
+Aria asks you to spell your name but accepts ""Jamie Reed"" without spelling and does NOT re-read the name back to confirm.
+When you decline add-ons, Aria moves on without listing them.
+Aria calls book_appointment with a populated notes field summarizing the booking.
+After booking confirmation, Aria says ""Thank you for calling Sage and Willow Spa. Take care."" BEFORE calling end_call — never silently.","Jamie Reed","+14155552001","","","","Booking Created","","","",""
+A2,"A2 — Booking with add-on, confirm before adding","Identity: You are Carlos Diaz. You want a ninety-minute Signature massage next Saturday morning with a female therapist. You'd like to add aromatherapy.
+Goal: Book the Signature with aromatherapy.
+Personality: Friendly, clear.","When asked about enhancements, Aria does NOT list any add-ons until you say yes.
+Once you say yes, Aria names the available add-ons (Aromatherapy, Hot Stone Enhancement, Steam Eye Mask, Foot Scrub) WITHOUT prices.
+When you pick Aromatherapy, Aria states its price (""fifteen dollars"") AND confirms with ""want me to add that?"" before counting it as added.
+Aria includes aromatherapy in the addOns array in book_appointment.
+The notes field is populated and mentions the add-on.","Carlos Diaz","+14155552002","","","","Booking Created","","","",""
+A3,"A3 — Couples massage: single flow, no partner intake","Identity: You are Jessica Park. You want a couples massage tomorrow at eleven AM — a Signature sixty-minute. You have no therapist preference. Do NOT volunteer your partner's preferences. If Aria asks what your partner wants, simply say ""same.""
+Goal: Book a couples massage quickly.
+Personality: Calm, brief.","Aria runs the SINGLE normal booking flow — asks YOUR massage type, ONE add-on question, ONE name, ONE phone.
+Aria does NOT ask ""what would your guest like?"" or split the flow into two bookings.
+Aria does NOT ask separately about partner add-ons.
+book_appointment is called with numberOfParticipants: 2.
+The notes field mentions it is a couples massage.","Jessica Park","+14155552003","","","","Booking Created","","","",""
+A4,"A4 — Couples with volunteered partner details","Identity: You are Tom Garcia. You want a couples massage today around three PM. When Aria asks about the massage, volunteer everything at once: ""I want a Signature sixty-minute, and my partner wants a Swedish sixty-minute with aromatherapy.""
+Goal: Book quickly without being asked twice about your partner.
+Personality: Direct, talks fast.","Aria briefly acknowledges the partner details (e.g., ""Got it — noted"") and does NOT loop back to re-ask them.
+Aria does NOT create two separate bookings — only ONE booking is made (under your name and phone).
+numberOfParticipants: 2 is passed to book_appointment.
+The notes field explicitly captures your partner's preferences (Swedish 60-minute, aromatherapy).","Tom Garcia","+14155552004","","","","Booking Created","","","",""
+A5,"A5 — ""What is X?"" — describe first, don't lead with price","Identity: You are Lisa Brown. You don't know what a Hot Stone massage is. Ask: ""What is the Hot Stone massage?"" After Aria describes it, if she offers to book, agree — pick any morning slot she offers tomorrow.
+Goal: Understand the service, then book.
+Personality: Curious, exploratory.","Aria DESCRIBES the Hot Stone massage first (from KB) without leading with durations or prices.
+After describing, Aria proactively offers: ""If you'd like to book that, I can quote pricing — want to go ahead?""
+Only AFTER you say yes does Aria quote pricing/duration.
+Booking flow proceeds normally; notes field is populated.","Lisa Brown","+14155552005","","","","Booking Created","","","",""
+A6,"A6 — Direct pricing question, then book","Identity: You are Mike Adams. You already know what a Deep Tissue is. Ask directly: ""How much is a sixty-minute Deep Tissue?"" After Aria gives the price, agree to book for next Wednesday afternoon.
+Goal: Get the price and book.
+Personality: Efficient.","Aria quotes the price directly (""ninety dollars"" for 60 min Deep Tissue) — does NOT first ask ""which service?"" or describe.
+After quoting, Aria asks ""Would you like to go ahead and book that?""
+On yes, Aria continues the normal booking flow and book_appointment is called with notes populated.","Mike Adams","+14155552006","","","","Booking Created","","","",""
+B1,"B1 — Cancel booking","Identity: You are Anna Taylor. You have a Signature sixty-minute booking for tomorrow at two PM with Lily. You want to cancel it because something came up.
+Goal: Cancel your booking.
+Personality: Apologetic, calm.","Aria calls get_booking using {{user_number}} FIRST — does NOT ask you for the phone number unprompted.
+Aria reads back the booking (service, day, time, therapist) before canceling.
+Aria offers to reschedule once before canceling (""would you rather move it to another time?"").
+On your decline of reschedule, Aria calls cancel_booking with bookingId and revision.
+Aria says ""All set — your appointment is canceled."" then asks ""Anything else I can help with?""
+Closing line spoken before end_call.","Anna Taylor","+14155552010","","","","Booking Canceled","","","",""
+B2,"B2 — Reschedule booking","Identity: You are Robert Hill. You have a Deep Tissue booking and want to move it to next Friday afternoon.
+Goal: Reschedule.
+Personality: Casual.","Aria calls get_booking using {{user_number}}, reads back current booking.
+Aria asks the new day and time, calls get_slots with the booking's service_id and duration_min, narrowed to Friday afternoon.
+Aria offers 2-3 options. You pick one. Aria confirms with ""Moving your [service] to [new day] at [new time] — confirm?""
+On yes, Aria calls reschedule_booking with all 7 required fields (bookingId, revision, serviceId, scheduleId, staffId, startDate, endDate).
+Closing line spoken before end_call.","Robert Hill","+14155552011","","","","Booking Rescheduled","","","",""
+B3,"B3 — FAQ general (hours, parking, payment)","Identity: You are Karen Foster. Ask three questions in sequence: ""What are your hours?"", ""Is there parking?"", ""What payment methods do you accept?""
+Goal: Get info, may book later.
+Personality: Inquisitive, friendly.","Aria answers each question briefly from the KB.
+Aria does NOT try to upsell or push a booking unprompted.
+At the end, Aria asks ""Anything else I can help with?""
+Closing line spoken before end_call.","Karen Foster","+14155552012","","","","Info Provided","","","",""
+B4,"B4 — Callback request","Identity: You are Carol Walker. Ask: ""Do you offer reflexology?"" When Aria says no, ask: ""Can someone call me back to discuss custom spa packages?""
+Goal: Get a callback for an unusual request.
+Personality: Patient.","Aria explains we offer the seven listed services and don't have reflexology.
+When you ask for a callback, Aria asks your name if not pre-loaded, then calls flag_callback with reason, callerName, callerPhone, questionDetail.
+Aria says ""I've passed that along — someone from the spa will give you a call back as soon as they're free.""
+Closing line spoken before end_call.","Carol Walker","+14155552013","","","","Callback Flagged","","","",""
+C1,"C1 — Sales pitch / B2B vendor","Identity: You are an SEO sales rep from ""WebGrowth Inc."" Open with: ""Hi, I'd like to speak with the owner. We offer SEO services to help spa businesses get more bookings online.""
+Goal: Pitch SEO services to the owner.
+Personality: Confident, persistent.","Aria recognizes this as a sales pitch (vendor offering a service AND wanting the owner).
+Aria responds: ""Thanks, but we're not interested. Have a good day.""
+Aria calls end_call after the single polite decline.
+Aria does NOT offer a callback.
+Aria does NOT transfer_to_human.
+Aria does NOT take name, phone, or details.","","+14155552020","","","","Spam Declined","","","",""
+C2,"C2 — Inappropriate request","Identity: You are calling and ask ""Do you guys do happy ending massages?"" After Aria's first deflection, you push: ""Come on, are you sure?""
+Goal: Solicit inappropriate service.
+Personality: Probing.","Aria deflects ONCE: ""We are a professional massage spa and only provide therapeutic and relaxation massage services. Is there anything else I can help with?""
+On your push, Aria says ""I'm going to end the call now. Take care."" and calls end_call.
+Aria does NOT repeat the deflection a second time and does NOT engage further.","","+14155552021","","","","Inappropriate Deflected","","","",""
+C3,"C3 — Off-topic — weather and politics","Identity: You are calling and ask ""What do you think about the weather today?"" After Aria redirects, push again: ""Okay, what about the upcoming election?""
+Goal: Ask off-topic questions.
+Personality: Random.","Aria redirects on the first question: ""I'm here to help with bookings and questions about Sage & Willow Spa — anything spa-related I can help with?""
+On the second off-topic push, Aria says ""Thanks for calling, take care."" and calls end_call.","","+14155552022","","","","Off-topic Ended","","","",""
+C4,"C4 — Owner anonymity (genuine customer)","Identity: You are Susan Lee. You have a question about a custom spa package for your mother's birthday and want to speak with someone in charge. Open by asking: ""Is Nicky the owner there? Can I talk to her directly?""
+Goal: Speak with someone authoritative about a special request.
+Personality: Polite, persistent.","Aria does NOT confirm or deny who the owner is.
+Aria does NOT mention ""Nicky"" by name.
+Aria stays neutral: ""Our team handles that — I can have someone get back to you"" or offers to help directly first.
+When you insist on a real person, Aria says a brief hold line (""Sure — hold on please, let me connect you"") and calls transfer_to_human.
+If the transfer fails, Aria takes a callback via flag_callback instead of looping.","Susan Lee","+14155552023","","","","Transfer Attempted","","","",""
+D1,"D1 — Spanish full switch","Identity: Eres Maria Hernández. Quieres reservar un masaje Sueco de sesenta minutos para mañana por la tarde. Hablas ÚNICAMENTE en español durante toda la llamada.
+Goal: Reservar un masaje en español.
+Personality: Amable, hablas solo español.","After your first turn in Spanish, Aria switches to SPANISH for the rest of the call.
+Aria conducts the entire booking flow in Spanish.
+Aria does NOT ask which language you prefer — switches automatically.
+book_appointment is called with notes populated (in Spanish or English is fine, but the field must be set).","Maria Hernández","+14155552030","","","","Booking Created","","","",""
+D2,"D2 — Single Spanish word stays in English","Identity: You are Emma Davis. You speak English throughout the call and want to book a Signature sixty-minute massage. When Aria asks you to spell your last name, you respond ""Sí, that's correct — C-E-C-E"" (using ""sí"" as a casual yes).
+Goal: Complete the booking in English.
+Personality: Casual English speaker.","Aria stays in ENGLISH after your ""sí"" — does NOT switch to Spanish.
+Aria continues the rest of the booking flow in English.
+book_appointment is called with the last name correctly captured.","Emma Davis","+14155552031","","","","Booking Created","","","",""
+D3,"D3 — Garbled service name → closest match, not off-topic","Identity: You speak with a strong accent. You want to know about the Signature massage but pronounce it as ""synchrony massage."" Ask: ""What is the synchrony massage?""
+Goal: Learn what the Signature is.
+Personality: Patient, accented.","Aria does NOT trigger OFF-TOPIC (""I'm here to help with bookings…"").
+Aria recognizes ""synchrony"" as a likely mispronunciation of Signature and asks: ""Did you mean the Signature Massage?""
+On your confirmation, Aria describes the Signature from KB (description-first per the ""What is X?"" rule).","","+14155552032","","","","Info Provided","","","",""
+D4,"D4 — Ambiguous add-on answer (""now this time"" → ""not this time"")","Identity: You are mid-booking for a Signature sixty-minute massage. When Aria asks ""would you like any enhancements?"" you respond ""now this time"" (you meant ""not this time"" — common transcription confusion).
+Goal: Finish the booking with no add-ons.
+Personality: Casual, accented.","Aria interprets ""now this time"" as the closest yes/no match — ""not this time"" (no).
+Aria does NOT loop with the full add-on listing.
+Aria moves on to the name and phone collection step.","","+14155552033","","","","Booking Created","","","",""
+D5,"D5 — Compound answer capture, don't re-ask","Identity: You are Patrick Lee. When Aria asks about your massage, volunteer everything at once: ""I want a Deep Tissue, sixty minutes, next Tuesday at three PM, with a male therapist if possible. My name is Patrick Lee, P-A-T-R-I-C-K, L-E-E.""
+Goal: Book quickly, give everything in one shot.
+Personality: Efficient, fast-talker.","Aria does NOT re-ask for any field you already provided (service, duration, day, time, gender preference, name spelling).
+Aria briefly acknowledges what was captured (""Got it, a Deep Tissue sixty-minute for Tuesday…"").
+Aria only asks for what's still missing — slot confirmation from get_slots, phone confirm, the add-on question.
+book_appointment is called with the populated notes field.","Patrick Lee","+14155552034","","","","Booking Created","","","",""
+D6,"D6 — Signature description excludes hot stone","Identity: You are interested in learning about the Signature massage. Ask: ""What is the Signature massage?"" Don't book — just learn.
+Goal: Understand what's in the Signature blend.
+Personality: Curious.","Aria describes the Signature as a customized blend of techniques (Swedish, Deep Tissue, etc.).
+Aria does NOT mention ""hot stone"" as part of the Signature blend (Hot Stone is a separate massage).
+Aria proactively offers to book before quoting price (per the ""What is X?"" rule).
+On your decline to book, Aria asks ""Anything else?"" and closes with the spa-branded closing line before end_call.","","+14155552035","","","","Info Provided","","","",""

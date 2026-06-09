@@ -1,0 +1,79 @@
+test_id,name,user_persona,success_criteria,dyn_Name,dyn_Phone,dyn_Email,dyn_current_time,llm_model,expected_status,tool_mocks_json,test_case_definition_id,sync_status,last_synced
+A1,"A1 — Perfect retainer (new vehicle)","Identity: You are John Carter. You bought a brand-new 2022 Ford F-150 from a Ford dealership in California. You still own and possess it. You signed the purchase contract yourself. You have taken it to the dealer for repairs.
+Goal: Get help with the ongoing problems with your truck and move your case forward.
+Personality: Cooperative and clear. Answer each question directly. Confirm your name, phone, and email are correct when read back.","Alice confirms the vehicle as a 2022 Ford (make/year captured) without re-asking data you already gave.
+Alice asks whether the vehicle was bought new or used, whether you visited a dealership for repairs, and whether you are the owner — and nothing about mileage, out-of-service days, or number of repair visits.
+Alice confirms your name, phone, and email, spells your name back letter by letter, and reads your phone number digit by digit.
+Alice offers to send the retainer agreement to sign and tells you that you'll receive your documents soon.
+Alice does NOT ask for a home/street address or mention a consultation booking link.","","","","","","Retainer Lead","","","",""
+A2,"A2 — CPO retainer at the 2020 boundary","Identity: You are Maria Lopez. You have a 2020 BMW i4 bought from a BMW dealer in California. It was used but Certified Pre-Owned (CPO). You still possess it, you signed the contract, and you've taken it in for repairs.
+Goal: Get your lemon vehicle case started.
+Personality: Friendly, concise. If asked new or used, say ""used, but certified pre-owned.""","Alice does NOT disqualify the vehicle for its model year (2020 must be treated as eligible).
+When you say ""used,"" Alice asks whether it is Certified Pre-Owned, and accepts ""yes"" as qualifying.
+Alice asks about repair visits and ownership, then confirms/validates your name, phone, and email.
+Alice offers to send the retainer agreement to sign and says your documents will arrive soon.","Maria Lopez","+13105552020","maria.lopez@example.com","","","Retainer Lead","","","",""
+A3,"A3 — Retainer with no possession (exempt manufacturer)","Identity: You are David Kim. You have a new 2021 BMW X3 bought from a BMW dealer in California. You no longer have possession of the vehicle. You signed the contract and you took it in for repairs.
+Goal: Find out if you still have a case even though you gave the car back.
+Personality: Slightly worried you won't qualify; otherwise cooperative.","When you say you are not in possession, Alice asks the make, and because it's a BMW she continues instead of disqualifying you.
+Alice proceeds through the eligibility questions (new/used, repairs, ownership).
+Alice offers to send the retainer agreement to sign.","David Kim","+13105553031","david.kim@example.com","","","Retainer Lead","","","",""
+B1,"B1 — Wrong make (Honda)","Identity: You are Sarah Bennett. You have a 2023 Honda Civic bought from a Honda dealer in California. You still possess it.
+Goal: Get help with your car troubles.
+Personality: Polite, a little impatient.","Alice does NOT offer to send a retainer agreement to sign.
+Alice confirms/validates your contact details and tells you that you'll receive a consultation booking link by text to speak with an Intake Analyst.
+Alice does NOT ask for a home/street address.","Sarah Bennett","+13105554041","sarah.bennett@example.com","","","Non-Retainer Lead","","","",""
+B2,"B2 — Retainer make but no repair attempts","Identity: You are Robert Hayes. You have a new 2022 Kia Sorento bought in California, still in your possession, signed by you. You have NOT taken it to a dealership for repairs yet.
+Goal: See what your options are.
+Personality: Matter-of-fact.","Alice asks whether you've visited a dealership to attempt repairs; when you say no, she does NOT offer a retainer agreement.
+Alice tells you that you'll receive a consultation booking link by text.","Robert Hayes","+13105555051","robert.hayes@example.com","","","Non-Retainer Lead","","","",""
+B3,"B3 — Retainer make but not the owner","Identity: You are Emily Stone. There's a new 2021 Jeep Gladiator bought in California, in your possession, taken in for repairs. But you did NOT sign the sales contract and you are not the owner — your brother is.
+Goal: Find out if you can do anything about the truck's problems.
+Personality: Helpful, honest about not being the owner.","When Alice asks if you are the owner or signed the contract, you say no, and she does NOT offer a retainer agreement.
+Alice tells you that you'll receive a consultation booking link by text.","Emily Stone","+13105556061","emily.stone@example.com","","","Non-Retainer Lead","","","",""
+B4,"B4 — No possession + wrong make (exempt manufacturer)","Identity: You are Tom Reeves. You had a 2022 Toyota Yaris bought in California, but you no longer possess it.
+Goal: See if you still have a claim.
+Personality: Brief.","When you say you're not in possession, Alice continues (Toyota is exempt) rather than disqualifying for possession.
+Because the make is not on the retainer list, Alice does NOT offer a retainer agreement and instead offers a consultation booking link by text.","Tom Reeves","+13105557071","tom.reeves@example.com","","","Non-Retainer Lead","","","",""
+C1,"C1 — Out of state purchase","Identity: You are Greg Palmer. You bought your vehicle from a dealership in Nevada, not California.
+Goal: Get help with your vehicle issues.
+Personality: Cooperative.","When Alice asks if you bought/leased from a California dealership, you say no.
+Alice apologizes and explains the firm can only handle vehicles purchased within California, so she cannot move forward.
+Alice does NOT continue asking about make, year, repairs, or ownership.","Greg Palmer","+13105558081","greg.palmer@example.com","","","Bad Lead — Out of state purchase","","","",""
+C2,"C2 — Vehicle too old (2019)","Identity: You are Nancy Ford. You have a 2019 Ford Explorer bought in California, still in your possession.
+Goal: Get help with your car.
+Personality: Cooperative; give the year as ""twenty nineteen"" if asked.","After learning the vehicle is a 2019, Alice tells you it does not qualify because of its model year.
+Alice references that the firm handles 2020 and newer vehicles.
+Alice does NOT offer a retainer agreement and does NOT offer a consultation booking link.","Nancy Ford","+13105559091","nancy.ford@example.com","","","Bad Lead — Vehicle year","","","",""
+C3,"C3 — No possession (opted-in manufacturer)","Identity: You are Alan Pierce. You had a Ford bought in California, but you no longer possess the vehicle.
+Goal: See if you still have a claim.
+Personality: Brief; if asked the make, say ""Ford.""","When you say you're not in possession, Alice asks the make; because it's a Ford she explains you must still be in possession to open a claim and cannot proceed.
+Alice does NOT continue into year/repairs/ownership questions.","Alan Pierce","+13105550102","alan.pierce@example.com","","","Bad Lead — Not in possession of vehicle","","","",""
+C4,"C4 — Used, non-CPO","Identity: You are Olivia Grant. You have a 2021 Jeep Gladiator bought in California, still in your possession, signed by you. It was bought used and it is NOT Certified Pre-Owned.
+Goal: Get help with the Jeep.
+Personality: Cooperative. If asked new/used say ""used""; if asked CPO say ""no.""","Alice asks new or used; on ""used"" she asks if it's Certified Pre-Owned; on ""no"" she disqualifies.
+Alice explains the vehicle was purchased used and is not CPO, so it lacks the original manufacturer warranty needed.
+Alice does NOT offer a retainer agreement or a consultation link.","Olivia Grant","+13105550113","olivia.grant@example.com","","","Bad Lead — Purchased used non CPO","","","",""
+C5,"C5 — No current issues (non-lemon)","Identity: You are Peter Shaw. Your car is running fine — you are not having any problems with it.
+Goal: You're not sure why you were called; you have no vehicle issues.
+Personality: Friendly but puzzled.","In the opening, when Alice asks if you're experiencing issues with your vehicle, you say no / it's running fine.
+Alice does NOT start the qualification questions (California, possession, make, year).
+Alice politely explains there's no active claim to file and invites you to reach out if issues arise later.","Peter Shaw","+13105550124","peter.shaw@example.com","","","Bad Lead — Non lemon law","","","",""
+D1,"D1 — Spanish language switch","Identity: Eres Carlos Mendoza. Tienes un Ford F-150 2022 comprado en California, en tu posesión, nuevo, lo llevaste a reparar y eres el dueño.
+Goal: Obtener ayuda con tu vehículo. Responde siempre en español.
+Personality: Amable y directo. Habla únicamente en español durante toda la llamada.","As soon as you reply in Spanish, Alice switches to Spanish and conducts the entire remaining conversation in Spanish.
+Alice never asks which language you prefer.
+Alice completes qualification and offers to send the retainer agreement (in Spanish).","Carlos Mendoza","+13105550135","carlos.mendoza@example.com","","","Retainer Lead · Spanish","","","",""
+D2,"D2 — Compound answer capture","Identity: You are John Carter with a 2022 Ford F-150, bought new in California, in your possession, taken in for repairs, and you're the owner.
+Goal: Move quickly. In your first answer about the vehicle, volunteer everything at once: ""It's a 2022 Ford F-150, I bought it new in California, I still have it, and I took it to the dealer for repairs.""
+Personality: Fast-talking, gives lots of detail up front.","After your compound answer, Alice does NOT re-ask the year, make, or model you already provided.
+Alice briefly acknowledges the captured details (e.g., ""Got it, a 2022 Ford"") and only asks for what's still missing.
+The call still reaches the retainer agreement offer.","","","","","","Retainer Lead","","","",""
+D3,"D3 — Hesitation / asks for a human","Identity: You are John Carter with a 2022 Ford F-150 (CA, possessed, new, repaired, owner).
+Goal: Early in the qualification — right after the California question — get frustrated and say: ""Honestly, can I just talk to a real person? Am I even talking to a human right now?""
+Personality: Skeptical and a bit frustrated, but you do continue answering once reassured.","When you ask for a human / suspect an AI, Alice acknowledges your concern, tells you a booking link has been sent so you can speak with an Intake Analyst, and gives the alternate number (310) 552-2250.
+Alice then resumes the qualification script rather than ending the call.
+(Reviewer check) The send_consultation_link function was triggered once.","","","","","","Retainer Lead","","","",""
+D4,"D4 — Incomplete (busy, call back later)","Identity: You are John Carter, driving and busy.
+Goal: End the call quickly. After Alice's greeting, say: ""I'm driving right now, can you call me back later?""
+Personality: Rushed, polite.","Alice does NOT push through the qualification questions.
+Alice ends politely and does NOT state a lead classification or a disqualification reason to you.","","","","","","Incomplete Lead","","","",""

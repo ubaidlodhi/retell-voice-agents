@@ -1,0 +1,500 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "907eae1a-8c74-4792-b6d1-256705e5cc0d",
+      "name": "Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "retell_api_key",
+              "value": "key_7bf9d7cc3329ba1c0b155461dcc7",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "llm_id",
+              "value": "llm_7f2db6951bb86164496b13585d16",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "default_llm_model",
+              "value": "gpt-4.1",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "default_name",
+              "value": "John Carter",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "default_phone",
+              "value": "+13105551234",
+              "type": "string"
+            },
+            {
+              "id": "f6",
+              "name": "default_email",
+              "value": "john.carter@example.com",
+              "type": "string"
+            },
+            {
+              "id": "f7",
+              "name": "default_current_time",
+              "value": "Friday, June 5, 2026, 11:00 AM PT",
+              "type": "string"
+            },
+            {
+              "id": "f8",
+              "name": "global_criteria",
+              "value": "The agent stays in character as Aria, the receptionist at Sage & Willow Spa, throughout the call.\nThe agent never names 'Nicky' or any specific person as the owner or lead therapist, and never confirms or denies who owns the spa.\nThe agent never asks the caller for their email address.\nThe agent says prices with the word 'dollars' (e.g., 'ninety dollars'), never just the number or with a dollar sign.\nThe agent says phone numbers digit-by-digit grouped three-three-four with pauses.\nThe agent never reveals internal node names, tool names, or routing logic to the caller.\nThe agent never says filler like 'let me check,' 'one moment,' or 'please hold' between steps — execution messages are the pre-configured 'Just a moment please, this will only take a second.'\nBefore calling end_call, the agent always speaks a closing line out loud (e.g., 'Thank you for calling Sage and Willow Spa. Take care.') — never ends the call silently.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e92e9a34-e358-4b47-9869-52d175b2a40c",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -912,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1AQNV31J8S9-7gYE-jqRI7vGygd-0VPKTMQzcw5MfbcA",
+          "mode": "list",
+          "cachedResultName": "retell test cases",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AQNV31J8S9-7gYE-jqRI7vGygd-0VPKTMQzcw5MfbcA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 966397966,
+          "mode": "list",
+          "cachedResultName": "aria-test-cases",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AQNV31J8S9-7gYE-jqRI7vGygd-0VPKTMQzcw5MfbcA/edit#gid=966397966"
+        },
+        "options": {}
+      },
+      "id": "b6766861-b754-410d-bf5f-d686ec2b7ddd",
+      "name": "Get Test Cases",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -704,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqU2QzK1P1jEo1pL",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const cfg = $('Config').first().json;\nconst row = $json;\n\nconst pick = (v, d) => (v !== undefined && v !== null && String(v).trim() !== '') ? String(v).trim() : d;\nconst normPhone = (p) => { let s = String(p == null ? '' : p).trim(); if (!s) return s; return s.charAt(0) === '+' ? s : '+' + s; };\n\nconst dynamic_variables = {\n  Name: pick(row.dyn_Name, cfg.default_name),\n  Phone: normPhone(pick(row.dyn_Phone, cfg.default_phone)),\n  Email: pick(row.dyn_Email, cfg.default_email),\n  current_time: pick(row.dyn_current_time, cfg.default_current_time),\n};\n\nconst splitLines = (s) => String(s || '').split('\\n').map(x => x.trim()).filter(x => x.length > 0);\n\nconst metrics = [...splitLines(row.success_criteria), ...splitLines(cfg.global_criteria)];\n\nlet tool_mocks = [];\nconst tm = String(row.tool_mocks_json || '').trim();\nif (tm) { try { tool_mocks = JSON.parse(tm); } catch (e) { tool_mocks = []; } }\n\nconst payload = {\n  name: row.name,\n  response_engine: { type: 'retell-llm', llm_id: cfg.llm_id },\n  user_prompt: row.user_persona,\n  metrics: metrics,\n  dynamic_variables: dynamic_variables,\n  llm_model: pick(row.llm_model, cfg.default_llm_model),\n};\nif (Array.isArray(tool_mocks) && tool_mocks.length) payload.tool_mocks = tool_mocks;\n\nreturn {\n  test_id: row.test_id,\n  row_number: row.row_number,\n  existing_id: pick(row.test_case_definition_id, ''),\n  payload: payload,\n};"
+      },
+      "id": "cbc6d84b-24fe-432b-b141-c8cd60ba0cea",
+      "name": "Build Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.existing_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "30b5e54f-3f9f-44cd-ae7d-5487ffa5c51b",
+      "name": "Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -304,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.retellai.com/create-test-case-definition",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json.retell_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "id": "be7a60a7-3711-4de4-84a9-83501ac1754e",
+      "name": "Create Definition",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -80,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.retellai.com/update-test-case-definition/{{ $json.existing_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json.retell_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "id": "0febdfda-bd93-4e35-ae76-8e3310a0cf06",
+      "name": "Update Definition",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -80,
+        240
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1AQNV31J8S9-7gYE-jqRI7vGygd-0VPKTMQzcw5MfbcA",
+          "mode": "list",
+          "cachedResultName": "retell test cases",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AQNV31J8S9-7gYE-jqRI7vGygd-0VPKTMQzcw5MfbcA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1630777885,
+          "mode": "list",
+          "cachedResultName": "knight-law-test-cases",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uXjjmxeU3XkXesEGBYVePTYbj-EvHRSSzawNWIJ8rvE/edit#gid=1630777885"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "test_id": "={{ $('Build Payload').item.json.test_id }}",
+            "test_case_definition_id": "={{ $json.test_case_definition_id }}",
+            "sync_status": "synced",
+            "last_synced": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "test_id"
+          ],
+          "schema": [
+            {
+              "id": "test_id",
+              "displayName": "test_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "user_persona",
+              "displayName": "user_persona",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "success_criteria",
+              "displayName": "success_criteria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dyn_Name",
+              "displayName": "dyn_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dyn_Phone",
+              "displayName": "dyn_Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dyn_Email",
+              "displayName": "dyn_Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dyn_current_time",
+              "displayName": "dyn_current_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "llm_model",
+              "displayName": "llm_model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expected_status",
+              "displayName": "expected_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tool_mocks_json",
+              "displayName": "tool_mocks_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "test_case_definition_id",
+              "displayName": "test_case_definition_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sync_status",
+              "displayName": "sync_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_synced",
+              "displayName": "last_synced",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "1da4b1eb-d3ca-4977-b7a2-a906c714ba27",
+      "name": "Write Back IDs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        160,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aqU2QzK1P1jEo1pL",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Run": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Test Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Test Cases": {
+      "main": [
+        [
+          {
+            "node": "Build Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Payload": {
+      "main": [
+        [
+          {
+            "node": "Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exists?": {
+      "main": [
+        [
+          {
+            "node": "Create Definition",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Definition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Definition": {
+      "main": [
+        [
+          {
+            "node": "Write Back IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Definition": {
+      "main": [
+        [
+          {
+            "node": "Write Back IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2284275dc79a44ba2ef1b06e4b980b72ab820e2bebd111ea45691663ac949865"
+  }
+}
