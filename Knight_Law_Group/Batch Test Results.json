@@ -1,0 +1,200 @@
+{
+  "name": "Batch Test Results",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger1",
+      "name": "Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        352,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "retell_api_key",
+              "value": "key_dacfd4f1f3db7fec7739792f2766",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "conversation_flow_id",
+              "value": "conversation_flow_96c9101f3889",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "batch_test_job_id",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config1",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        544,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.retellai.com/v2/list-batch-tests?type=conversation-flow&conversation_flow_id={{ $('Config').first().json.conversation_flow_id }}&limit=1000",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json.retell_api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "listbatches",
+      "name": "List Batch Tests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        768,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst override = String(cfg.batch_test_job_id || '').trim();\nconst items = ($json.items || []).slice();\nitems.sort((a, b) => (b.creation_timestamp || 0) - (a.creation_timestamp || 0));\nlet batch, source;\nif (override) {\n  batch = items.find(b => b.test_case_batch_job_id === override) || { test_case_batch_job_id: override };\n  source = 'override';\n} else {\n  batch = items.length ? items[0] : null;\n  source = items.length ? 'latest' : 'none';\n}\nconst batchId = batch ? batch.test_case_batch_job_id : '';\nif (!batchId) { throw new Error('No batch_test_job_id found. Run a batch test first or set batch_test_job_id in Config.'); }\nreturn [{ json: {\n  batch_test_job_id: batchId,\n  source: source,\n  batch_status: batch.status || '',\n  pass_count: batch.pass_count != null ? batch.pass_count : null,\n  fail_count: batch.fail_count != null ? batch.fail_count : null,\n  error_count: batch.error_count != null ? batch.error_count : null,\n  total_count: batch.total_count != null ? batch.total_count : null,\n  creation_timestamp: batch.creation_timestamp || null\n} }];"
+      },
+      "id": "pickbatch",
+      "name": "Pick Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.retellai.com/v2/list-test-runs/{{ $json.batch_test_job_id }}?limit=1000",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json.retell_api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "listruns",
+      "name": "List Test Runs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1200,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const batch = $('Pick Batch').first().json;\nconst flattenTranscript = (ts) => {\n  if (!ts) return '';\n  if (typeof ts === 'string') return ts;\n  const arr = Array.isArray(ts) ? ts\n    : Array.isArray(ts.transcript) ? ts.transcript\n    : Array.isArray(ts.transcript_object) ? ts.transcript_object\n    : Array.isArray(ts.utterances) ? ts.utterances\n    : null;\n  if (arr) return arr.filter(u => u && u.content).map(u => (u.role || u.speaker || '?') + ': ' + u.content).join(String.fromCharCode(10));\n  if (typeof ts.transcript === 'string') return ts.transcript;\n  return JSON.stringify(ts);\n};\nconst items = $json.items || [];\nreturn items.map(tr => {\n  const snap = tr.test_case_definition_snapshot || {};\n  return { json: {\n    batch_test_job_id: batch.batch_test_job_id || '',\n    batch_status: batch.batch_status || '',\n    batch_pass: batch.pass_count,\n    batch_fail: batch.fail_count,\n    batch_error: batch.error_count,\n    batch_total: batch.total_count,\n    test_name: snap.name || '',\n    status: tr.status || '',\n    result_explanation: tr.result_explanation || '',\n    transcript: flattenTranscript(tr.transcript_snapshot),\n    test_case_definition_id: tr.test_case_definition_id || '',\n    test_case_job_id: tr.test_case_job_id || '',\n    metrics: snap.metrics || [],\n    dynamic_variables: snap.dynamic_variables || {}\n  } };\n});"
+      },
+      "id": "flatten",
+      "name": "Flatten Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "List Batch Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Batch Tests": {
+      "main": [
+        [
+          {
+            "node": "Pick Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Batch": {
+      "main": [
+        [
+          {
+            "node": "List Test Runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Test Runs": {
+      "main": [
+        [
+          {
+            "node": "Flatten Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "saveManualExecutions": true,
+    "availableInMCP": true
+  },
+  "versionId": "f3fae9a1-45d5-41e9-89eb-7ffb8d2601a0",
+  "meta": {
+    "instanceId": "4e03db509bd9054cc1b123e26845d945000703c81b3ce917d22d9f5baebf63d8"
+  },
+  "id": "7E9h7ktXoiopajiF",
+  "tags": []
+}
