@@ -84,12 +84,14 @@ The LLM checks whether the prompt matches the conversation history and picks the
 
 ```
 {{user_age}} > 18
-{{current_time}} > 9 AND {{current_time}} < 18
+{{current_hour_America/Los_Angeles}} >= 8 AND {{current_hour_America/Los_Angeles}} < 20
 {{user_location}} == "New York"
 "New York, Los Angeles" CONTAINS {{user_location}}
 {{name}} exists
 {{ticket_id}} does not exists
 ```
+
+> **Hours-gating tip:** `{{current_time}}` is a formatted **string** ("Thursday, March 28, 2024 at 11:46 PM PST") — numeric `>`/`<` on it always evaluates false. For business-hours checks use `{{current_hour_<IANA_TZ>}}`, a **numeric 24h fraction** (`8` = 8:00 AM, `19.5` = 7:30 PM). Day-of-week is **not** a system variable — pass it as a dynamic variable, or gate weekdays with a prompt edge.
 
 ---
 
@@ -145,7 +147,7 @@ The equation edge short-circuits the duplicate-submission case before any prompt
 | Caller intent detection | `prompt` — LLM understands paraphrasing |
 | "Already submitted" gate | `equation` on `{{ticket_id}} exists` |
 | "Caller agreed" routing | `prompt` ("if customer agreed") |
-| Time-of-day branching | `equation` on `{{current_time}}` |
+| Time-of-day branching | `equation` on `{{current_hour_<TZ>}}` (numeric fraction, e.g. `14.5` = 2:30 PM) — **not** `{{current_time}}` (a string) |
 | Sentiment/tone routing | `prompt` ("if caller sounds frustrated") |
 | Tier-based routing | `equation` on `{{customer_tier}} == "VIP"` |
 | Confirmation rejection | `prompt` ("caller said no, that's wrong, or asked to correct") |

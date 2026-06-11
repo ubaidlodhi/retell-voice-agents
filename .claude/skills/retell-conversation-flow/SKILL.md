@@ -114,7 +114,7 @@ Use [`references/global-prompt-template.md`](references/global-prompt-template.m
 7. **Verification** — readback patterns for emails/phones, phonetic alphabet for ambiguous letters.
 8. **Tone & Empathy Triggers** — empathy before action.
 9. **Escalation triggers** — pointers to global nodes (DISTRESS, FATALITY, HUMAN, etc).
-10. **System variables** — `{{current_time_<TIMEZONE>}}`, `{{current_calendar_<TIMEZONE>}}`, `{{user_number}}`, `{{direction}}`.
+10. **System variables** — `{{current_time_<TIMEZONE>}}` (formatted string), `{{current_hour_<TIMEZONE>}}` (numeric 24h fraction — use this, not `current_time`, for business-hours equation edges), `{{current_calendar_<TIMEZONE>}}`, `{{user_number}}` (caller's number on inbound), `{{direction}}`, `{{call_type}}`.
 
 Always include the **defensive prompting rule for missing variables** — see `global-prompt-template.md`.
 
@@ -258,6 +258,15 @@ Bundled JSON to copy and customize. Do not write a flow from scratch — start f
 - [`scripts/validate_flow.py`](scripts/validate_flow.py) — Schema validator. Run before delivering. Failure means do not ship.
 
 ---
+
+## Prefer platform features over hand-rolled prompt
+
+Before writing custom prompt rules, check whether Retell already ships the behavior — it's more reliable and saves tokens:
+
+- **Agent Handbook presets** (one-click toggles): **Smart Matching** (tolerates STT name variations like Brandon/Brendon — use instead of custom "match the name" prose), **Speech Normalization** (numbers/dates/money/phones/emails → natural speech), **Echo Verification** (read-back of names/numbers), **NATO Phonetic** (spelling), **Scope Boundaries** (only answer from prompt/KB — curbs KB over-answering for legal/medical), **AI Disclosure When Asked** (on by default). Don't duplicate a preset in your prompt — pick one or the other, or they fight each other.
+- **Components** (reusable sub-flows): package a shared block (e.g. "Qualification Intake", "Verify Identity") as a **library Component** and drop it into multiple agents — the clean way to share intake nodes between, say, an outbound and an inbound flow instead of duplicating nodes. Components can't nest; the main flow's global prompt applies inside them.
+- **Agent Transfer (Agent Swap)** node: hand off to another Retell agent with full history and near-zero latency (no new phone call) — prefer it over a phone `transfer_call` when switching between *your own* agents (e.g. English→Spanish, front-desk→specialist).
+- **Knowledge Base**: retrieved chunks land under `## Related Knowledge Base Contexts`; defaults are 3 chunks / 0.6 similarity; prefer `.md` sources. To stop the agent inventing facts, add "Only answer using ## Related Knowledge Base Contexts; if absent, say you don't have that info" (or enable Scope Boundaries).
 
 ## Token Budget
 

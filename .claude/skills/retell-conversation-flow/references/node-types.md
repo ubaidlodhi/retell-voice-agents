@@ -100,6 +100,8 @@ Transfers to a phone number or SIP URI. Has a single `edge` (not `edges[]`) for 
 }
 ```
 
+> **⚠️ The transfer node does not speak its `instruction.text`.** Per Retell, the agent is silent while in a transfer node. To say a hand-off line ("Transferring you now, one moment"), put a `conversation` node with `skip_response_edge` **immediately before** the transfer node, or set `speak_during_execution` on the transfer node itself. The node's singular `edge` fires **only on transfer failure** — there is no success edge (a successful transfer ends the agent's involvement).
+
 ### Transfer destination types
 
 | Type | Format |
@@ -280,21 +282,31 @@ Execute custom JS during the call **without an external server**. Use for: date/
   "type": "code",
   "id": "node-compute-age",
   "name": "Compute Age",
-  "code": "const dob = new Date('{{customer_dob}}'); const ageMs = Date.now() - dob.getTime(); const age = Math.floor(ageMs / (365.25 * 24 * 60 * 60 * 1000)); return { age };",
+  "code": "const dob = new Date(dv.customer_dob); const age = Math.floor((Date.now() - dob.getTime()) / (365.25*24*60*60*1000)); return { age: String(age) };",
   "wait_for_result": true,
   "speak_during_execution": false,
   "enable_typing_sound": true,
   "edges": [],
-  "else_edge": { ... }
+  "else_edge": { ... },
+  "response_variables": { "age": "age" }
 }
 ```
 
 | Field | Effect |
 |---|---|
-| `code` | JS source — has access to dynamic variables via `{{}}` substitution |
+| `code` | JS source. Read dynamic variables via the **`dv` object** (`dv.customer_dob`) — **NOT** `{{}}` substitution. Max 5,000 chars. |
+| `response_variables` | Maps fields of the returned object to dynamic variables by name → JSON-path: `{ "age": "age" }` exposes `{{age}}` downstream. A path that doesn't resolve is silently skipped. |
 | `wait_for_result` | Block flow until code returns. Almost always `true`. |
 | `speak_during_execution` | Agent speaks during execution — rarely needed for inline JS (usually fast) |
 | `enable_typing_sound` | Plays a typing sound while running — UX cue that "the system is working" |
+
+> **⚠️ `dv`, not `{{}}` — this is the #1 code-node bug.** Inside a code node, `{{vehicle_make}}` is **not** substituted; it's literal text. Read inputs as `dv.vehicle_make` (every value is a string — `parseInt`/`parseFloat` as needed) and write outputs by returning an object, then mapping each field in `response_variables`. A node that returns `{ route: "bad" }` with `response_variables: { "route": "route" }` exposes `{{route}}` to later equation edges. (Passing `{{x}}` into the code string silently yields the wrong result — e.g. an `error: "no_make"` fallthrough.)
+
+### JavaScript environment
+
+- **Globals:** `dv` (dynamic variables, all strings), `metadata` (call metadata from the Create-Call API), `fetch()` (async HTTP — read-only / low-risk only), `console.log()` (shows in the test panel + call logs). Standard built-ins (`Math`, `JSON`, `Date`, `Array`, …) work; **`require`/`import` do not**. Top-level `await` is supported.
+- **Limits:** code ≤ 5,000 chars; return value capped at 15,000 chars; timeout 5–60s (default 30). A throw or timeout = failed execution → routes via `else_edge`, and `response_variables` are NOT extracted. Wrap risky logic in `try/catch`.
+- **Security:** `dv` and `metadata` are stored in plaintext on every call record — never put secrets/credentials in them. For authenticated writes use a `function` node on your own backend, not a code node.
 
 ### When code over function (custom webhook)
 
@@ -303,7 +315,7 @@ Execute custom JS during the call **without an external server**. Use for: date/
 - Fast (<200ms) and pure → `code` avoids network latency
 - Has secrets/credentials that shouldn't ship to the client → `function` (server-side)
 
-Code node return values become dynamic variables for downstream nodes. Always pair with `else_edge` for execution failure.
+Return values become dynamic variables **only for the fields you map in `response_variables`**. Always pair with `else_edge` for execution failure (throw/timeout).
 
 ---
 
@@ -491,3 +503,5 @@ Any node can be made global by adding `global_node_setting`. It can be triggered
 2. **Pair with a return path** when side-trip is informational (FAQ → return to caller).
 3. **Test interaction with mid-collection state** — globals can yank caller out of intake mid-flow. Decide whether side-trip should preserve or reset collected fields.
 4. **Order matters at runtime** — Retell evaluates global conditions per turn. If two globals could match, refine the prompts.
+5. **Prevent loops with the re-trigger lock.** Enable **Prevent Immediate Re-Trigger** (`prevent_immediate_re_trigger` / "Node steps", default 3) so a global can't fire again for N steps after it triggers. This is the real fix for "human-request/FAQ global answers, returns, then re-fires every turn" — not prose like "don't repeat yourself."
+6. **Use Go-Back to resume, not restart.** Enable **Go back to previous node** and define `go_back_conditions` (prompt and/or equation, multiple allowed) so after the side-trip the agent returns to where it left off instead of re-running earlier nodes. If the caller was already disqualified, the go-back condition should let the call wrap up rather than re-entering qualification.

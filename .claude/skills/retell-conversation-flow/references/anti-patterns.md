@@ -171,6 +171,8 @@ Each node has one responsibility. Transitions are deterministic.
 
 Test mid-flow trigger scenarios — make sure routine answers don't accidentally satisfy the condition.
 
+**Related — global node loops on repeated phrasing.** Even a well-scoped global (e.g. "talk to a human", FAQ) re-fires every turn if the caller keeps saying the trigger phrase, so the agent answers → returns → re-triggers → answers, never progressing. **Fix at the platform level, not with prose:** enable the global node's **Prevent Immediate Re-Trigger** (`prevent_immediate_re_trigger` — pauses the node for N node-steps after it fires; default 3), and use **Go back to previous node** with `go_back_conditions` so the flow resumes where it left off instead of restarting. Prose hacks like "don't repeat the number" are a weaker band-aid; the re-trigger lock is the documented cure for the human-request/FAQ loop class.
+
 ---
 
 ## 11. Missing `else_edge` on Branch / Extract / Code Nodes

@@ -1,0 +1,130 @@
+[
+  {
+    "contacts": [
+      {
+        "id": "367neBNRXBzeqbTI9ux1",
+        "locationId": "vHHnJlFVorkeBvqgaqqA",
+        "contactName": "the finest farms",
+        "firstName": "the",
+        "lastName": "finest farms",
+        "firstNameRaw": "The",
+        "lastNameRaw": "finest farms",
+        "companyName": null,
+        "email": "rguches1503@gmail.com",
+        "phone": "+15623502957",
+        "dnd": false,
+        "dndSettings": {},
+        "type": "lead",
+        "source": null,
+        "assignedTo": null,
+        "city": null,
+        "state": null,
+        "postalCode": null,
+        "address1": null,
+        "dateAdded": "2026-06-10T20:30:09.294Z",
+        "dateUpdated": "2026-06-10T21:31:55.247Z",
+        "dateOfBirth": null,
+        "businessId": null,
+        "tags": [
+          "chat"
+        ],
+        "followers": [],
+        "country": "US",
+        "website": null,
+        "timezone": null,
+        "profilePhoto": null,
+        "additionalEmails": [],
+        "attributions": [
+          {
+            "utmSessionSource": "Social media",
+            "isFirst": true,
+            "medium": "instagram",
+            "mediumId": "986839370751103"
+          },
+          {
+            "utmSessionSource": "Social media",
+            "isLast": true,
+            "medium": "instagram",
+            "mediumId": "986839370751103"
+          }
+        ],
+        "customFields": [
+          {
+            "id": "KXtfUXZAiVchURizdzxW",
+            "value": "Retainer Lead"
+          },
+          {
+            "id": "58Gb7re7VfHz7zCWZiVt",
+            "value": "User: What are the basic requirements? | AI: Under California Lemon Law, the basic requirements generally include that your vehicle was purchased or leased from a dealership in California, is still under warranty, and you&#x27;ve experienced repeated issues that the dealership has attempted to repair. Now, are you currently experiencing issues with your vehicle? | User: I bought a cpo 2021 bmw x5 m competition @30k miles warranty was up @50K and my motor went out @68k warranty I didn’t extended because I only drive from La to Long Beach everyday didn’t think a new car needed it right away . | User: Had a few issues w the a/c had too take it in 3-4 times as well while it was under warranty | AI: Got it, a 2021 BMW X5 M Competition, purchased certified pre-owned, with multiple A/C repairs under warranty and a motor failure after the warranty expired. What is your first and last name as it appears on your driver&#x27;s license? | User: Dealership maintenances only  Stock no modifications  Low miles for that motor  Premature catastrophic motor failure  BMW loyal my 2nd car with them  Never missed d a payment or late | User: Richard George Guches is my name | AI: What is the best phone number to reach you? | User: 562 350 2957 | User:  | AI: What is your email address? | User: Rguches1503@gmail.com | AI: Did you purchase or lease your vehicle from a dealership in California? | User: Yes | AI: Are you still in possession of the vehicle? | User: Yes | AI: What is the make of the vehicle? | User: 2021 bmw x5 m competition | AI: Got it, a 2021 BMW X5 M Competition. Did you purchase the car new or used? | User: Cpo | User: Used | User: Certified pre owned | AI: Have you visited a car dealership to attempt to get it repaired? | User: Yes they told me since it’s out of warranty they can’t do anything for me | AI: Are you the owner of the car or did you sign the sales contract? | User: They did the diagnostic and found metal shavings in my motor | User: Yes I’m the owner | AI: Opportunity created | AI: What is the model of the vehicle? We can proceed with your case. I&#x27;ll send you the retainer agreement to sign via email in few minutes. Once signed, our Client Services team will contact you to walk you through next steps and collect necessary documents. The sooner we receive the documents, the sooner your case can be filed. Thank you for contacting Knight Law Group."
+          },
+          {
+            "id": "8hrW19JucZMrvkaInbdq",
+            "value": "Yes"
+          },
+          {
+            "id": "BA8l2mqhsLsYcJBQjMT6",
+            "value": "Yes"
+          },
+          {
+            "id": "HAOzCiaJ9mUASuHuoESO",
+            "value": "used, certified pre-owned"
+          },
+          {
+            "id": "Iw4Gtrz6t4It6itTdWY4",
+            "value": "English"
+          },
+          {
+            "id": "QEnIM80S2QQuftwM1XuF",
+            "value": "X5 M Competition"
+          },
+          {
+            "id": "QN83VkI4y67Iokp4maRp",
+            "value": "Yes"
+          },
+          {
+            "id": "TRZwb9rqTG1eNhiDt6AH",
+            "value": "Yes"
+          },
+          {
+            "id": "Xy9KVmiPlkh1udw4n5Je",
+            "value": "2021"
+          },
+          {
+            "id": "gswt6GWEUgPVhuveoZBS",
+            "value": "BMW"
+          },
+          {
+            "id": "iC8F774s9S7zzpWJzy4s",
+            "value": "Yes"
+          },
+          {
+            "id": "psMc0nlcBlb4jrgtyT6t",
+            "value": "Yes"
+          },
+          {
+            "id": "ulAGG4Jq1Kp9JnRU3h5v",
+            "value": "Used"
+          },
+          {
+            "id": "xcRLpJKMV7rBAylI41Ph",
+            "value": "N/A"
+          }
+        ],
+        "startAfter": [
+          1781123409294,
+          "367neBNRXBzeqbTI9ux1"
+        ]
+      }
+    ],
+    "meta": {
+      "total": 1,
+      "nextPageUrl": "https://services.leadconnectorhq.com/contacts/?locationId=vHHnJlFVorkeBvqgaqqA&query=%2B15623502957&startAfter=1781123409294&startAfterId=367neBNRXBzeqbTI9ux1",
+      "startAfterId": "367neBNRXBzeqbTI9ux1",
+      "startAfter": 1781123409294,
+      "currentPage": 1,
+      "nextPage": "",
+      "prevPage": null
+    },
+    "traceId": "d7f535f7-d67e-4d76-b5c7-4887b44dc6d2"
+  }
+]
