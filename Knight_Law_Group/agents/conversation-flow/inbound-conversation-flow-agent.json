@@ -2,12 +2,12 @@
   "agent_id": "",
   "channel": "voice",
   "last_modification_timestamp": 1781007910060,
-  "agent_name": "Alice - Knight Law (Outbound Conversation Flow) V10",
-  "version_description": "V10: fixed the missing-year reprompt. (1) Reprompt Vehicle now asks only for the missing detail (the model year if make is known) and no longer implies it misheard. (2) Added an escape edge — if the caller genuinely does not know the year, it routes to a graceful Incomplete close (call back with the year) instead of looping forever. Builds on V09.",
+  "agent_name": "Alice - Knight Law (Inbound Conversation Flow) V02",
+  "version_description": "V02 (fixes from test-calls-01): (1) returning Retainer/Non-Retainer = greet + connect only (no Q&A; Non-Retainer drops the stale 'next step is a consultation'). (2) GLOBAL - Human Request is now a global BRANCH that routes 'I want a person' straight to the Business Hours Gate (live transfer / after-hours callback) instead of reading out a number + booking link — fixes the stuck transfer. (3) GLOBAL - Stop/Busy tightened to explicit leave-now signals only (never fires on 'no thanks / I'm done') + neutral inbound close. (4) Missed-call Incomplete leads with no vehicle on file now route to a fresh intake greeting, not the 'pick up where we left off' recap. (5) Non-Retainer closing now spoken via a speak-then-end node so it reliably plays. Builds on V01.",
   "response_engine": {
     "type": "conversation-flow",
     "version": 0,
-    "conversation_flow_id": "conversation_flow_96c9101f3889"
+    "conversation_flow_id": ""
   },
   "webhook_url": "https://services.leadconnectorhq.com/hooks/vHHnJlFVorkeBvqgaqqA/webhook-trigger/f0d4db9b-d02c-4f93-aa50-deed2fa56091",
   "language": [
@@ -39,7 +39,7 @@
   "post_call_analysis_data": [
     {
       "name": "Lead Status",
-      "description": "Final lead classification based on the OUTCOME the call actually reached — NOT on any single mid-call action. Decide in this priority order:\n- Opt-Out Consent: at any point the caller said they are not interested, to stop calling, to remove them, or not to be contacted again. Overrides everything else.\n- Bad Lead: the caller was disqualified (out-of-state purchase, vehicle year 2019 or older, not in possession for a manufacturer that requires it, or used non-CPO).\n- Retainer Lead: the call reached the step where the agent offered to EMAIL A RETAINER AGREEMENT to sign.\n- Non-Retainer Lead: the caller made it through qualification but did NOT qualify for a retainer agreement — the agent closed by saying the firm may still be able to help and the team will follow up to set up a consultation. The agent does NOT send any link in this path (the booking link is delivered after the call), so do NOT look for a link being sent — classify on the consultation / follow-up close versus the retainer-agreement close.\n- Incomplete Lead: the call ended before any outcome above was reached (hung up, drive-off, did not finish).\nIMPORTANT: a booking/consultation link the agent sends mid-call is ONLY ever for a hesitant caller who asked for a human or a link — it never by itself indicates a Non-Retainer outcome. Always classify by the final qualification result (e.g. a caller who was offered a retainer agreement is a Retainer Lead even if a link was sent earlier).",
+      "description": "Final lead classification based on the OUTCOME the call actually reached — NOT on any single mid-call action. Decide in this priority order:\n- Opt-Out Consent: at any point the caller said they are not interested, to stop calling, to remove them, or not to be contacted again. Overrides everything else.\n- Bad Lead: the caller was disqualified (out-of-state purchase, vehicle year 2019 or older, not in possession for a manufacturer that requires it, or used non-CPO).\n- Retainer Lead: the call reached the step where the agent offered to EMAIL A RETAINER AGREEMENT to sign.\n- Non-Retainer Lead: the caller made it through qualification but did NOT qualify for a retainer agreement — the agent closed by saying the firm may still be able to help and the team will follow up to set up a consultation. The agent does NOT send any link in this path (the booking link is delivered after the call), so do NOT look for a link being sent — classify on the consultation / follow-up close versus the retainer-agreement close.\n- Incomplete Lead: the call ended before any outcome above was reached (hung up, drive-off, did not finish).\nIMPORTANT: a booking/consultation link the agent sends mid-call is ONLY ever for a hesitant caller who asked for a human or a link — it never by itself indicates a Non-Retainer outcome. Always classify by the final qualification result (e.g. a caller who was offered a retainer agreement is a Retainer Lead even if a link was sent earlier).\nINBOUND RULE: if the caller was already a Retainer or Non-Retainer lead (a returning client) and this call was just a status check, a question, or a transfer with no NEW disqualifying facts, classify them as that SAME Retainer/Non-Retainer status — never downgrade a returning completed lead to Incomplete.",
       "type": "enum",
       "choices": [
         "Retainer Lead",
@@ -177,14 +177,14 @@
   "allow_user_dtmf": true,
   "user_dtmf_options": {},
   "conversationFlow": {
-    "conversation_flow_id": "conversation_flow_96c9101f3889",
+    "conversation_flow_id": "",
     "version": 0,
-    "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded outbound phone call, following up on the caller's website inquiry about their vehicle. This is a voice conversation, not a chat.\n\nYour goal: make the caller feel heard while quickly checking whether their vehicle qualifies for a Lemon Law claim, then route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nPre-loaded for this call:\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (310) 552-2250\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud; use neutral phrasing instead.\n\n## Language\nStart in English. If the caller responds in Spanish, switch to Spanish and continue entirely in Spanish for the rest of the call. Never ask which language they prefer. Be fully fluent and natural in both.\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- If asked whether you're an AI, say once: \"I'm an automated intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers: say the digits in natural groups with short pauses — (310) 552-2250 -> \"three one zero — five five two — two two five zero\".\n- Emails: read the address naturally — say the part before the \"@\" and the domain name as ordinary words, NOT letter by letter. Pronounce \"@\" as \"at\" and \".\" as \"dot\". For the ending: say common endings as whole words (\".com\" -> \"dot com\", \".net\" -> \"dot net\", \".org\" -> \"dot org\"), but say short two-letter endings as separate letters (\".ai\" -> \"dot A I\", \".io\" -> \"dot I O\", \".co\" -> \"dot C O\"). Examples: ubaid@impleko.ai -> \"ubaid at impleko dot A I\"; john@gmail.com -> \"john at gmail dot com\".\n- Years spoken naturally (\"twenty twenty-two\"). Times include AM/PM.\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nName, phone, and email come pre-filled from the caller's own form, so they're already correct — just read each back naturally to confirm. Do NOT spell names or emails letter by letter. Only re-collect a field if the caller says it's wrong.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer it, offer to answer anything else, then resume where you left off.\n- HUMAN — caller asks for a person -> give the callback line and offer to keep helping.\n- STOP — caller is busy / driving / wants to call back later -> close warmly.",
+    "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded INBOUND phone call — the caller dialed Knight Law Group. Many callers are returning leads we've spoken with before; some are brand new. This is a voice conversation, not a chat.\n\nYour goal: recognize who's calling, pick up where they left off (or start fresh), make them feel heard, and route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nLooked up from the caller's number before pickup (may be empty if we don't recognize the number):\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (310) 552-2250\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud, never greet with an empty name; use neutral phrasing instead (\"Hi there\"). The routing in this flow already decides whether the caller is a returning lead or new — follow the node you're in.\n\n## Language\nStart in English. If the caller responds in Spanish, switch to Spanish and continue entirely in Spanish for the rest of the call. Never ask which language they prefer. Be fully fluent and natural in both.\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- If asked whether you're an AI, say once: \"I'm an automated intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers: say the digits in natural groups with short pauses — (310) 552-2250 -> \"three one zero — five five two — two two five zero\".\n- Emails: read the address naturally — say the part before the \"@\" and the domain name as ordinary words, NOT letter by letter. Pronounce \"@\" as \"at\" and \".\" as \"dot\". For the ending: say common endings as whole words (\".com\" -> \"dot com\", \".net\" -> \"dot net\", \".org\" -> \"dot org\"), but say short two-letter endings as separate letters (\".ai\" -> \"dot A I\", \".io\" -> \"dot I O\", \".co\" -> \"dot C O\"). Examples: ubaid@impleko.ai -> \"ubaid at impleko dot A I\"; john@gmail.com -> \"john at gmail dot com\".\n- Years spoken naturally (\"twenty twenty-two\"). Times include AM/PM.\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nName, phone, and email come pre-filled from the caller's own form, so they're already correct — just read each back naturally to confirm. Do NOT spell names or emails letter by letter. Only re-collect a field if the caller says it's wrong.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer it, offer to answer anything else, then resume where you left off.\n- HUMAN — caller asks for a person -> give the callback line and offer to keep helping.\n- STOP — caller is busy / driving / wants to call back later -> close warmly.",
     "nodes": [
       {
         "instruction": {
           "type": "prompt",
-          "text": "Start in English: say \"Hi! This is Alice from Knight Law Group, calling on a recorded line. I'm following up on your inquiry about your vehicle — are you currently having issues with it?\" Then wait. If the caller replies in Spanish, switch to Spanish for the rest of the call."
+          "text": "Generic inbound greeting for a caller we don't recognize, a missed-call lead with nothing on file, or someone re-engaging from scratch. Start in English and greet warmly — use the caller's name if we have it, otherwise a neutral greeting: if {{Name}} is set, say \"Hi {{Name}}, thanks for calling Knight Law Group, this is Alice on a recorded line. Are you currently having issues with your vehicle?\"; if {{Name}} is empty, say \"Hi there, thanks for calling Knight Law Group, this is Alice on a recorded line. Are you currently having issues with your vehicle?\" Then wait. If the caller replies in Spanish, switch to Spanish for the rest of the call."
         },
         "name": "Introduction",
         "edges": [
@@ -784,7 +784,7 @@
         "name": "Non-Retainer: Confirm",
         "edges": [
           {
-            "destination_node_id": "node-end-nonret",
+            "destination_node_id": "node-speak-nonret-close",
             "id": "e-nonret-done",
             "transition_condition": {
               "type": "prompt",
@@ -807,14 +807,14 @@
         "name": "End: Non-Retainer",
         "id": "node-end-nonret",
         "type": "end",
-        "speak_during_execution": true,
+        "speak_during_execution": false,
         "display_position": {
           "x": 4200,
           "y": 1000
         },
         "instruction": {
           "type": "prompt",
-          "text": "Say warmly (caller's language), in one short turn: \"Great — we may still be able to help. We'll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.\" Then end the call."
+          "text": "End the call."
         }
       },
       {
@@ -1040,23 +1040,33 @@
         }
       },
       {
-        "instruction": {
-          "type": "prompt",
-          "text": "The caller asked for a real person, asked for a consultation or booking link, or sounds hesitant about continuing with you. Handle it in ONE turn:\n- Warmly acknowledge and give the callback number ONE time: \"Totally understand — you can reach our team directly at (310) 552-2250.\"\n- If the caller wants a link, wants to book a call, or wants to speak with someone, call the send_consultation_link tool to text and email them the booking link, then say once: \"I've just sent a booking link to your phone and email so you can set up a time with our team.\"\nThen STOP. Do NOT ask the next qualification question here, and do NOT repeat the number again. The call then returns to the qualification questions where it left off — keep going with them."
-        },
         "name": "GLOBAL - Human Request",
-        "edges": [],
-        "global_node_setting": {
-          "go_back_conditions": [
-            {
-              "id": "gb-human-resume",
-              "transition_condition": {
-                "type": "prompt",
-                "prompt": "Return to the previous step once the request for a person or link has been handled. Fire on the caller's next turn unless they are still actively insisting on a human right this moment or asked a brand-new general question."
-              }
+        "id": "node-global-human",
+        "type": "branch",
+        "display_position": {
+          "x": 4600,
+          "y": 2000
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-hours-gate",
+            "id": "gh-route",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to be connected to a person or the team, or has confirmed they want to speak with someone."
             }
-          ],
-          "condition": "User explicitly asks to speak to a real person, a human, a representative, or an attorney; asks for a consultation or booking link; asks to book a call; or says they're hesitant and want a person involved rather than continuing with the automated system. NOT a general informational question and NOT a request to stop the call.",
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-inbound-hours-gate",
+          "id": "gh-to-gate",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        },
+        "global_node_setting": {
+          "condition": "User explicitly asks to speak to a real person, a human, a representative, an attorney, or our team; asks to be connected, transferred, or to talk to someone. NOT a general informational question, and NOT a request to stop or hang up.",
           "negative_finetune_examples": [
             {
               "transcript": [
@@ -1069,18 +1079,17 @@
             {
               "transcript": [
                 {
-                  "content": "Yeah it's a Honda.",
+                  "content": "What exactly is the lemon law?",
                   "role": "user"
                 }
               ]
             }
           ],
-          "cool_down": 1,
           "positive_finetune_examples": [
             {
               "transcript": [
                 {
-                  "content": "Can I just talk to a real person?",
+                  "content": "Can I talk to a real person?",
                   "role": "user"
                 }
               ]
@@ -1088,7 +1097,7 @@
             {
               "transcript": [
                 {
-                  "content": "I don't want to talk to a robot.",
+                  "content": "Can you transfer me to someone?",
                   "role": "user"
                 }
               ]
@@ -1096,7 +1105,7 @@
             {
               "transcript": [
                 {
-                  "content": "Can you send me a consultation link?",
+                  "content": "I'd like to speak with your team.",
                   "role": "user"
                 }
               ]
@@ -1104,52 +1113,51 @@
             {
               "transcript": [
                 {
-                  "content": "Could you send me a link so I can book a call?",
+                  "content": "Connect me to an attorney.",
                   "role": "user"
                 }
               ]
             }
           ]
-        },
-        "id": "node-global-human",
-        "type": "subagent",
-        "display_position": {
-          "x": 4600,
-          "y": 2000
-        },
-        "tool_ids": [
-          "send_consultation_link"
-        ]
+        }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Say warmly (caller's language): \"No problem at all — we'll reach back out at a better time. Take care.\" Then end the call."
+          "text": "Say warmly (caller's language): \"No problem at all — feel free to give us a call back anytime at (310) 552-2250 whenever it works for you. Take care.\" Then end the call."
         },
         "name": "GLOBAL - Stop / Busy",
         "global_node_setting": {
-          "condition": "User clearly needs to end the call now — they're driving, busy, say to call them back later, or say it's not a good time. A genuine request to stop, NOT a brief 'hold on' pause and NOT a question.",
+          "condition": "User clearly and explicitly needs to leave the call RIGHT NOW — they say they're driving, have to go, are in the middle of something, or ask us to call them back another time. This is an explicit request to hang up now. It is NOT a simple 'no thank you', 'I'm good', 'that's all', or 'I'm done' said in reply to a question — those are normal conversation and must NOT end the call.",
           "negative_finetune_examples": [
             {
               "transcript": [
                 {
+                  "content": "No, thank you.",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "No, I'm good, that's all.",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Nope, I'm done.",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
                   "content": "Hold on a second.",
-                  "role": "user"
-                }
-              ]
-            },
-            {
-              "transcript": [
-                {
-                  "content": "Give me a moment.",
-                  "role": "user"
-                }
-              ]
-            },
-            {
-              "transcript": [
-                {
-                  "content": "Let me check real quick.",
                   "role": "user"
                 }
               ]
@@ -1258,9 +1266,507 @@
           "type": "prompt",
           "text": "Say warmly (caller's language): \"No problem at all — once you've got the model year handy, just give us a quick call back at (310) 552-2250 and we'll pick up right where we left off. Take care.\" Then end the call."
         }
+      },
+      {
+        "name": "Inbound Router",
+        "id": "node-inbound-route",
+        "type": "branch",
+        "display_position": {
+          "x": -280,
+          "y": 200
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-resume",
+            "id": "e-inb-incomplete",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Incomplete Lead"
+                },
+                {
+                  "left": "{{vehicle_make}}",
+                  "operator": "exists"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-inbound-retainer",
+            "id": "e-inb-retainer",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Retainer Lead"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-inbound-nonret",
+            "id": "e-inb-nonret",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Non-Retainer Lead"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-inbound-bad-route",
+            "id": "e-inb-bad",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Bad Lead"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-inbound-optout",
+            "id": "e-inb-optout",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Opt-Out Consent"
+                }
+              ],
+              "operator": "&&"
+            }
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-intro",
+          "id": "e-inb-else",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        }
+      },
+      {
+        "name": "Inbound: Resume (Incomplete)",
+        "id": "node-inbound-resume",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": -120
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Returning lead who started but did not finish intake. Greet warmly by name (caller's language): \"Hi {{Name}}, thanks for calling Knight Law Group back — this is Alice. Let's pick up right where we left off.\" Then, in ONE short natural turn, recap ONLY the details we already have on file and ask them to confirm — do not re-ask things we already have. Build the recap from whichever of these are present, and silently skip any that are empty or show braces: purchased in California = {{ca_purchase}}; still has the vehicle = {{in_possession}}; vehicle = {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}. For example: \"Last time you told us it's a {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}, bought in California — is that all still correct?\" Then wait. If they correct something, the new value wins."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-q-ca",
+            "id": "e-resume-need-ca",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{ca_purchase}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-q-possession",
+            "id": "e-resume-need-poss",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{in_possession}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-q-vehicle",
+            "id": "e-resume-need-veh-make",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{vehicle_make}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-q-vehicle",
+            "id": "e-resume-need-veh-year",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{vehicle_year}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-extract-vehicle",
+            "id": "e-resume-confirmed",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The caller has confirmed (or did not dispute) the vehicle and purchase details already on file."
+            }
+          }
+        ]
+      },
+      {
+        "name": "Inbound: Returning Retainer",
+        "id": "node-inbound-retainer",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": 360
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Returning RETAINER client calling back. Greet warmly by name (caller's language): \"Hi {{Name}}, thanks for calling Knight Law Group — good to hear from you. Your case is already with our team. I can connect you with them right now — would you like me to do that?\" Then wait. Do NOT re-run any intake questions, do NOT re-send any agreement, and do NOT try to answer case-specific questions yourself — connect them to the team."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-hours-gate",
+            "id": "e-ret-connect",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to be connected, says yes, asks to speak with someone, or has something to discuss with the team."
+            }
+          },
+          {
+            "destination_node_id": "node-end-generic",
+            "id": "e-ret-allset",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines being connected, was just confirming, or needs nothing further."
+            }
+          }
+        ]
+      },
+      {
+        "name": "Inbound: Returning Non-Retainer",
+        "id": "node-inbound-nonret",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": 620
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Returning NON-RETAINER lead calling back. Greet warmly by name (caller's language): \"Hi {{Name}}, thanks for calling Knight Law Group back. I can connect you with our team to go over your case — would you like me to do that?\" Then wait. Do NOT assert what the next step is (they may already have a consultation booked), do NOT re-run intake, and do NOT re-send the booking link — just connect them to the team."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-hours-gate",
+            "id": "e-nonret-connect",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to be connected, says yes, or has something to discuss with the team."
+            }
+          },
+          {
+            "destination_node_id": "node-end-generic",
+            "id": "e-nonret-allset",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines being connected or needs nothing further."
+            }
+          }
+        ]
+      },
+      {
+        "name": "Inbound: Bad Router",
+        "id": "node-inbound-bad-route",
+        "type": "branch",
+        "display_position": {
+          "x": 40,
+          "y": 880
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-bad-recheck",
+            "id": "e-inbbad-poss",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{bad_lead_reason}}",
+                  "operator": "contains",
+                  "right": "possession"
+                }
+              ],
+              "operator": "&&"
+            }
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-inbound-bad-close",
+          "id": "e-inbbad-else",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        }
+      },
+      {
+        "name": "Inbound: Bad Re-check (possession)",
+        "id": "node-inbound-bad-recheck",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 340,
+          "y": 880
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Returning lead previously not qualifying because our records show they were no longer in possession of the vehicle. Greet warmly (use their name if we have it) and gently re-check just that one point (caller's language): \"Hi {{Name}}, thanks for calling back. Our records showed you were no longer in possession of the vehicle — is that still the case, or do you have it now?\" Then wait. Do NOT re-run the rest of intake here."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-q-vehicle",
+            "id": "e-recheck-haveit",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says they ARE now in possession of the vehicle / they do have it."
+            }
+          },
+          {
+            "destination_node_id": "node-inbound-bad-close",
+            "id": "e-recheck-stillnot",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms they still do NOT have the vehicle / no longer possess it."
+            }
+          }
+        ]
+      },
+      {
+        "name": "Inbound: Bad Close",
+        "id": "node-inbound-bad-close",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 340,
+          "y": 1140
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), about 2 sentences: based on the details on file the firm isn't able to move forward right now, but thank them for calling and invite them to reach back out at (310) 552-2250 if anything changes. Then end the call. Do not mention internal lead status."
+        }
+      },
+      {
+        "name": "Inbound: Opt-Out",
+        "id": "node-inbound-optout",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": 1140
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Returning caller who previously asked NOT to be contacted (on our do-not-contact list) — but THEY have called us now. Be respectful and brief (caller's language); greet by name if we have it: \"Hi {{Name}}, thanks for calling Knight Law Group. I have a note that you'd asked us not to reach out — I'm happy to help if you'd like, or we can keep you off our list. What can I do for you?\" Then wait. Only continue if they want to; never pressure."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-intro",
+            "id": "e-optout-reengage",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to move forward, discuss their vehicle, or get help with a claim."
+            }
+          },
+          {
+            "destination_node_id": "node-end-optout-inbound",
+            "id": "e-optout-stay",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms they don't need anything, want to stay off the list, or are just confirming removal."
+            }
+          }
+        ]
+      },
+      {
+        "name": "End: Opt-Out (inbound)",
+        "id": "node-end-optout-inbound",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 340,
+          "y": 1400
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say respectfully (caller's language): \"Understood — I'll keep you on our do-not-contact list. Thanks for calling, and take care.\" Then end the call."
+        }
+      },
+      {
+        "name": "Business Hours Gate",
+        "id": "node-inbound-hours-gate",
+        "type": "branch",
+        "display_position": {
+          "x": 5200,
+          "y": 1000
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-transfer-intake",
+            "id": "e-hours-open",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{current_hour_America/Los_Angeles}}",
+                  "operator": ">=",
+                  "right": "8"
+                },
+                {
+                  "left": "{{current_hour_America/Los_Angeles}}",
+                  "operator": "<",
+                  "right": "20"
+                }
+              ],
+              "operator": "&&"
+            }
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-inbound-callback",
+          "id": "e-hours-closed",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        }
+      },
+      {
+        "name": "Transfer: Intake Team",
+        "id": "node-transfer-intake",
+        "type": "transfer_call",
+        "display_position": {
+          "x": 5500,
+          "y": 880
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "say (caller's language): \"Let me connect you with our intake team now — please hold one moment.\""
+        },
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+13105522250"
+        },
+        "transfer_option": {
+          "type": "warm_transfer",
+          "show_transferee_as_caller": true
+        },
+        "edge": {
+          "id": "e-xfer-failed",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          },
+          "destination_node_id": "node-inbound-callback"
+        }
+      },
+      {
+        "name": "Book Callback",
+        "id": "node-inbound-callback",
+        "type": "subagent",
+        "display_position": {
+          "x": 5500,
+          "y": 1200
+        },
+        "tool_ids": [
+          "send_consultation_link"
+        ],
+        "instruction": {
+          "type": "prompt",
+          "text": "Our team can't connect live right now. In ONE warm turn (caller's language): let them know our intake team is available Monday through Friday, 8 AM to 8 PM Pacific, and that you'll text and email a booking link so they can grab a time — then call the send_consultation_link tool to send it. After sending, say once: \"I've just sent a booking link to your phone and email — pick a time that works and our team will take it from there.\" Then stop."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-end-generic",
+            "id": "e-callback-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The booking link has been sent, or the caller declines it."
+            }
+          }
+        ]
+      },
+      {
+        "name": "End: Generic",
+        "id": "node-end-generic",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 5800,
+          "y": 1000
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language): \"Thanks again for calling Knight Law Group — take care and have a great day.\" Then end the call."
+        }
+      },
+      {
+        "name": "Speak: Non-Retainer Close",
+        "id": "node-speak-nonret-close",
+        "type": "conversation",
+        "display_position": {
+          "x": 3600,
+          "y": 1000
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), in one short turn: \"Great — we may still be able to help. We'll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.\""
+        },
+        "edges": [],
+        "skip_response_edge": {
+          "destination_node_id": "node-end-nonret",
+          "id": "e-nonret-close-skip",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Skip response"
+          }
+        }
       }
     ],
-    "start_node_id": "node-intro",
+    "start_node_id": "node-inbound-route",
     "start_speaker": "agent",
     "tools": [
       {

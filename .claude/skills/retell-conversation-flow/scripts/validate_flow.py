@@ -24,6 +24,11 @@ that produce opaque import errors or silent runtime breakage:
       supported" import error. Production agents typically omit it.
   13. Tool config sanity — warns when tools lack the production-validated
       defaults `args_at_root: true` and `parameter_type: "form"`.
+  14. Equation transition_conditions carry a top-level combiner `operator`
+      (&& / ||) and a non-empty `equations` list.
+  15. Equation `operator` values are in Retell's allowed enum
+      (==, !=, >, >=, <, <=, contains, not_contains, exists, not_exist) —
+      catches "CONTAINS" / "does not exists" before they fail import.
 
 Exit code 0 = pass, 1 = fail.
 
@@ -42,6 +47,17 @@ SINGULAR_EDGE_FIELDS = ("always_edge", "skip_response_edge", "edge", "else_edge"
 
 # Node types that REQUIRE an else_edge as a fallback.
 NODES_REQUIRING_ELSE_EDGE = ("branch", "extract_dynamic_variables", "code")
+
+# Allowed equation operators per Retell's import schema. Using anything else
+# (e.g. "CONTAINS", "does not exists") fails import with an opaque oneOf error.
+ALLOWED_EQUATION_OPERATORS = {
+    "==", "!=", ">", ">=", "<", "<=",
+    "contains", "not_contains", "exists", "not_exist",
+}
+# Operators that take only a left operand (no `right`).
+UNARY_EQUATION_OPERATORS = {"exists", "not_exist"}
+# Allowed top-level combiner operators on an equation transition_condition.
+ALLOWED_COMBINER_OPERATORS = {"&&", "||"}
 
 # Substrings that flag a placeholder URL.
 PLACEHOLDER_URL_MARKERS = ("TODO", "REPLACE_WITH", "example.com", "your-domain", "<your", "{{your")
@@ -291,12 +307,34 @@ def validate(path):
                     f"Retell requires it even for a single equation — import fails with an "
                     f"opaque oneOf error otherwise."
                 )
+            elif tc["operator"] not in ALLOWED_COMBINER_OPERATORS:
+                errors.append(
+                    f"Edge {e.get('id','?')} on node {n.get('id','?')}: invalid combiner "
+                    f"operator {tc['operator']!r}. Use '&&' (ALL) or '||' (ANY)."
+                )
             eqs = tc.get("equations")
             if not isinstance(eqs, list) or not eqs:
                 errors.append(
                     f"Edge {e.get('id','?')} on node {n.get('id','?')}: equation "
                     f"transition_condition has no non-empty `equations` list."
                 )
+            else:
+                for eq in eqs:
+                    if not isinstance(eq, dict):
+                        continue
+                    op = eq.get("operator")
+                    if op not in ALLOWED_EQUATION_OPERATORS:
+                        errors.append(
+                            f"Edge {e.get('id','?')} on node {n.get('id','?')}: invalid equation "
+                            f"operator {op!r}. Retell accepts only: "
+                            f"{sorted(ALLOWED_EQUATION_OPERATORS)} (note: 'contains'/'not_contains'/"
+                            f"'not_exist' lowercase — NOT 'CONTAINS' or 'does not exists')."
+                        )
+                    elif op not in UNARY_EQUATION_OPERATORS and "right" not in eq:
+                        warnings.append(
+                            f"Edge {e.get('id','?')} on node {n.get('id','?')}: equation with "
+                            f"operator {op!r} has no `right` operand — comparison may evaluate false."
+                        )
 
     return errors, warnings
 

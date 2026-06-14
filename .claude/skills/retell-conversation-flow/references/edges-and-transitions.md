@@ -65,15 +65,19 @@ The LLM checks whether the prompt matches the conversation history and picks the
 
 #### Verified operator list (from official Retell docs)
 
+> **These are the EXACT literal strings Retell's import schema accepts — copy them verbatim.** The full allowed enum is `==, !=, >, >=, <, <=, contains, not_contains, exists, not_exist`. Anything else fails import with an opaque `oneOf` error. `validate_flow.py` now checks this — run it before delivering.
+>
+> ⚠️ **UI label ≠ JSON value.** Retell's public docs (and the dashboard equation editor) show these as human-readable labels — `CONTAINS`, `NOT CONTAINS`, `does not exist`, `Not Equal`. Those are **display labels, not the JSON the import API takes.** When you hand-author flow JSON, use the lowercase snake_case forms above (`contains`, `not_contains`, `not_exist`, `!=`). Don't copy the operator strings out of the docs verbatim — they're the UI form.
+
 | Operator | Type | Notes |
 |---|---|---|
 | `==` | String comparison | Case-sensitive equality |
 | `!=` | String comparison | Inverse of `==` |
 | `>` / `>=` / `<` / `<=` | Numeric only | If either side isn't a number, evaluates to `false` |
-| `CONTAINS` | String | Substring match. **Direction matters:** `"New York, Los Angeles" CONTAINS {{location}}` checks if `{{location}}` is in the literal. |
-| `NOT CONTAINS` | String | Inverse of `CONTAINS` |
-| `exists` | Variable presence | True when variable is defined and has a value |
-| `does not exists` | Variable presence | True when variable is undefined or empty (note the trailing `s` per Retell docs) |
+| `contains` | String | Substring match (lowercase). **Direction matters:** `left contains right` checks if `right` is a substring of `left` — e.g. `{{bad_lead_reason}} contains "possession"`. |
+| `not_contains` | String | Inverse of `contains` |
+| `exists` | Variable presence | True when variable is defined and has a value. Takes only a left operand (no `right`). |
+| `not_exist` | Variable presence | True when variable is undefined or empty (singular — **no** trailing `s`). Takes only a left operand. |
 
 #### Combiner operators
 
@@ -86,10 +90,12 @@ The LLM checks whether the prompt matches the conversation history and picks the
 {{user_age}} > 18
 {{current_hour_America/Los_Angeles}} >= 8 AND {{current_hour_America/Los_Angeles}} < 20
 {{user_location}} == "New York"
-"New York, Los Angeles" CONTAINS {{user_location}}
+{{bad_lead_reason}} contains "possession"
 {{name}} exists
-{{ticket_id}} does not exists
+{{ticket_id}} not_exist
 ```
+
+> **Single-equation edges still need the top-level combiner.** Even one equation requires `"operator": "&&"` on the `transition_condition`. For an OR across two existence checks, prefer two single-equation edges to the same destination over one `||` edge — simpler and unambiguous at import.
 
 > **Hours-gating tip:** `{{current_time}}` is a formatted **string** ("Thursday, March 28, 2024 at 11:46 PM PST") — numeric `>`/`<` on it always evaluates false. For business-hours checks use `{{current_hour_<IANA_TZ>}}`, a **numeric 24h fraction** (`8` = 8:00 AM, `19.5` = 7:30 PM). Day-of-week is **not** a system variable — pass it as a dynamic variable, or gate weekdays with a prompt edge.
 
@@ -239,4 +245,4 @@ Retell recognizes specific literal strings:
 | `NO_RESPONSE_NEEDED` | LLM output (in agent text) | Suppresses TTS for that turn — agent stays silent |
 
 Variable-existence syntax (in equation conditions only):
-- `{{var}} exists` / `{{var}} does not exists`
+- `{{var}} exists` / `{{var}} not_exist`  (literal operator strings; `not_exist` is singular)

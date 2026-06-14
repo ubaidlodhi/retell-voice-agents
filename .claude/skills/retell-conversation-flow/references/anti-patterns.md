@@ -57,7 +57,7 @@ Say "Your ticket has already been submitted."
   }
   ```
   Equations evaluate before prompts, so this short-circuits any prose-based collection logic.
-- Or use a `branch` node before the collection node to deterministically route on `{{ticket_id}} exists` / `does not exists`.
+- Or use a `branch` node before the collection node to deterministically route on `{{ticket_id}} exists` / `not_exist` (literal operators — `not_exist` is singular).
 
 **The single biggest win** from understanding equation-based transitions — what used to require fragile prose guardrails is now one deterministic edge.
 

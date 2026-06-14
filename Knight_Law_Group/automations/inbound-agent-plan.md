@@ -30,6 +30,7 @@ Because the lead always pre-exists, the inbound job is: **identify → read thei
 | **After hours** (outside Mon–Fri 8a–8p PT) | **Finish/resume intake + book callback.** Save everything, book a callback / take a message. **No live transfer when the team is closed.** |
 | **Callback / booking** | Reuse the existing **consultation booking link** (`send_consultation_link`). |
 | **Lead creation** | **Never.** Inbound only reads/updates existing contacts. |
+| **Re-send / re-enroll dedup** | **GHL tags only** (`retainer-sent`, `nonretainer-followup`) — no Salesforce/Zapier changes. Stamp on first completion, check before re-firing. See §5. |
 
 ---
 
@@ -102,7 +103,7 @@ A **new front-end router** that **reuses the existing outbound intake nodes** (s
 
 | `lead_status` | Alice's behavior | Terminal |
 |---|---|---|
-| **Incomplete Lead** | Greet by name, "we spoke earlier — let's pick up where we left off." **Resume** intake, skipping already-filled fields, ask only what's missing → re-classify | Route by new status ↓ |
+| **Incomplete Lead** | Greet by name, "we spoke earlier — let's pick up where we left off." **Reconfirm** already-filled fields in one quick batched recap (do **not** silently skip), then ask only what's missing → re-classify | Route by new status ↓ |
 | **Retainer Lead** | Greet by name, confirm the file is with the team, answer a brief FAQ. **No re-intake, no re-send.** | **Warm transfer** (hours-gated) |
 | **Non-Retainer Lead** | Greet by name, confirm next step (consultation), brief FAQ. **No re-intake.** | **Warm transfer** (hours-gated) |
 | **Bad Lead** | Look at `bad_lead_reason`. **Reversible** (`not_in_possession`, ambiguous/misclass) → re-check that one point; if it flips, continue intake. **Irreversible** (`vehicle_year`, out-of-state) → explain, give callback #. | Re-route if flipped; else polite close |
@@ -111,15 +112,23 @@ A **new front-end router** that **reuses the existing outbound intake nodes** (s
 
 ### 4.2 Resume logic ("memory retention")
 
-The intake questions map 1:1 to GHL custom fields (§6). On resume, each question node carries a **guard**:
+The intake questions map 1:1 to GHL custom fields (§6). For an **Incomplete** lead we **reconfirm — never silently skip** the answers we already have (decision 2026-06-12): an Incomplete lead's prior answers are partial and the call dropped mid-intake, so trusting them blindly risks routing the deterministic classifier on stale/wrong data.
 
-> *If the field's dynamic variable is already set → quick-confirm or skip. If empty → ask.*
+**Reconfirm efficiently — one batched recap, not a field-by-field interrogation:**
 
-- Alice opens with a short recap: *"Last time you told us it's a 2021 BMW X5, bought in California — I just need a couple more details."*
-- The **deterministic classify code node** runs on whatever is present (the same node the outbound C3 fix touched — it disqualifies on possession before requiring a year, etc.).
-- **Corrections allowed:** if the caller changes a prior answer, the new value wins and re-classification re-runs.
+1. Alice opens with a **single recap turn** of everything already on file: *"Welcome back — last time you told us it's a **2021 BMW X5**, bought **new** from a **California** dealership, and you're **still driving it**. Is all of that still correct?"*
+2. **Caller confirms** → proceed straight to the genuinely-missing fields only.
+3. **Caller corrects something** → "which part should I fix?" → capture the new value (new value wins) → **re-classify**.
+4. Then ask only the **empty** fields, one at a time, via the reused intake nodes.
 
-**Design choice to confirm:** quick-confirm the **vehicle + CA** on resume (safer) but silently trust the rest (less friction). Defaulting to that unless told otherwise.
+So each question node's guard becomes:
+
+> *If the field's dynamic variable is **set** → fold it into the recap for confirmation (don't ask it cold). If **empty** → ask it.*
+
+- The **deterministic classify code node** runs on the confirmed/updated set (same node as the outbound C3 fix — disqualifies on possession before requiring a year, etc.).
+- **Corrections always win** and re-trigger classification.
+
+This keeps resume to roughly one extra turn while guaranteeing the classifier never routes on unverified data.
 
 ### 4.3 Terminal actions
 
@@ -134,12 +143,29 @@ Same voice, same English/Spanish auto-switch, same FAQ "answer-then-revert" glob
 
 ---
 
-## 5. Component 3 — Post-Call Workflow (reuse + guards)
+## 5. Component 3 — Post-Call Workflow (reuse + GHL-tag guards)
 
-**Reuse the existing GHL "Post Retell" workflow** (find_contact → update fields → branch by Lead Status → Zapier `02.01 Post Call` → Salesforce update / DocuSign). It is already status-driven, so a completed inbound intake flows through unchanged. **Two guards to add:**
+**Reuse the existing GHL "Post Retell" workflow** (find_contact → update fields → branch by Lead Status → Zapier `02.01 Post Call` → Salesforce update / DocuSign). It is already status-driven, so a completed inbound intake flows through unchanged. **Dedup is handled entirely with GHL tags — no Salesforce or Zapier changes** (decision locked 2026-06-12).
 
-1. **DocuSign / retainer idempotency** — a returning **Retainer** re-entering the retainer branch would **re-send the fee agreement** and recreate the "won" opportunity. Guard: skip the retainer Zapier webhook + DocuSign if the lead is **already** "HF Retainer Sent" (or `Lead Status` already Retainer on entry and nothing changed). Confirm-status-and-transfer should **not** trigger a second envelope.
-2. **Inbound source tag** — tag inbound-completed contacts (e.g. `voice-inbound`) separately from outbound `voice`, for reporting and to distinguish call direction.
+**Why GHL tags are sufficient even for Retainer/DocuSign:** the DocuSign envelope is sent by **Zapier**, but only *because* the GHL **"Retainer Zapier Webhook"** fires first. The GHL post-call is the **single upstream trigger** for the whole `Zapier → SF → DocuSign` chain. If GHL doesn't fire that webhook, nothing downstream runs. So a tag check **in GHL, in front of that webhook**, stops the re-send without touching SF or Zapier. *(Caveat: covers re-sends originating from this workflow — the inbound re-call case. There is no other trigger of the Zapier retainer webhook in the current loop.)*
+
+**Each guard is two halves — stamp on first completion, check on re-entry — both inside this one workflow:**
+
+1. **Retainer re-send guard — tag `retainer-sent`.**
+   - *Stamp:* in the Retainer branch, after the Zapier webhook fires the first time → add tag `retainer-sent`.
+   - *Check:* gate **Retainer Zapier Webhook + Create Opportunity** on the **absence** of `retainer-sent`. A returning Retainer (confirm-and-transfer, nothing changed) already has the tag → both skipped → **no second envelope, no opportunity churn.**
+
+2. **Non-Retainer re-enroll guard — tag `nonretainer-followup`.**
+   - *Stamp:* in the Non-Retainer branch, after enrolling in the EN/ES follow-up drip the first time → add tag `nonretainer-followup`.
+   - *Check:* gate **Add-to-Workflow (EN/ES drip) + Create Opportunity** on the **absence** of `nonretainer-followup`. A returning Non-Retainer already has it → **no re-drip, no duplicate booking-link nudges.** (A tag beats GHL's "Allow Re-Entry" toggle, which only blocks contacts *currently* in the drip — someone who finished it weeks ago and calls back would otherwise be re-dripped.)
+
+3. **Inbound source tag — `voice-inbound`.** Tag inbound-completed contacts separately from outbound `voice`, for reporting and call-direction.
+
+**Field/transcript updates still run for every return call** — "Update contact field" + the tag steps sit *before* the Lead Status branch, so the latest transcript/summary is always logged; only the *re-send-causing* branch actions are gated.
+
+**Genuine upgrades still fire** — a returning lead who actually changes (Incomplete who finishes, or a Non-Retainer who now qualifies for a retainer) reaches the Retainer branch with **no `retainer-sent` tag yet** → the envelope sends correctly, then the tag is stamped.
+
+> **Prerequisite:** the tag-*stamping* steps must also be added to the existing **outbound** post-call workflow, so first-time (outbound) completions carry the tags before any return call. One small edit to the workflow already reused here — benefits both directions.
 
 Everything else (Incomplete → follow-up workflow, Non-Retainer EN/ES follow-up + opportunity, Bad → lost opportunity + DND, Opt-Out → remove-from-all) is inherited as-is.
 
@@ -183,8 +209,8 @@ GHL custom fields (`model: contact`, location `vHHnJlFVorkeBvqgaqqA`). The pre-c
 | Status in | Re-intake? | Re-classify? | Transfer? | Writes back via post-call |
 |---|---|---|---|---|
 | Incomplete | Resume (missing only) | Yes | If terminal = Ret/Non-Ret (hours) | New terminal status → SF + (DocuSign if newly Retainer) |
-| Retainer | No | No | **Yes** (hours) | **No new DocuSign** (idempotency guard) |
-| Non-Retainer | No | No | **Yes** (hours) | No status regression |
+| Retainer | No | No | **Yes** (hours) | **No new DocuSign** (GHL `retainer-sent` tag guard) |
+| Non-Retainer | No | No | **Yes** (hours) | **No re-drip** (GHL `nonretainer-followup` tag guard); no status regression |
 | Bad — reversible | Re-check 1 point | If flips | Only if it flips to Ret/Non-Ret | New status if flipped |
 | Bad — irreversible | No | No | **No** | No change (already Bad/lost) |
 | Opt-Out | Only if asked | — | Only if re-engaged | Respect opt-out; no auto re-add |
@@ -225,9 +251,9 @@ GHL custom fields (`model: contact`, location `vHHnJlFVorkeBvqgaqqA`). The pre-c
 ## 9. Open items / placeholders (need from client)
 
 1. **Warm-transfer number + department(s)** for Knight Law intake — currently placeholder `+1XXXXXXXXXX` (only the callback line `(310) 552-2250` is known). *(Client will share later.)*
-2. **Resume confirmation depth** — confirm vehicle + CA on resume vs. trust all? (Defaulting to confirm-vehicle+CA.)
+2. ~~**Resume confirmation depth**~~ — **RESOLVED (2026-06-12):** reconfirm **all** already-filled fields via one batched recap (no silent skip), then ask only the missing ones. See §4.2.
 3. **Inbound number** — which Retell phone number is the inbound line, and is the inbound webhook to be pointed at Component 1.
-4. **DocuSign idempotency rule** — confirm the exact "already sent" signal to gate on (SF `HF Retainer Sent` vs. GHL Lead Status on entry).
+4. ~~**DocuSign idempotency rule**~~ — **RESOLVED (2026-06-12):** GHL-tag guards only (`retainer-sent`, `nonretainer-followup`), no Salesforce/Zapier changes. See §5.
 
 ---
 
