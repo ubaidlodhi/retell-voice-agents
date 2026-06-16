@@ -25,7 +25,7 @@ Because the lead always pre-exists, the inbound job is: **identify → read thei
 
 | Decision | Choice |
 |---|---|
-| **Bad lead calls back** | **Re-check, then close.** Reversible reasons (no-possession / possible misclassification) → Alice re-checks that one point; if it flips, continue intake. Irreversible (vehicle year ≤2019, out-of-state) → polite explanation + callback number, **no transfer**. |
+| **Bad lead calls back** | **Greet + context + offer transfer (no re-qualify)** *(revised 2026-06-13 after test-calls-02).* Alice gives brief context ("last time it didn't fit the Lemon Law criteria") and offers to connect them to the team — same shape as Retainer/Non-Retainer. The team handles them. No re-check, no re-intake. |
 | **Returning Retainer / Non-Retainer** | **Confirm status + warm transfer.** Identify, give a brief status update, warm-transfer to Knight Law (hours-gated). **No re-intake, no re-sending the agreement.** |
 | **After hours** (outside Mon–Fri 8a–8p PT) | **Finish/resume intake + book callback.** Save everything, book a callback / take a message. **No live transfer when the team is closed.** |
 | **Callback / booking** | Reuse the existing **consultation booking link** (`send_consultation_link`). |
@@ -106,7 +106,7 @@ A **new front-end router** that **reuses the existing outbound intake nodes** (s
 | **Incomplete Lead** | Greet by name, "we spoke earlier — let's pick up where we left off." **Reconfirm** already-filled fields in one quick batched recap (do **not** silently skip), then ask only what's missing → re-classify | Route by new status ↓ |
 | **Retainer Lead** | Greet by name, confirm the file is with the team, answer a brief FAQ. **No re-intake, no re-send.** | **Warm transfer** (hours-gated) |
 | **Non-Retainer Lead** | Greet by name, confirm next step (consultation), brief FAQ. **No re-intake.** | **Warm transfer** (hours-gated) |
-| **Bad Lead** | Look at `bad_lead_reason`. **Reversible** (`not_in_possession`, ambiguous/misclass) → re-check that one point; if it flips, continue intake. **Irreversible** (`vehicle_year`, out-of-state) → explain, give callback #. | Re-route if flipped; else polite close |
+| **Bad Lead** | Greet by name + brief context ("last time it didn't fit the criteria") + offer to connect to the team. **No re-qualification.** | **Warm transfer** (hours-gated) / callback |
 | **Opt-Out Consent** | Caller initiated, so handle politely; re-engage **only if they ask**; otherwise respect opt-out and close | Close (re-engage only on request) |
 | **(blank / not found)** | Greet generically, run the **full** intake from scratch | Route by status |
 
@@ -211,8 +211,7 @@ GHL custom fields (`model: contact`, location `vHHnJlFVorkeBvqgaqqA`). The pre-c
 | Incomplete | Resume (missing only) | Yes | If terminal = Ret/Non-Ret (hours) | New terminal status → SF + (DocuSign if newly Retainer) |
 | Retainer | No | No | **Yes** (hours) | **No new DocuSign** (GHL `retainer-sent` tag guard) |
 | Non-Retainer | No | No | **Yes** (hours) | **No re-drip** (GHL `nonretainer-followup` tag guard); no status regression |
-| Bad — reversible | Re-check 1 point | If flips | Only if it flips to Ret/Non-Ret | New status if flipped |
-| Bad — irreversible | No | No | **No** | No change (already Bad/lost) |
+| Bad | No (greet + context only) | No | **Yes** (hours) — team handles | No status regression (seeded Bad kept) |
 | Opt-Out | Only if asked | — | Only if re-engaged | Respect opt-out; no auto re-add |
 | Blank / not found | Full | Yes | Per terminal | Per terminal status |
 

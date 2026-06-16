@@ -2,14 +2,14 @@
   "agent_id": "",
   "channel": "voice",
   "last_modification_timestamp": 1781007910060,
-  "agent_name": "Alice - Knight Law (Inbound Conversation Flow) V02",
-  "version_description": "V02 (fixes from test-calls-01): (1) returning Retainer/Non-Retainer = greet + connect only (no Q&A; Non-Retainer drops the stale 'next step is a consultation'). (2) GLOBAL - Human Request is now a global BRANCH that routes 'I want a person' straight to the Business Hours Gate (live transfer / after-hours callback) instead of reading out a number + booking link — fixes the stuck transfer. (3) GLOBAL - Stop/Busy tightened to explicit leave-now signals only (never fires on 'no thanks / I'm done') + neutral inbound close. (4) Missed-call Incomplete leads with no vehicle on file now route to a fresh intake greeting, not the 'pick up where we left off' recap. (5) Non-Retainer closing now spoken via a speak-then-end node so it reliably plays. Builds on V01.",
+  "agent_name": "Alice - Knight Law (Inbound Conversation Flow) V08",
+  "version_description": "V08: (1) added a 'Confirm Vehicle' read-back node between Extract Vehicle Vars and Classify Lead so a mis-heard year/make/model is caught BEFORE it drives the Bad/Retainer/Non-Retainer routing; a correction loops back through Extract and re-classifies. (2) name/phone/email are no longer confirmed one field at a time — both the Retainer and Non-Retainer contact nodes now read all three back together in ONE turn and go straight to the text/email consent question (they're seeded from the form, corrections aren't captured). The now-redundant vehicle/model confirmation was removed from those nodes. Builds on V07.",
   "response_engine": {
     "type": "conversation-flow",
     "version": 0,
     "conversation_flow_id": ""
   },
-  "webhook_url": "https://services.leadconnectorhq.com/hooks/vHHnJlFVorkeBvqgaqqA/webhook-trigger/f0d4db9b-d02c-4f93-aa50-deed2fa56091",
+  "webhook_url": "https://heroflow.app.n8n.cloud/webhook/knight-law-postcall",
   "language": [
     "en-US",
     "es-ES"
@@ -36,114 +36,7 @@
     "smart_matching": false
   },
   "timezone": "America/Los_Angeles",
-  "post_call_analysis_data": [
-    {
-      "name": "Lead Status",
-      "description": "Final lead classification based on the OUTCOME the call actually reached — NOT on any single mid-call action. Decide in this priority order:\n- Opt-Out Consent: at any point the caller said they are not interested, to stop calling, to remove them, or not to be contacted again. Overrides everything else.\n- Bad Lead: the caller was disqualified (out-of-state purchase, vehicle year 2019 or older, not in possession for a manufacturer that requires it, or used non-CPO).\n- Retainer Lead: the call reached the step where the agent offered to EMAIL A RETAINER AGREEMENT to sign.\n- Non-Retainer Lead: the caller made it through qualification but did NOT qualify for a retainer agreement — the agent closed by saying the firm may still be able to help and the team will follow up to set up a consultation. The agent does NOT send any link in this path (the booking link is delivered after the call), so do NOT look for a link being sent — classify on the consultation / follow-up close versus the retainer-agreement close.\n- Incomplete Lead: the call ended before any outcome above was reached (hung up, drive-off, did not finish).\nIMPORTANT: a booking/consultation link the agent sends mid-call is ONLY ever for a hesitant caller who asked for a human or a link — it never by itself indicates a Non-Retainer outcome. Always classify by the final qualification result (e.g. a caller who was offered a retainer agreement is a Retainer Lead even if a link was sent earlier).\nINBOUND RULE: if the caller was already a Retainer or Non-Retainer lead (a returning client) and this call was just a status check, a question, or a transfer with no NEW disqualifying facts, classify them as that SAME Retainer/Non-Retainer status — never downgrade a returning completed lead to Incomplete.",
-      "type": "enum",
-      "choices": [
-        "Retainer Lead",
-        "Non-Retainer Lead",
-        "Bad Lead",
-        "Incomplete Lead",
-        "Opt-Out Consent"
-      ]
-    },
-    {
-      "name": "Bad Lead Reason",
-      "description": "If the lead was disqualified, the reason given (earliest disqualifier in the call). Otherwise N/A. 'Vehicle year' applies when the vehicle is 2019 or older (before 2020).",
-      "type": "enum",
-      "choices": [
-        "Non lemon law",
-        "Out of state purchase",
-        "Not in possession of vehicle",
-        "Vehicle year",
-        "Purchased used non CPO",
-        "Does Not Wish To Pursue",
-        "N/A"
-      ]
-    },
-    {
-      "name": "Lead Language",
-      "description": "Language the caller spoke.",
-      "type": "enum",
-      "choices": [
-        "English",
-        "Spanish"
-      ]
-    },
-    {
-      "name": "Vehicle Year",
-      "type": "number",
-      "description": "The vehicle model year captured, if any."
-    },
-    {
-      "name": "Vehicle Make",
-      "type": "string",
-      "description": "The vehicle manufacturer (make) only."
-    },
-    {
-      "name": "Vehicle Model",
-      "type": "string",
-      "description": "The vehicle model, if captured."
-    },
-    {
-      "name": "Purchased In California",
-      "type": "boolean",
-      "description": "Whether the vehicle was purchased or leased from a California dealership."
-    },
-    {
-      "name": "Still In Possession",
-      "type": "boolean",
-      "description": "Whether the caller still possesses the vehicle."
-    },
-    {
-      "name": "Purchase Condition",
-      "description": "New, Used and Certified Pre-Owned, Used and not CPO, or N/A if not reached.",
-      "type": "enum",
-      "choices": [
-        "New",
-        "Used CPO",
-        "Used non-CPO",
-        "N/A"
-      ]
-    },
-    {
-      "name": "Repairs Attempted",
-      "type": "boolean",
-      "description": "Whether the caller took the vehicle to a dealership for repairs."
-    },
-    {
-      "name": "Is Owner",
-      "type": "boolean",
-      "description": "Whether the caller is the owner or signed the sales contract."
-    },
-    {
-      "name": "Full Name",
-      "type": "string",
-      "description": "The caller's full name."
-    },
-    {
-      "name": "Phone Number",
-      "type": "string",
-      "description": "The caller's phone number, normalized to E.164 with +1 and no separators."
-    },
-    {
-      "name": "Email Address",
-      "type": "string",
-      "description": "The caller's email address."
-    },
-    {
-      "name": "Call Summary",
-      "type": "string",
-      "description": "One to three sentence summary of the call and actions taken."
-    },
-    {
-      "name": "Call Successful",
-      "type": "boolean",
-      "description": "Whether the agent completed its task without the call being cut off."
-    }
-  ],
+  "post_call_analysis_data": [],
   "voice_id": "custom_voice_315b815f6dadda5247d4921234",
   "fallback_voice_ids": [],
   "voice_temperature": 0.8,
@@ -179,7 +72,7 @@
   "conversationFlow": {
     "conversation_flow_id": "",
     "version": 0,
-    "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded INBOUND phone call — the caller dialed Knight Law Group. Many callers are returning leads we've spoken with before; some are brand new. This is a voice conversation, not a chat.\n\nYour goal: recognize who's calling, pick up where they left off (or start fresh), make them feel heard, and route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nLooked up from the caller's number before pickup (may be empty if we don't recognize the number):\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (310) 552-2250\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud, never greet with an empty name; use neutral phrasing instead (\"Hi there\"). The routing in this flow already decides whether the caller is a returning lead or new — follow the node you're in.\n\n## Language\nStart in English. If the caller responds in Spanish, switch to Spanish and continue entirely in Spanish for the rest of the call. Never ask which language they prefer. Be fully fluent and natural in both.\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- If asked whether you're an AI, say once: \"I'm an automated intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers: say the digits in natural groups with short pauses — (310) 552-2250 -> \"three one zero — five five two — two two five zero\".\n- Emails: read the address naturally — say the part before the \"@\" and the domain name as ordinary words, NOT letter by letter. Pronounce \"@\" as \"at\" and \".\" as \"dot\". For the ending: say common endings as whole words (\".com\" -> \"dot com\", \".net\" -> \"dot net\", \".org\" -> \"dot org\"), but say short two-letter endings as separate letters (\".ai\" -> \"dot A I\", \".io\" -> \"dot I O\", \".co\" -> \"dot C O\"). Examples: ubaid@impleko.ai -> \"ubaid at impleko dot A I\"; john@gmail.com -> \"john at gmail dot com\".\n- Years spoken naturally (\"twenty twenty-two\"). Times include AM/PM.\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nName, phone, and email come pre-filled from the caller's own form, so they're already correct — just read each back naturally to confirm. Do NOT spell names or emails letter by letter. Only re-collect a field if the caller says it's wrong.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer it, offer to answer anything else, then resume where you left off.\n- HUMAN — caller asks for a person -> give the callback line and offer to keep helping.\n- STOP — caller is busy / driving / wants to call back later -> close warmly.",
+    "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded INBOUND phone call — the caller dialed Knight Law Group. Many callers are returning leads we've spoken with before; some are brand new. This is a voice conversation, not a chat.\n\nYour goal: recognize who's calling, pick up where they left off (or start fresh), make them feel heard, and route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nLooked up from the caller's number before pickup (may be empty if we don't recognize the number):\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (310) 552-2250\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud, never greet with an empty name; use neutral phrasing instead (\"Hi there\"). The routing in this flow already decides whether the caller is a returning lead or new — follow the node you're in.\n\n## Language\nStart in English. If the caller responds in Spanish, switch to Spanish and continue entirely in Spanish for the rest of the call. Never ask which language they prefer. Be fully fluent and natural in both.\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- If asked whether you're an AI, say once: \"I'm an automated intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers: say the digits in natural groups with short pauses — (310) 552-2250 -> \"three one zero — five five two — two two five zero\".\n- Emails: read the address naturally — say the part before the \"@\" and the domain name as ordinary words, NOT letter by letter. Pronounce \"@\" as \"at\" and \".\" as \"dot\". For the ending: say common endings as whole words (\".com\" -> \"dot com\", \".net\" -> \"dot net\", \".org\" -> \"dot org\"), but say short two-letter endings as separate letters (\".ai\" -> \"dot A I\", \".io\" -> \"dot I O\", \".co\" -> \"dot C O\"). Examples: ubaid@impleko.ai -> \"ubaid at impleko dot A I\"; john@gmail.com -> \"john at gmail dot com\".\n- Years spoken naturally (\"twenty twenty-two\"). Times include AM/PM.\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nName, phone, and email come pre-filled from the caller's own form, so they're already correct — when you reach the details step, read all three back together in ONE turn (never one at a time) and move straight to the text/email permission question. Do NOT spell names or emails letter by letter. The vehicle's year, make, and model DO get a quick spoken read-back to confirm, because they drive eligibility — if the caller corrects one, the corrected value wins.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer it, offer to answer anything else, then resume where you left off.\n- HUMAN — caller asks for a person -> give the callback line and offer to keep helping.\n- STOP — caller is busy / driving / wants to call back later -> close warmly.",
     "nodes": [
       {
         "instruction": {
@@ -308,7 +201,7 @@
           {
             "name": "vehicle_make",
             "type": "enum",
-            "description": "The vehicle manufacturer (make). Map what the caller said to the closest matching brand in the list, correcting likely transcription errors (e.g. 'Fard' -> 'Ford', 'Toyoda' -> 'Toyota', 'Cheverlay' -> 'Chevrolet'). Extract from anywhere in the conversation.",
+            "description": "The vehicle manufacturer (make). Map what the caller said to the closest matching brand in the list, correcting likely transcription errors (e.g. 'Fard' -> 'Ford', 'Toyoda' -> 'Toyota', 'Cheverlay' -> 'Chevrolet'). Extract from anywhere in the conversation. If the caller has NOT actually named a make in the conversation, leave this empty — do NOT guess, infer, or invent a make.",
             "choices": [
               "Acura",
               "Alfa Romeo",
@@ -382,7 +275,7 @@
           {
             "name": "vehicle_model",
             "type": "string",
-            "description": "The vehicle model if stated (e.g. 'F-150', 'Civic'); leave empty if not mentioned."
+            "description": "The vehicle model if stated (e.g. 'F-150', 'Civic'); leave empty if not mentioned. If no model was stated, leave it empty — do not guess."
           },
           {
             "name": "in_possession",
@@ -401,7 +294,7 @@
         "name": "Extract Vehicle Vars",
         "edges": [
           {
-            "destination_node_id": "node-code-classify",
+            "destination_node_id": "node-confirm-vehicle",
             "id": "e-extract-ok",
             "transition_condition": {
               "type": "prompt",
@@ -415,6 +308,37 @@
           "x": 1800,
           "y": 200
         }
+      },
+      {
+        "name": "Confirm Vehicle",
+        "id": "node-confirm-vehicle",
+        "type": "conversation",
+        "display_position": {
+          "x": 2000,
+          "y": 380
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Quick read-back to confirm the vehicle BEFORE we proceed — say it in ONE turn (caller's language): \"Just to confirm, that's a {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}, is that right?\" If the model is empty, leave it out and read just the year and make. Then wait. This is only a confirmation to catch a mis-heard year or make — do NOT re-ask from scratch and do NOT collect anything new. If the caller corrects any of it, treat the corrected value as the truth."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-code-classify",
+            "id": "e-confirm-veh-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms the year, make, and model are correct (yes / that's right / correct), or does not dispute them."
+            }
+          },
+          {
+            "destination_node_id": "node-extract-vehicle",
+            "id": "e-confirm-veh-fix",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller corrects or disputes any of the year, make, or model (e.g. \"no, it's a 2015\", \"it's a Honda, not a Hyundai\", \"that's wrong\")."
+            }
+          }
+        ]
       },
       {
         "code": "const norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z]/g, '');\nconst aliases = { mercedes: 'mercedesbenz', benz: 'mercedesbenz', mercedesbenz: 'mercedesbenz', vw: 'volkswagen', volkswagon: 'volkswagen', chevy: 'chevrolet' };\nconst makeKey = aliases[norm(dv.vehicle_make)] || norm(dv.vehicle_make);\nconst possess = (dv.in_possession || '').toString().toLowerCase().trim() !== 'false';\nconst optedIn = ['alfaromeo','buick','cadillac','chevrolet','chrysler','dodge','fiat','ford','gmc','hummer','infiniti','jaguar','jeep','kia','landrover','lincoln','maserati','mercedesbenz','mercury','mitsubishi','nissan','pontiac','ram','saturn','smart','hyundai','subaru','genesis','vinfast'];\nconst retainerMakes = ['acura','buick','cadillac','gmc','chevrolet','ford','lincoln','hyundai','kia','nissan','infiniti','volkswagen','jeep','ram','dodge','chrysler','bmw','mercedesbenz','jaguar','landrover','mazda','audi'];\nif (!makeKey) { return { route: 'reprompt', bad_reason: 'N/A', lead_status: '' }; }\nif (!possess && optedIn.includes(makeKey)) { return { route: 'bad', bad_reason: 'not_in_possession', lead_status: 'Bad Lead' }; }\nconst year = parseInt(dv.vehicle_year, 10);\nif (!year || isNaN(year)) { return { route: 'reprompt', bad_reason: 'N/A', lead_status: '' }; }\nif (year <= 2019) { return { route: 'bad', bad_reason: 'vehicle_year', lead_status: 'Bad Lead' }; }\nif (retainerMakes.includes(makeKey)) { return { route: 'retainer', bad_reason: 'N/A', lead_status: 'Retainer Pending' }; }\nreturn { route: 'non_retainer', bad_reason: 'N/A', lead_status: 'Non-Retainer Lead' };",
@@ -728,7 +652,7 @@
             "id": "e-contact-done",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Model, name, phone and email are confirmed and validated, and text/email permission has been given"
+              "prompt": "The caller has answered the text-and-email permission question (yes or no)."
             }
           }
         ],
@@ -740,7 +664,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Confirm ONE detail per turn, in the caller's language — these came from a form the caller filled out, so they're already on file. Read each back naturally and confirm; do NOT spell names or emails letter by letter. Ask only one thing per turn and wait. Never bundle two details into one question.\n\n1. Vehicle model — if you already have it ({{vehicle_model}}), confirm: \"I've got the model as {{vehicle_model}}, is that right?\" If it's empty, ask for the model. Wait.\n2. Name — say \"I have your name as {{Name}} — is that right?\" Wait, and correct only if they say it's wrong.\n3. Phone — say \"and your number is {{Phone}}, correct?\" Wait, and correct only if they say it's wrong.\n4. Email — say \"and your email is {{Email}}, correct?\" Wait, and correct only if they say it's wrong.\n5. Permission — ask \"and is it okay if we reach you by text and email?\" Wait.\n\nOnce the model, name, phone, and email are confirmed and permission is given, stop. Do NOT deliver any closing here. Do NOT ask for a home or street address."
+          "text": "The caller's name, phone, and email are already on file from the form they filled out — read all three back together in ONE quick turn, then go straight to asking permission. Do NOT confirm them one at a time and do NOT spell anything out letter by letter. Say naturally (caller's language): \"And I've got your details here from your inquiry — your name as {{Name}}, your number {{Phone}}, and your email {{Email}}. Is it okay if our team reaches you there by text and email?\" Then wait. If the caller volunteers a correction, acknowledge it warmly (\"got it, thanks\") and move on — do not re-read it back. Once they've answered the text-and-email permission, stop. Do NOT deliver any closing here. Do NOT ask for a home or street address."
         }
       },
       {
@@ -788,7 +712,7 @@
             "id": "e-nonret-done",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Vehicle and contact details are confirmed and validated, and permission has been given"
+              "prompt": "The caller has answered the text-and-email permission question (yes or no)."
             }
           }
         ],
@@ -800,7 +724,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Confirm ONE detail per turn, in the caller's language — these came from a form the caller filled out, so they're already on file. Read each back naturally and confirm; do NOT spell names or emails letter by letter. Ask only one thing per turn and wait. Never bundle two details into one question.\n\n1. Vehicle — confirm \"I've got a {{vehicle_make}} {{vehicle_model}}, is that right?\"; if the model is empty, ask for it. Wait.\n2. Name — say \"I have your name as {{Name}} — is that right?\" Wait, and correct only if they say it's wrong.\n3. Phone — say \"and your number is {{Phone}}, correct?\" Wait, and correct only if they say it's wrong.\n4. Email — say \"and your email is {{Email}}, correct?\" Wait, and correct only if they say it's wrong.\n5. Permission — ask \"and is it okay if we reach you by text and email?\" Wait.\n\nOnce the vehicle, name, phone, and email are confirmed and permission is given, stop. Do NOT deliver any closing here."
+          "text": "The caller's name, phone, and email are already on file from the form they filled out — read all three back together in ONE quick turn, then go straight to asking permission. Do NOT confirm them one at a time and do NOT spell anything out letter by letter. Say naturally (caller's language): \"And I've got your details here from your inquiry — your name as {{Name}}, your number {{Phone}}, and your email {{Email}}. Is it okay if our team reaches you there by text and email?\" Then wait. If the caller volunteers a correction, acknowledge it warmly and move on. Once they've answered the text-and-email permission, stop. Do NOT deliver any closing here."
         }
       },
       {
@@ -1118,7 +1042,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "cool_down": 3
         }
       },
       {
@@ -1288,8 +1213,9 @@
                   "right": "Incomplete Lead"
                 },
                 {
-                  "left": "{{vehicle_make}}",
-                  "operator": "exists"
+                  "left": "{{has_prior_data}}",
+                  "operator": "==",
+                  "right": "true"
                 }
               ],
               "operator": "&&"
@@ -1326,7 +1252,7 @@
             }
           },
           {
-            "destination_node_id": "node-inbound-bad-route",
+            "destination_node_id": "node-inbound-bad",
             "id": "e-inb-bad",
             "transition_condition": {
               "type": "equation",
@@ -1376,7 +1302,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Returning lead who started but did not finish intake. Greet warmly by name (caller's language): \"Hi {{Name}}, thanks for calling Knight Law Group back — this is Alice. Let's pick up right where we left off.\" Then, in ONE short natural turn, recap ONLY the details we already have on file and ask them to confirm — do not re-ask things we already have. Build the recap from whichever of these are present, and silently skip any that are empty or show braces: purchased in California = {{ca_purchase}}; still has the vehicle = {{in_possession}}; vehicle = {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}. For example: \"Last time you told us it's a {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}, bought in California — is that all still correct?\" Then wait. If they correct something, the new value wins."
+          "text": "Returning lead who gave us some details before but didn't finish. Greet warmly by name and confirm what we have, in ONE turn (caller's language): \"Hi {{Name}}, thanks for calling Knight Law Group back — this is Alice. Last time, you told us {{recap_line}}. Is that all still right?\" Then wait. If they correct something, the new value wins. Do NOT re-ask anything already covered in that recap."
         },
         "edges": [
           {
@@ -1508,86 +1434,6 @@
             }
           }
         ]
-      },
-      {
-        "name": "Inbound: Bad Router",
-        "id": "node-inbound-bad-route",
-        "type": "branch",
-        "display_position": {
-          "x": 40,
-          "y": 880
-        },
-        "edges": [
-          {
-            "destination_node_id": "node-inbound-bad-recheck",
-            "id": "e-inbbad-poss",
-            "transition_condition": {
-              "type": "equation",
-              "equations": [
-                {
-                  "left": "{{bad_lead_reason}}",
-                  "operator": "contains",
-                  "right": "possession"
-                }
-              ],
-              "operator": "&&"
-            }
-          }
-        ],
-        "else_edge": {
-          "destination_node_id": "node-inbound-bad-close",
-          "id": "e-inbbad-else",
-          "transition_condition": {
-            "type": "prompt",
-            "prompt": "Else"
-          }
-        }
-      },
-      {
-        "name": "Inbound: Bad Re-check (possession)",
-        "id": "node-inbound-bad-recheck",
-        "type": "conversation",
-        "start_speaker": "agent",
-        "display_position": {
-          "x": 340,
-          "y": 880
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Returning lead previously not qualifying because our records show they were no longer in possession of the vehicle. Greet warmly (use their name if we have it) and gently re-check just that one point (caller's language): \"Hi {{Name}}, thanks for calling back. Our records showed you were no longer in possession of the vehicle — is that still the case, or do you have it now?\" Then wait. Do NOT re-run the rest of intake here."
-        },
-        "edges": [
-          {
-            "destination_node_id": "node-q-vehicle",
-            "id": "e-recheck-haveit",
-            "transition_condition": {
-              "type": "prompt",
-              "prompt": "Caller says they ARE now in possession of the vehicle / they do have it."
-            }
-          },
-          {
-            "destination_node_id": "node-inbound-bad-close",
-            "id": "e-recheck-stillnot",
-            "transition_condition": {
-              "type": "prompt",
-              "prompt": "Caller confirms they still do NOT have the vehicle / no longer possess it."
-            }
-          }
-        ]
-      },
-      {
-        "name": "Inbound: Bad Close",
-        "id": "node-inbound-bad-close",
-        "type": "end",
-        "speak_during_execution": true,
-        "display_position": {
-          "x": 340,
-          "y": 1140
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Say warmly (caller's language), about 2 sentences: based on the details on file the firm isn't able to move forward right now, but thank them for calling and invite them to reach back out at (310) 552-2250 if anything changes. Then end the call. Do not mention internal lead status."
-        }
       },
       {
         "name": "Inbound: Opt-Out",
@@ -1764,6 +1610,38 @@
             "prompt": "Skip response"
           }
         }
+      },
+      {
+        "name": "Inbound: Returning Bad Lead",
+        "id": "node-inbound-bad",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": 880
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Returning lead whose vehicle previously did NOT meet the Lemon Law criteria. Do NOT re-run intake or re-qualify. Greet warmly by name and give brief, gentle context, then offer to connect them to the team (caller's language): \"Hi {{Name}}, thanks for calling Knight Law Group back. Looking at your file, last time it looked like your situation didn't quite fit California's Lemon Law criteria — but I'd be glad to connect you with our team to take another look or go over your options. Would you like me to do that?\" Then wait. Do NOT ask qualification questions yourself."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-hours-gate",
+            "id": "e-bad-connect",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to be connected, says yes, or wants to discuss their situation/options with the team."
+            }
+          },
+          {
+            "destination_node_id": "node-end-generic",
+            "id": "e-bad-allset",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines being connected or needs nothing further."
+            }
+          }
+        ]
       }
     ],
     "start_node_id": "node-inbound-route",

@@ -23,7 +23,9 @@ The Retell post-call webhook carries **two** data sets. Use the right one:
 - **Tags exist** (already created): `retainer-sent`, `non-retainer-followup`. ✅
 - **Outbound workflow must STAMP those tags** on first completion (so a returning call can see them):
   - In the **outbound** "Post Retell": in the Retainer branch, after the Zapier webhook → **Add Tag `retainer-sent`**; in the Non-Retainer branch, after drip enrollment → **Add Tag `non-retainer-followup`**.
-- **Inbound agent webhook → this workflow.** Set the inbound Retell agent's post-call `webhook_url` to this workflow's Inbound Webhook URL, and **subscribe to the `call_analyzed` event ONLY** (not `call_started` / `call_ended`) so it fires once with full analysis + seeded variables.
+- **Inbound agent webhook → this workflow.** The inbound agent's post-call `webhook_url` is set (V04) to this workflow's Inbound Webhook trigger:
+  `https://services.leadconnectorhq.com/hooks/vHHnJlFVorkeBvqgaqqA/webhook-trigger/yR9ujHBXMJBERxKN1Y9H`
+  **Subscribe that webhook to the `call_analyzed` event ONLY** (not `call_started` / `call_ended`) so it fires once with full analysis + seeded variables.
 
 ---
 
@@ -48,9 +50,10 @@ The Retell post-call webhook carries **two** data sets. Use the right one:
 **Step 1 — Find Contact** *(keep)* — match by **Phone = `…retell_llm_dynamic_variables.Phone`** (seeded, already normalized). Inbound leads always pre-exist.
 - **Contact Not Found → END.** Inbound **never creates** a lead (unlike outbound — delete the "Create Contact" path).
 
-**Step 2 — Update Contact Field (SAFE, always)** — move/trim the existing update so that **before the branch** it writes ONLY the always-safe fields:
-- `Transcript of the Call`, `conversation_summary` (Call Summary), `Lead Language`
-- **Do NOT** write vehicle / CA / possession / Lead Status / Bad Lead Reason here. *(This is what was wiping good data.)*
+**Step 2 — Update Contact Field (SAFE, always)** — before the branch, update ONLY:
+- `Lead Language`
+- **Do NOT** write `Transcript of the Call` or `conversation_summary` here — those custom fields hold the **main / original qualifying call** and must be preserved across return calls. This call's transcript/summary is logged as a **Note** on the returning path (Step 4b), or written to the main-record fields only on a genuine qualifying call (Step 5).
+- **Do NOT** write vehicle / CA / possession / Lead Status / Bad Lead Reason here either.
 
 **Step 3 — Add Tag** *(keep)* — add `voice-inbound` (so inbound calls are distinguishable from outbound `voice`).
 
@@ -59,9 +62,29 @@ The Retell post-call webhook carries **two** data sets. Use the right one:
   - `…retell_llm_dynamic_variables.lead_status` **is** `Incomplete Lead`
   - `…retell_llm_dynamic_variables.lead_status` **is empty**
 - **TRUE → Fresh-intake path** (Step 5).
-- **FALSE → Returning completed → END.** Nothing more: the call is already logged (Step 2) and tagged (Step 3). No field overwrite, no status change, no enrollment, no opportunity, **no Incomplete follow-up.** *(This is the core fix.)*
+- **FALSE → Returning completed → Step 4b → END.**
 
-**Step 5 — [Fresh path] Update Contact Field (INTAKE)** — now safe to write the freshly collected fields from the **analysis**:
+**Step 4b — [Returning path] Add Note, then END.** Append this call to the contact **timeline as a Note** (Notes append — they never overwrite the custom fields).
+
+Note body (paste into the Add Note action):
+```
+📞 INBOUND RETURN CALL (not the original qualifying call)
+
+Call type: {{inboundWebhookRequest.call.call_type}}
+Ended:     {{inboundWebhookRequest.call.end_timestamp}}
+
+──────────── SUMMARY ────────────
+{{inboundWebhookRequest.call.call_analysis.call_summary}}
+
+─────────── TRANSCRIPT ───────────
+{{inboundWebhookRequest.call.transcript}}
+```
+> `end_timestamp` is **Unix epoch ms** — run it through a GHL Date/Time formatter first if you want a human-readable date.
+
+Then **END.** No field overwrite, no status change, no enrollment, no opportunity, **no Incomplete follow-up** — and the **original Transcript / Summary custom fields stay intact.** *(Core fix + preserves the main call record.)*
+
+**Step 5 — [Fresh path] Update Contact Field (INTAKE + main record)** — this is a genuine qualifying call, so it's correct to (re)write the main record:
+- `Transcript of the Call` = `…call.transcript`, `conversation_summary` = `…custom_analysis_data.Call Summary`  ← the main/original call data is stored here, only on a qualifying call
 - `Lead Status` = `…custom_analysis_data.Lead Status`
 - `Bad Lead Reason`, Vehicle Year/Make/Model, CA, Possession, New/Used, CPO, Purchase Condition, Repairs, Owner = analysis values
 - **Full Name / Phone / Email → prefer the SEEDED** `…retell_llm_dynamic_variables.Name/Phone/Email` (the analysis re-extracts these from speech and mangles them — e.g. the extra-digit phone in Call 01).
@@ -98,12 +121,12 @@ The Retell post-call webhook carries **two** data sets. Use the right one:
 ```
 Inbound Webhook (call_analyzed)
   → Find Contact (by seeded Phone)         [not found → END, never create]
-  → Update SAFE fields (Transcript, Summary, Lead Language)
+  → Update SAFE field (Lead Language only)
   → Add Tag: voice-inbound
   → IF intake happened?  (seeded lead_status = Incomplete OR empty)
-        FALSE → END                         ← returning completed: logged only, no changes
+        FALSE → Add Note (this call's Summary+Transcript) → END   ← Transcript/Summary custom fields PRESERVED
         TRUE  ↓
-          Update INTAKE fields (from analysis; Name/Phone/Email from seeded)
+          Update MAIN RECORD (Transcript+Summary) + INTAKE fields (Name/Phone/Email from seeded)
           Branch by analysis Lead Status:
             Incomplete   → Incomplete follow-up
             Retainer     → [no retainer-sent?] webhook + opp(won) + tag
@@ -116,8 +139,8 @@ Inbound Webhook (call_analyzed)
 
 ## 7. Test checklist (real-number calls)
 
-- **Returning Retainer** (seeded `Retainer Lead`) → call logged, status **stays Retainer**, **not** added to Incomplete follow-up, vehicle fields **unchanged**, no second DocuSign.
-- **Returning Non-Retainer** → same: stays Non-Retainer, no re-drip, fields intact.
+- **Returning Retainer** (seeded `Retainer Lead`) → status **stays Retainer**, **not** added to Incomplete follow-up, vehicle fields **unchanged**, **Transcript/Summary custom fields unchanged**, a **new timeline Note** is added for this call, no second DocuSign.
+- **Returning Non-Retainer** → same: stays Non-Retainer, no re-drip, fields intact, return call saved as a Note.
 - **Incomplete → completes to Retainer** (seeded `Incomplete Lead`) → fresh path → retainer branch → DocuSign sent (first time) → `retainer-sent` stamped.
 - **Returning Bad / Opt-Out** → logged only, status preserved.
 - **Brand-new / not found** → END, no contact created.
