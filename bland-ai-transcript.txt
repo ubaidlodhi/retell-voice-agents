@@ -1,0 +1,377 @@
+19:29:08 --> 19:29:10
+Krystal Vargha: Hello?
+
+19:29:14 --> 19:29:16
+ubaid lodhi: Hi, Michelle, can you hear me?
+
+19:29:16 --> 19:29:19
+Krystal Vargha: I can. Is this Solomon?
+
+19:29:19 --> 19:29:21
+ubaid lodhi: Yes, Roman is coming right now.
+
+19:29:22 --> 19:29:24
+Krystal Vargha: Okay, great.
+
+19:29:24 --> 19:29:26
+ubaid lodhi: And how are you?
+
+19:29:26 --> 19:29:28
+Krystal Vargha: I'm doing well, how are you?
+
+19:29:28 --> 19:29:31
+ubaid lodhi: Yeah, I'm doing great as well.
+
+19:29:30 --> 19:29:35
+Krystal Vargha: Wonderful. And where are you? Where are you located in the world?
+
+19:29:31 --> 19:29:33
+ubaid lodhi: So, Monica, do I need a break?
+
+19:29:35 --> 19:29:38
+ubaid lodhi: So, uh, I located in Pakistan.
+
+19:29:39 --> 19:29:41
+Krystal Vargha: Oh, wonderful.
+
+19:29:42 --> 19:29:44
+Krystal Vargha: Hey, Salman!
+
+19:29:45 --> 19:29:47
+Salman Siddiqui: Hi, Christian, how are you?
+
+19:29:47 --> 19:29:51
+Krystal Vargha: I'm doing well. Thank you so much for chatting with me today.
+
+19:29:53 --> 19:30:10
+Salman Siddiqui: All right, so Obed is my team member and we both are going to work on this project. So we can just dive into the agent that is already built and you can just provide us an overview of the agent and what are the things that we need to fix on.
+
+19:29:57 --> 19:29:58
+Krystal Vargha: Okay.
+
+19:29:59 --> 19:30:00
+Krystal Vargha: All right.
+
+19:30:10 --> 19:30:15
+Krystal Vargha: Okay, perfect. So, did Lauren give you an overview of what we're looking for?
+
+19:30:15 --> 19:30:17
+Salman Siddiqui: Here.
+
+19:30:17 --> 19:30:32
+Krystal Vargha: She did. Okay. So I'll give you a little bit of background. We, the project we are trying to implement is an agentic bot that will call medical providers and get updates on medical bills. What has been paid?
+
+19:30:32 --> 19:30:55
+Krystal Vargha: paid, how much, by whom, what is remaining, and then if there's any additional information, you know, if the bill is overdue or if it's gone to collections or, you know, if it's in good standing. And so a basic script of questions that they would need to ask. And there's a little bit of branching, you know, if they say this, then ask this, things like that. But it's very, very simple. It's pretty straightforward.
+
+19:30:55 --> 19:31:11
+Krystal Vargha: And so we have built the bot within Bland, and then we started testing, and as it often happens with agentic bots, it took on a mind of its own, and we would make changes, and then it would effectively reverse bot.
+
+19:31:11 --> 19:31:26
+Krystal Vargha: prior fixes, and so we know that the workflow, if you will, has some bugs in it. Um, and there's a couple of things, and I think Lauren sent you over the list, specifically that we're trying to solve for. One is if it hits a phone tree, making sure that it uses the.
+
+19:31:26 --> 19:31:42
+Krystal Vargha: numerical key tone and not saying the number. So we had that issue. Another issue was when it was leaving a message to appropriately leave the message. Sometimes it would say what we wanted it to say, and then it would just stay on the line and keep asking, Hello, are you there?
+
+19:31:42 --> 19:31:50
+Krystal Vargha: Um, other times, it wouldn't give all the information that it needed to give. So, that's just a couple examples, um, of some of the bugs we're trying to work out.
+
+19:31:50 --> 19:32:03
+Krystal Vargha: So what I'm looking for is somebody that can get into the bland backside. We have everything integrated with Litify, which is our it's a Salesforce derivative. That is our case management, system.
+
+19:32:03 --> 19:32:19
+Krystal Vargha: that our team can actually initiate the call from Litify. It then uses Bland to make the call, and then the information posts back to Litify. Right now, it's just posting back as a transcript, and then we have one of our team members that go in and fills in the information.
+
+19:32:19 --> 19:32:41
+Krystal Vargha: If we can get it to work in the way that we want it to, then we will build out additional integration, that the information will come right back into the right fields. But we weren't comfortable with that yet until we know that the actual bot will work. So that is what I'm looking for is someone that can go in, you know. Take a look at the workflow, see where the issues are, fix the issues such that.
+
+19:32:41 --> 19:33:02
+Krystal Vargha: You know, when the call is made, it can handle the call. And so that's what we're looking for on the front end. And then that has the potential, you know, if you can fix the bugs and get it to work the way that we need it to work, we have a potential for future use cases that we would like to, you know, then contract with you.
+
+19:33:02 --> 19:33:18
+Krystal Vargha: to build those out actually from scratch. Um, so we would give you, you know, the script and the questions and some of the branching scenarios, and then, you know, you would build out the actual, uh, backend workflow, uh, to make that work. So that's kind of high level what we're looking for.
+
+19:33:18 --> 19:33:22
+Krystal Vargha: Any questions on that or specific questions for me?
+
+19:33:23 --> 19:33:38
+ubaid lodhi: Yeah, so, uh, first of all, I have a question that currently, like, I would like to know the persona of the agent, like the Cassie. So, it is calling on a behalf of a patient, or what? Can you please, uh, like, elaborate on that?
+
+19:33:38 --> 19:33:56
+Krystal Vargha: Sure, it's calling on behalf of the law firm. So, when we take our cases, um, throughout the life of the case, we have to get updates on the medical treatment and the payments that have been made, because we have to adjust our records. So, let's say, for example, the insurance company paid.
+
+19:33:56 --> 19:34:12
+Krystal Vargha: a portion of the bill. Well, when we are working with the other side to get a settlement, we would then reduce the settlement amount by that amount, because that amount is no longer due. But the only way that we can negotiate in good faith is to have that information.
+
+19:34:12 --> 19:34:28
+Krystal Vargha: Um, you know, updated periodically. And so it's, it's us, the law firm, calling the medical provider to get that information. We have all of the forms that the client has signed, the HIPAA form and the information release form. All of that is a part of the file.
+
+19:34:25 --> 19:34:26
+ubaid lodhi: From…
+
+19:34:29 --> 19:34:37
+ubaid lodhi: And, uh, so, uh, the call is being initiated… initiating in your, uh, CRM, right?
+
+19:34:37 --> 19:34:38
+Krystal Vargha: Yes.
+
+19:34:37 --> 19:34:52
+ubaid lodhi: So, all the details are already populated in the agent. And so, uh, can you tell me, like, a few breakdown of what kind of details there are? Uh, most probably there will be, like, patient name, date of birth, and, uh, account number.
+
+19:34:41 --> 19:34:42
+Krystal Vargha: Correct.
+
+19:34:52 --> 19:35:01
+ubaid lodhi: So, I would like to know the details of the bills. So, like, how our agent will be identifying and asking the details of a particular bill, uh, yep.
+
+19:35:01 --> 19:35:19
+Krystal Vargha: Yep, so when the call is initiated in Litify, our CRM, what we've done is our Litify architect built out, it's called a damage line, and every damage line is a different treatment, right? So if they went to.
+
+19:35:19 --> 19:35:42
+Krystal Vargha: The chiropractor, that's one called a damage, or if they went to the orthopedic surgeon because they needed to have surgery on their bones, that's another damage line. And so what our teammate does is they go into that damage line, which has all the information. It has the medical provider's information, it has their phone number, it has all of the medical bill information that we have.
+
+19:35:42 --> 19:35:59
+Krystal Vargha: currently, which may or may not be out of date. And that's what we're trying to get, is to make sure the information we have is up to date. So when they initiate the call from Litify, all of that information is sent over to Bland in a packet. And so it's got the patient name, it's got their date of birth, it's got.
+
+19:35:59 --> 19:36:16
+Krystal Vargha: the treatment date, it's got their address, anything that that medical provider might need to identify the patient, all of that gets sent over in a single packet to Bland, so the Bland agent receives the information, then they take that information, they're supposed to make the call.
+
+19:36:16 --> 19:36:26
+Krystal Vargha: ask the script which we've already built in bland, and then take that information as a single transcript. So it's one file that then goes back over to litify.
+
+19:36:27 --> 19:36:40
+ubaid lodhi: Alright. And, uh, what happens… suppose if the agent calls the healthcare provider, and if they refuse to provide their details, or, like, if they are not, uh, being… engaging with the agent.
+
+19:36:40 --> 19:36:45
+ubaid lodhi: So, uh, how we, uh, should handle that situation?
+
+19:36:40 --> 19:36:42
+Krystal Vargha: Mm-hmm.
+
+19:36:45 --> 19:37:02
+Krystal Vargha: Yep, so that would be a part of the transcript. Um, so let's say the person on the other side doesn't give the information, or says the information's wrong, all of that gets posted back to the damage line, and then we have a team member on our team, a human team member.
+
+19:37:02 --> 19:37:17
+Krystal Vargha: that is going in and reviewing those transcripts. And for those ones, um, obviously, if there's something that we could fix within the agent to then make it be able to give the right information, you know, we would work with you on that to update the script or update the branching.
+
+19:37:17 --> 19:37:32
+Krystal Vargha: And if it's simply, you know, they don't want to talk to a bot, then our human would then have a SOP procedure to call them as a human. But the goal is to get as many of these.
+
+19:37:32 --> 19:37:52
+Krystal Vargha: automated as possible. The other thing that we've recognized is that a lot of these medical providers actually have bots of their own, and so it's our bot talking to their bot, and that's an ideal situation because, you know, then the human's not getting frustrated that they're talking to a bot, right? It's one bot talking to another, so…
+
+19:37:52 --> 19:37:53
+ubaid lodhi: Okay.
+
+19:37:53 --> 19:38:03
+ubaid lodhi: Alright, alright. And so, the issue one was of the navigation of the call. So, like, the phone tree, currently it's not properly, uh, navigating, right?
+
+19:38:03 --> 19:38:05
+Krystal Vargha: Mm-hmm.
+
+19:38:03 --> 19:38:13
+ubaid lodhi: So, uh, one more thing that, on the voicemail, uh… so, is it allowed that we will leave the patient's details as well on the voicemail?
+
+19:38:09 --> 19:38:10
+Krystal Vargha: It's okay.
+
+19:38:14 --> 19:38:31
+Krystal Vargha: Yeah, so the information we'd like for them to leave, and we've got the script for it, and I can share that with you, is, you know, the name of the bot is Casey, so we picked that name. So this is Casey calling from Pool & Willie, which is our law firm. I'm calling to verify the medical bills of, and then they pull the patient name, so, you know.
+
+19:38:31 --> 19:38:33
+Krystal Vargha: John Doe.
+
+19:38:33 --> 19:38:49
+Krystal Vargha: with a data service of whatever the data service is. So it gives them just enough information so that they could return the call in an educated way, but not as enough information that would violate HIPAA. So we give a name and a data service, and that's a part of the script.
+
+19:38:49 --> 19:38:56
+ubaid lodhi: Alright, got that. And one more question that, uh, currently, uh…
+
+19:38:57 --> 19:39:07
+ubaid lodhi: When we talk about, like, you told, uh, there are, like, multiple kind of damages, and each might be having their, uh, their specific bills.
+
+19:39:07 --> 19:39:11
+ubaid lodhi: So, suppose if a call is being initiated for a particular damage.
+
+19:39:07 --> 19:39:08
+Krystal Vargha: Mm-hmm.
+
+19:39:11 --> 19:39:25
+ubaid lodhi: So, uh, clear one thing that there will be always be a one specific bill, and our agent will be asking those bill details, or there can be multiple bills of a particular case.
+
+19:39:21 --> 19:39:22
+Krystal Vargha: Mm-hmm.
+
+19:39:25 --> 19:39:41
+Krystal Vargha: There could be multiple. They will call in about one line, so they'll call in about the patient name with the date of service of this date, and that's the information that they are verifying. Now, if the person on the other end says, I have other information.
+
+19:39:41 --> 19:39:58
+Krystal Vargha: Then, you know, essentially the response would be, thank you so much for that, we'll have somebody else call back about that other information, because the way that the systems, our systems built up, we're not dynamic enough to be able to switch between damages per call.
+
+19:40:21 --> 19:40:23
+ubaid lodhi: All right, all right.
+
+19:40:23 --> 19:40:33
+ubaid lodhi: So, yeah, I got the, uh, base understanding of your current agent, and the fixes that you would like us to implement.
+
+19:40:33 --> 19:40:34
+Krystal Vargha: Mhm.
+
+19:40:33 --> 19:40:44
+ubaid lodhi: Uh, yeah, one more… one more thing, uh, you're told about the… the agent is being stuck for a… at a particular stage. So, uh, can you please tell us more about that issue?
+
+19:40:48 --> 19:40:49
+ubaid lodhi: You know.
+
+19:40:49 --> 19:40:58
+ubaid lodhi: So basically, the list of issues that I received, it contains that the agent is being… getting stuck at a particular stage.
+
+19:40:58 --> 19:41:01
+ubaid lodhi: So, uh, anything else on that?
+
+19:41:01 --> 19:41:20
+Krystal Vargha: Ist.
+
+19:41:20 --> 19:41:37
+Krystal Vargha: And then it would do it a second time. So it kept repeating itself and kind of getting stuck in that loop. So that was another issue. As far as stages, it couldn't get out of the loop, right? Like, if it was a message, to leave a message loop.
+
+19:41:27 --> 19:41:29
+ubaid lodhi: Thank you.
+
+19:41:37 --> 19:41:55
+Krystal Vargha: It would leave the message and then it would get stuck. Or it would verify the medical bill and then it would get stuck. And so that's the piece where we need it to be able to move to the next stage, which is likely, you know, if it's leave a message, the next stage would be, okay, now hang up.
+
+19:41:55 --> 19:42:07
+Krystal Vargha: Right? If it's verify the medical bill and you've gotten the information, then say thank you so much and hang up, right? It's like it gets stuck in these loops, um, and can't quite end the call properly.
+
+19:42:08 --> 19:42:12
+ubaid lodhi: Hmm, totally understood. So, I think, uh…
+
+19:42:12 --> 19:42:28
+ubaid lodhi: That's all the clarification I need. So, we will need your bland access, so we can actually go through all the current build of the agent. And one more important thing that would be really helpful, uh, if you… if you can, like, share the…
+
+19:42:22 --> 19:42:23
+Krystal Vargha: Mm-hmm.
+
+19:42:28 --> 19:42:37
+ubaid lodhi: Call logs, like the call recordings, so you can share, like, a perfect path, the happy path that the agent has succeeded with the calls.
+
+19:42:37 --> 19:42:55
+ubaid lodhi: so we will know that how the happy path should be. And then, uh, it's also… it will be also helpful that if you can share some of the calls that are being not, like, perfect… going perfectly, those, like, have some issues, so if you can share the call recording as well.
+
+19:42:51 --> 19:42:52
+Krystal Vargha: Mm-hmm.
+
+19:42:55 --> 19:42:57
+ubaid lodhi: So that would be really helpful as well.
+
+19:42:57 --> 19:43:12
+Krystal Vargha: Okay, I don't know… we… it might be recording them. I've never found in Bland the actual recording. All I've ever found, uh, were the transcripts posted back. So what I can do is I can send you over some examples of the transcripts.
+
+19:43:12 --> 19:43:18
+Krystal Vargha: Um, but I don't… I wouldn't know where to find the actual audio recording, if that's what you need.
+
+19:43:18 --> 19:43:31
+ubaid lodhi: Oh, I'm sure the transcript will be acceptable, and if you can share the numbers, we can actually, uh, like, find the coin logs by ourselves, uh, as Black actually has the coin logs section.
+
+19:43:27 --> 19:43:28
+Krystal Vargha: Mm-hmm.
+
+19:43:31 --> 19:43:40
+ubaid lodhi: So, uh, let's find the calls ourselves, which you can just provide us the transcript, or the number to which the agent has called, uh, called to.
+
+19:43:31 --> 19:43:32
+Krystal Vargha: Mm-hmm.
+
+19:43:40 --> 19:43:41
+ubaid lodhi: Yep.
+
+19:43:40 --> 19:43:59
+Krystal Vargha: Okay. Yep, I can do that. Um, can you send over, so I can get you access to the backside, um, using, you know, the phone number or email, so if you can send that to Lauren, um, and then I can get you access on the back end. I can't give you my login, but I can get you access to that agent.
+
+19:43:59 --> 19:44:01
+ubaid lodhi: Alright.
+
+19:44:03 --> 19:44:11
+ubaid lodhi: And someone, do we need the access of the, their, like, the CRM, which is initiating the call, for now?
+
+19:44:09 --> 19:44:19
+Salman Siddiqui: Yeah, I think we can take the access for that CRM also, because there are automations that are being developed here.
+
+19:44:15 --> 19:44:17
+Krystal Vargha: Okay.
+
+19:44:19 --> 19:44:31
+Krystal Vargha: Okay, I will have to talk with my Litify architect, um, and see how we would be able to do that, um, just to give you access to that one record, because I wouldn't be able to give you access to the whole.
+
+19:44:31 --> 19:44:49
+Krystal Vargha: CRM. Obviously, there's a lot of attorney-client privilege information in there, but let me talk with him and see about how we could get access just to that one record. So we use kind of a dummy case, right? It's the same thing we do all of our testing on, and there's a bunch of stuff in there, but it's kind of a generic case. So let me talk with him and see.
+
+19:44:32 --> 19:44:34
+ubaid lodhi: Yes.
+
+19:44:49 --> 19:44:54
+Krystal Vargha: Um, how we would be able to do that, and then we'll go from there.
+
+19:44:55 --> 19:44:58
+Salman Siddiqui: No, don't tell her, sounds good.
+
+19:44:58 --> 19:45:02
+Krystal Vargha: All right. Very good. Any other questions for me?
+
+19:45:04 --> 19:45:07
+ubaid lodhi: I think that's all for my side.
+
+19:45:04 --> 19:45:06
+Salman Siddiqui: Um…
+
+19:45:07 --> 19:45:13
+Salman Siddiqui: Uh, Beth, are you clear on the follow-up questions and the wrong department?
+
+19:45:14 --> 19:45:22
+ubaid lodhi: Yeah, so actually, uh, for the wrong department, so whenever an agent reaches to a wrong department.
+
+19:45:22 --> 19:45:37
+ubaid lodhi: And, uh, so the, like, the point that I have received, it says that we have to, like, get the right, the actual deployment number, or we want, like, we would like to offer the, like, the providers.
+
+19:45:33 --> 19:45:34
+Krystal Vargha: Mmhm.
+
+19:45:37 --> 19:45:48
+ubaid lodhi: to transfer our code to that particular department. So I think, uh, we can handle that once we get the build, so we will, uh, see that… how the current build is made, and then we will go through it.
+
+19:45:49 --> 19:45:51
+Krystal Vargha: Okay?
+
+19:45:53 --> 19:45:55
+ubaid lodhi: Yep.
+
+19:45:54 --> 19:46:07
+Salman Siddiqui: Alright, alright. I think, uh, now, when we are going to get an access for these tools, we are just going to go through all the existing work, and then from there, we can just start fixing up the bugs.
+
+19:46:08 --> 19:46:25
+Krystal Vargha: Okay, that sounds good. I'll get with Lauren. I'll get her the information she needs. I'll have her pass that along to you. And then how does it work from a proposal standpoint? How do you all normally work? Is it an hourly thing? Is it a per project rate? How does that work?
+
+19:46:26 --> 19:46:43
+Salman Siddiqui: Okay, so I had preferred Lauren, like, a fixed price cost, so considering all these points that we have discussed today, I'm just gonna quote him for the fixed price work, and then he can just create a milestone for that, and then we can just get started on that.
+
+19:46:38 --> 19:46:40
+Krystal Vargha: Okay.
+
+19:46:43 --> 19:46:49
+Krystal Vargha: Okay, and will you send that proposal over to her once you get access to see the work that needs to be done?
+
+19:46:49 --> 19:46:50
+Salman Siddiqui: Yeah.
+
+19:46:50 --> 19:47:03
+Krystal Vargha: Alright, that sounds good to me. Alright, I will get with Lauren and get you everything you need within the next couple days. If you have any questions in the meantime, you've got Lauren's information, she can get any questions over to me.
+
+19:47:03 --> 19:47:05
+Salman Siddiqui: No, I don't, it sounds good.
+
+19:47:05 --> 19:47:10
+Krystal Vargha: All right. Wonderful. Thank you so much for chatting. I appreciate it. Hope you all have a good day.
+
+19:47:10 --> 19:47:11
+Salman Siddiqui: Thank you.
