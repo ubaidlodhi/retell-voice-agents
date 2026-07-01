@@ -29,7 +29,7 @@ The checks run **top to bottom**. The **first** one that matches wins — so an 
 4.  No vehicle MAKE captured?                     → Incomplete Lead
 5.  No longer has it AND make needs possession?  → Bad Lead  (Not in possession)
 6.  No/!unknown model YEAR?                       → Incomplete Lead
-7.  Year is 2019 or older?                        → Bad Lead  (Vehicle year)
+7.  Year is 2020 or older?                        → Bad Lead  (Vehicle year)
 8.  Make is on the RETAINER list?
         new/used not known?                       → Incomplete Lead
         used AND not CPO?                         → Bad Lead  (Purchased used non-CPO)
@@ -54,14 +54,14 @@ A caller becomes a **Retainer Lead** only when **all** of these are true:
 1. They **have vehicle issues** (didn't say "no problems").
 2. Bought/leased **in California**.
 3. The **make is on the Retainer list** (see below).
-4. The **model year is 2020 or newer**.
+4. The **model year is 2021 or newer**.
 5. Purchase condition is **New**, *or* **Used but Certified Pre-Owned (CPO)**.
 6. They **attempted a repair** at a dealership.
 7. They are the **owner, signed the sales contract, or are a co-buyer**.
 
 **Example:** "2022 Ford F-150, bought new in California, still have it, took it to the dealer for repairs, I'm the owner." → **Retainer Lead.**
 
-**What happens next:** Alice offers to email the retainer agreement; GHL fires the Zapier → Salesforce → DocuSign chain and stamps the `retainer-sent` tag.
+**What happens next:** Alice offers to email the **representation agreement** (this is the caller-facing wording — the internal status stays `Retainer Lead` and GHL fields/tags are unchanged); GHL fires the Zapier → Salesforce → DocuSign chain and stamps the `retainer-sent` tag.
 
 ---
 
@@ -86,7 +86,7 @@ Disqualified because the situation is outside California Lemon Law criteria. The
 | **Non lemon law** | Caller says the car is **running fine / no issues**. | "No, the car's been great." |
 | **Out of state purchase** | Vehicle was **not** bought/leased from a **California** dealership. | "I bought it in Arizona." |
 | **Not in possession** | They **no longer have the vehicle**, *and* the make is one that **requires possession** to file. | "I traded in my Kia last month." |
-| **Vehicle year** | Model year is **2019 or older** (firm handles 2020+). | "It's a 2017 Honda." |
+| **Vehicle year** | Model year is **2020 or older** (firm handles 2021+). | "It's a 2019 Honda." |
 | **Purchased used non-CPO** | A retainer-make bought **used** that is **not Certified Pre-Owned** (no original manufacturer warranty). | "Used 2022 Jeep, not certified." |
 
 **What happens next:** Alice closes politely ("I'll keep your details on file"); GHL logs it as a lost opportunity. *(Returning Bad Leads on the inbound line are simply greeted and offered a transfer — never re-qualified.)*
@@ -143,7 +143,7 @@ If someone was **already** classified as Retainer / Non-Retainer / Bad / Opt-Out
    every call ──────────►├─ no make? ─────────────────────→ Incomplete
                          ├─ gone + possession-make? ──────→ Bad (Not in possession)
                          ├─ no year? ─────────────────────→ Incomplete
-                         ├─ year ≤ 2019? ─────────────────→ Bad (Vehicle year)
+                         ├─ year ≤ 2020? ─────────────────→ Bad (Vehicle year)
                          ├─ retainer make? ──┬─ used+noCPO → Bad (used non-CPO)
                          │                   ├─ no repairs → Non-Retainer
                          │                   ├─ not owner ─→ Non-Retainer
