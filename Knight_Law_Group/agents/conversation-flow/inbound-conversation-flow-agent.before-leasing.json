@@ -2,12 +2,12 @@
   "agent_id": "",
   "channel": "voice",
   "last_modification_timestamp": 1781007910060,
-  "agent_name": "Alice - Knight Law (Outbound Conversation Flow) V23",
-  "version_description": "V23 (feedback-02 remaining, mirrors inbound V20): #13 Spanish-on-request; #11 lease-mishearing on possession + ownership; #8 empathy in retainer close + FAQ; #12 FAQ variation. Builds on V22.",
+  "agent_name": "Alice - Knight Law (Inbound Conversation Flow) V14",
+  "version_description": "V14: Spanish name spell-back now uses the Spanish letter names written out (\"te, o, eme, a, ese\") instead of hyphenated letters, which the Spanish TTS blended into a word. Alphabet map added to the Pronunciation rules; contact spell-back is language-aware. English hyphen spelling unchanged. Builds on V13.",
   "response_engine": {
     "type": "conversation-flow",
     "version": 0,
-    "conversation_flow_id": "conversation_flow_96c9101f3889"
+    "conversation_flow_id": ""
   },
   "webhook_url": "https://heroflow.app.n8n.cloud/webhook/knight-law-postcall",
   "language": [
@@ -70,14 +70,14 @@
   "allow_user_dtmf": true,
   "user_dtmf_options": {},
   "conversationFlow": {
-    "conversation_flow_id": "conversation_flow_96c9101f3889",
+    "conversation_flow_id": "",
     "version": 0,
-    "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded outbound phone call, following up on the caller's website inquiry about their vehicle. This is a voice conversation, not a chat.\n\nYour goal: make the caller feel heard while quickly checking whether their vehicle qualifies for a Lemon Law claim, then route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nPre-loaded for this call:\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (310) 552-2250\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud; use neutral phrasing instead.\n\n## Language\nOpen in the caller's known language: if {{lead_language}} is \"Spanish\", begin in Spanish; otherwise begin in English. Then STAY in that language for the entire call. Switch to Spanish if the caller clearly and deliberately speaks Spanish in a full sentence, explicitly says they can't speak or understand English, OR asks whether you speak Spanish or asks to continue in Spanish (for example \"¿habla español?\", \"do you speak Spanish?\", \"en español, por favor\"). When that happens, switch immediately and answer that very question IN SPANISH (e.g. \"Sí, claro, con gusto seguimos en español...\") — never answer a Spanish request in English. Do NOT switch over a single stray, mis-heard, or one-off word (\"aló\", \"hola\", \"sí\"), or when you're unsure what they said — keep going in English and, if needed, just ask them to repeat. However, if the caller asks whether you speak Spanish, or clearly addresses you in Spanish, immediately switch to Spanish for the rest of the call and answer that question in Spanish (for example, \"Sí, claro — podemos continuar en español\"). The same applies in reverse: if you're speaking Spanish and the caller clearly asks for English, switch to English. Never ask which language they prefer. Be fully fluent and natural in both.\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- Vary your wording naturally — never lean on one stock phrase every turn. Rotate your confirmations (\"just to confirm\", \"so I've got\", \"let me make sure I have this\", \"quick check\") and acknowledgments so you don't sound scripted or repetitive.\n- If the caller asks whether you're an AI, a bot, a robot, a recording, a real person, or a human — in ANY phrasing — never claim to be a person. Disclose once: \"I'm an automated AI intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers: say the digits in natural groups with short pauses — (310) 552-2250 -> \"three one zero — five five two — two two five zero\".\n- Emails: read the address naturally — say the part before the \"@\" and the domain name as ordinary words, NOT letter by letter. Pronounce \"@\" as \"at\" and \".\" as \"dot\". For the ending: say common endings as whole words (\".com\" -> \"dot com\", \".net\" -> \"dot net\", \".org\" -> \"dot org\"), but say short two-letter endings as separate letters (\".ai\" -> \"dot A I\", \".io\" -> \"dot I O\", \".co\" -> \"dot C O\"). Examples: ubaid@impleko.ai -> \"ubaid at impleko dot A I\"; john@gmail.com -> \"john at gmail dot com\".\n- Years: always say them as a natural spoken year, never as plain digits — \"twenty twenty-one\" (not \"2021\"), \"twenty nineteen\" (not \"2019\"), \"two thousand eight\" (not \"2008\"). Times include AM/PM.\n- Spelling a name letter by letter: in ENGLISH, join the letters with hyphens (e.g. \"Tomas\" -> \"t-o-m-a-s\"). In SPANISH, do NOT hyphenate — the Spanish voice blends hyphenated letters into a word. Instead say each letter by its Spanish NAME, separated by commas, so every letter is heard on its own: a=\"a\", b=\"be\", c=\"ce\", d=\"de\", e=\"e\", f=\"efe\", g=\"ge\", h=\"hache\", i=\"i\", j=\"jota\", k=\"ka\", l=\"ele\", m=\"eme\", n=\"ene\", ñ=\"eñe\", o=\"o\", p=\"pe\", q=\"cu\", r=\"ere\", s=\"ese\", t=\"te\", u=\"u\", v=\"uve\", w=\"doble uve\", x=\"equis\", y=\"ye\", z=\"zeta\". Example: \"Tomás\" -> \"te, o, eme, a, ese\"; \"Rivera\" -> \"ere, i, uve, e, ere, a\".\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nThe caller's name must match their driver's license, so confirm it explicitly: read the name on file, ask if it matches their license, then spell it back one letter at a time (in English, plain letters joined by hyphens, e.g. \"j-o-h-n\"; in Spanish, spelled with the Spanish letter names per the Pronunciation rules, e.g. \"te, o, eme, a, ese\") to confirm; if it does not match, have them spell it out and spell it back to reconfirm. Email is pre-filled from the form and already correct — read it back in ONE turn with the consent question, and do NOT spell the email out. The phone number is already on file; do NOT read it back or ask the caller to confirm it. The vehicle's year, make, and model get a quick spoken read-back to confirm, since they drive eligibility — if the caller corrects one, the corrected value wins.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer it, offer to answer anything else, then resume where you left off.\n- HUMAN — caller asks for a person -> give the callback line and offer to keep helping.\n- STOP — caller is busy / driving / wants to call back later -> close warmly.",
+    "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded INBOUND phone call — the caller dialed Knight Law Group. Many callers are returning leads we've spoken with before; some are brand new. This is a voice conversation, not a chat.\n\nYour goal: recognize who's calling, pick up where they left off (or start fresh), make them feel heard, and route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nLooked up from the caller's number before pickup (may be empty if we don't recognize the number):\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (310) 552-2250\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud, never greet with an empty name; use neutral phrasing instead (\"Hi there\"). The routing in this flow already decides whether the caller is a returning lead or new — follow the node you're in.\n\n## Language\nOpen in the caller's known language: if {{lead_language}} is \"Spanish\", begin in Spanish; otherwise begin in English. If the caller then speaks the other language, switch to it and continue entirely in that language. Never ask which language they prefer. Be fully fluent and natural in both.\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- If asked whether you're an AI, say once: \"I'm an automated intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers: say the digits in natural groups with short pauses — (310) 552-2250 -> \"three one zero — five five two — two two five zero\".\n- Emails: read the address naturally — say the part before the \"@\" and the domain name as ordinary words, NOT letter by letter. Pronounce \"@\" as \"at\" and \".\" as \"dot\". For the ending: say common endings as whole words (\".com\" -> \"dot com\", \".net\" -> \"dot net\", \".org\" -> \"dot org\"), but say short two-letter endings as separate letters (\".ai\" -> \"dot A I\", \".io\" -> \"dot I O\", \".co\" -> \"dot C O\"). Examples: ubaid@impleko.ai -> \"ubaid at impleko dot A I\"; john@gmail.com -> \"john at gmail dot com\".\n- Years spoken naturally (\"twenty twenty-two\"). Times include AM/PM.\n- Spelling a name letter by letter: in ENGLISH, join the letters with hyphens (e.g. \"Tomas\" -> \"t-o-m-a-s\"). In SPANISH, do NOT hyphenate — the Spanish voice blends hyphenated letters into a word. Instead say each letter by its Spanish NAME, separated by commas, so every letter is heard on its own: a=\"a\", b=\"be\", c=\"ce\", d=\"de\", e=\"e\", f=\"efe\", g=\"ge\", h=\"hache\", i=\"i\", j=\"jota\", k=\"ka\", l=\"ele\", m=\"eme\", n=\"ene\", ñ=\"eñe\", o=\"o\", p=\"pe\", q=\"cu\", r=\"ere\", s=\"ese\", t=\"te\", u=\"u\", v=\"uve\", w=\"doble uve\", x=\"equis\", y=\"ye\", z=\"zeta\". Example: \"Tomás\" -> \"te, o, eme, a, ese\"; \"Rivera\" -> \"ere, i, uve, e, ere, a\".\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nThe caller's name must match their driver's license, so confirm it explicitly: read the name on file, ask if it matches their license, then spell it back one letter at a time (in English, plain letters joined by hyphens, e.g. \"j-o-h-n\"; in Spanish, spelled with the Spanish letter names per the Pronunciation rules, e.g. \"te, o, eme, a, ese\") to confirm; if it does not match, have them spell it out and spell it back to reconfirm. Phone and email are pre-filled from the form and already correct — read them back together in ONE turn with the consent question, and do NOT spell the email or phone out. The vehicle's year, make, and model get a quick spoken read-back to confirm, since they drive eligibility — if the caller corrects one, the corrected value wins.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer it, offer to answer anything else, then resume where you left off.\n- HUMAN — caller asks for a person -> give the callback line and offer to keep helping.\n- STOP — caller is busy / driving / wants to call back later -> close warmly.",
     "nodes": [
       {
         "instruction": {
           "type": "prompt",
-          "text": "Outbound follow-up greeting (English), ONE turn: \"Hi! This is Alice from Knight Law Group, calling on a recorded line. I'm following up on your inquiry about your vehicle — are you currently having issues with it?\" Then wait."
+          "text": "Generic inbound greeting for a caller we don't recognize or with nothing on file. ONE turn. FIRST choose the language from {{lead_language}}:\n- If {{lead_language}} is \"Spanish\": greet in Spanish — if {{Name}} is set say \"Hola {{Name}}, gracias por llamar a Knight Law Group, le habla Alice en una línea grabada. ¿Está teniendo problemas con su vehículo?\"; if {{Name}} is empty say \"Hola, gracias por llamar a Knight Law Group, le habla Alice en una línea grabada. ¿Está teniendo problemas con su vehículo?\"\n- Otherwise (English): if {{Name}} is set say \"Hi {{Name}}, thanks for calling Knight Law Group, this is Alice on a recorded line. Are you currently having issues with your vehicle?\"; if {{Name}} is empty say \"Hi there, thanks for calling Knight Law Group, this is Alice on a recorded line. Are you currently having issues with your vehicle?\"\nThen wait. Continue the whole call in whichever language the caller actually uses."
         },
         "name": "Introduction",
         "edges": [
@@ -165,7 +165,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Ask (caller's language): \"And are you still in possession of the vehicle?\" Then wait. If the caller says they lease it or are leasing it, or you hear a word that sounds like \"lease\" (for example \"liz\", \"lists\", \"leased\"), understand that as them saying they LEASE the vehicle — a leased vehicle they still have counts as still being in possession, so treat it as a yes, not a no.\n\nInterpretation (do NOT say this out loud): if the caller answers in terms of leasing — they say \"lease\", \"leased\", or \"leasing\", or the transcript shows a close-sounding mishearing like \"liz\", \"lease\", \"list\", or \"lists\" — understand it as LEASE. A leased vehicle they still drive counts as still in possession (yes). Only treat it as a no if they clearly no longer have the vehicle at all (sold, traded in, returned, repossessed, or totaled). A vehicle that is in the shop or being repaired still counts as yes."
+          "text": "Ask (caller's language): \"And are you still in possession of the vehicle?\" Then wait."
         }
       },
       {
@@ -201,7 +201,7 @@
           {
             "name": "vehicle_make",
             "type": "enum",
-            "description": "The vehicle manufacturer (make). Map what the caller said to the closest matching brand in the list, correcting likely transcription errors (e.g. 'Fard' -> 'Ford', 'Toyoda' -> 'Toyota', 'Cheverlay' -> 'Chevrolet'). Extract from anywhere in the conversation.",
+            "description": "The vehicle manufacturer (make). Map what the caller said to the closest matching brand in the list, correcting likely transcription errors (e.g. 'Fard' -> 'Ford', 'Toyoda' -> 'Toyota', 'Cheverlay' -> 'Chevrolet'). Extract from anywhere in the conversation. If the caller has NOT actually named a make in the conversation, leave this empty — do NOT guess, infer, or invent a make.",
             "choices": [
               "Acura",
               "Alfa Romeo",
@@ -275,7 +275,7 @@
           {
             "name": "vehicle_model",
             "type": "string",
-            "description": "The vehicle model if stated (e.g. 'F-150', 'Civic'); leave empty if not mentioned."
+            "description": "The vehicle model if stated (e.g. 'F-150', 'Civic'); leave empty if not mentioned. If no model was stated, leave it empty — do not guess."
           },
           {
             "name": "in_possession",
@@ -621,7 +621,7 @@
             "id": "e-own-yes",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller is the owner, signed the sales or lease contract, is a co-buyer or co-signer, or is leasing the vehicle (yes)"
+              "prompt": "Caller is the owner, signed the contract, or is a co-buyer (yes)"
             }
           },
           {
@@ -629,7 +629,7 @@
             "id": "e-own-no",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller is clearly NOT the owner, NOT a lessee, and did not sign any sales or lease contract (no)"
+              "prompt": "Caller is NOT the owner and did not sign the contract (no)"
             }
           }
         ],
@@ -641,7 +641,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Ask ONLY this question, in the caller's language, then wait: \"And just to confirm, are you the owner of the car, or did you sign the sales or lease contract?\"\n\nDo NOT say any of the following out loud — it is only guidance for how you interpret the answer: count it as YES if they are the owner, signed the sales or lease contract, are a co-buyer or co-signer, or are leasing the vehicle (California Lemon Law covers leased vehicles). If the transcript shows a close-sounding mishearing of \"lease/leased/leasing\" — such as \"liz\", \"lease\", \"list\", or \"lists\" — understand it as LEASE and count it as YES. Count it as NO only if they are clearly none of those. If you hear a word that sounds like \"lease\" (for example \"liz\", \"lists\", \"leased\"), understand it as the caller saying \"lease\"."
+          "text": "Ask (caller's language): \"And are you the owner of the car, or did you sign the sales contract?\" A co-buyer counts as yes. Then wait."
         }
       },
       {
@@ -664,7 +664,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Confirm/collect contact details in the caller's language, ONE ask per turn — NEVER bundle two asks in a single turn.\n\nTURN 1 — Name vs driver's license. Say: \"I've got your name as {{Name}} — is that the same name as it appears on your driver's license?\" Then STOP and wait.\n- If they say YES: spell the name back to confirm, per the Pronunciation rules for the caller's language (English: hyphens, e.g. \"j-o-h-n\"; Spanish: the Spanish letter names, e.g. \"te, o, eme, a, ese\") — for example, in English, \"Great — let me confirm the spelling: j-o-h-n, d-o-e.\", wait for their yes, then move on.\n- If they say NO: say \"No problem — could you spell out your full name for me, first and last?\" and wait. When they spell it, in the NEXT turn spell it back to reconfirm and STOP — that turn contains ONLY the spelling confirmation and nothing else: in English \"Thanks — so that's j-a-n-e, s-m-i-t-h, is that right?\", or in Spanish \"Gracias — entonces es te, o, eme, a, ese... ¿es correcto?\" Wait for their YES before continuing. Do NOT read the phone or email in this turn.\n\nTURN 2 — only AFTER the name is confirmed. Read back ONLY the email and ask permission together in ONE turn: \"And I've got your email as {{Email}} — is it okay if our team reaches you by text and email?\" Then wait. Do NOT read back or confirm the phone number, and do NOT spell the email out. If the caller corrects their email, capture the corrected version (you don't need to spell it back).\n\nOnce the name is confirmed and they've answered the text-and-email permission, stop. Do NOT deliver any closing here. Do NOT ask for a home or street address."
+          "text": "Confirm/collect contact details in the caller's language, ONE ask per turn — NEVER bundle two asks in a single turn.\n\nTURN 1 — Name vs driver's license. Say: \"I've got your name as {{Name}} — is that the same name as it appears on your driver's license?\" Then STOP and wait.\n- If they say YES: spell the name back to confirm, per the Pronunciation rules for the caller's language (English: hyphens, e.g. \"j-o-h-n\"; Spanish: the Spanish letter names, e.g. \"te, o, eme, a, ese\") — for example, in English, \"Great — let me confirm the spelling: j-o-h-n, d-o-e.\", wait for their yes, then move on.\n- If they say NO: say \"No problem — could you spell out your full name for me, first and last?\" and wait. When they spell it, in the NEXT turn spell it back to reconfirm and STOP — that turn contains ONLY the spelling confirmation and nothing else: in English \"Thanks — so that's j-a-n-e, s-m-i-t-h, is that right?\", or in Spanish \"Gracias — entonces es te, o, eme, a, ese... ¿es correcto?\" Wait for their YES before continuing. Do NOT read the phone or email in this turn.\n\nTURN 2 — only AFTER the name is confirmed. Read the phone and email and ask permission together in ONE turn: \"And I've got your number as {{Phone}} and your email {{Email}} — is it okay if our team reaches you there by text and email?\" Then wait. Do NOT spell the phone or email out.\n\nOnce the name is confirmed and they've answered the text-and-email permission, stop. Do NOT deliver any closing here. Do NOT ask for a home or street address."
         }
       },
       {
@@ -687,7 +687,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Across at most a couple of short turns (caller's language), convey this in your own warm voice: \"We can proceed with your case. I'll send you the representation agreement to sign by text and email. Once you sign it, we can begin working on your case — someone from our Client Services team will reach out to walk you through the next steps and help you get us all the documents we need to move your case forward. Once those documents are received, your case moves into preparation for filing, and if anything's still missing our team will tell you exactly what's needed so there are no delays. The sooner we receive the documents, the sooner your case can be filed.\" Then ask: \"Any questions about that?\" Answer briefly if they ask. If the caller wants to tell you what happened with their vehicle, or asks whether you need those details, respond with genuine empathy and reassurance — for example: \"I completely understand, and I'm sorry you've had to go through that. Our Client Services team will go over everything in detail, including the issues, defects, and your full experience with the vehicle, so nothing gets missed.\" Do NOT mention a consultation link. Do NOT ask for an address.\n\nIMPORTANT: Deliver this full explanation only ONCE per call. If you have already given it (for example you're returning after answering a question), do NOT repeat the whole thing — just ask briefly, \"Do you have any other questions, or are you all set?\" and wait.\n\nEMPATHY (important): these callers have been through a stressful experience with their vehicle. If the caller wants to tell you what happened, or asks something like \"don't you want to know what happened?\", do NOT brush past it — acknowledge and validate first, then reassure: e.g. \"I completely understand, and what you've been through absolutely matters. Our Client Services team will go over every detail of what happened with your vehicle, so nothing gets missed.\" Lead with empathy, then the reassurance."
+          "text": "Across at most a couple of short turns (caller's language), convey this in your own warm voice: \"We can proceed with your case. I'll send you the representation agreement to sign by text and email. Once you sign it, we can begin working on your case — someone from our Client Services team will reach out to walk you through the next steps and help you get us all the documents we need to move your case forward. Once those documents are received, your case moves into preparation for filing, and if anything's still missing our team will tell you exactly what's needed so there are no delays. The sooner we receive the documents, the sooner your case can be filed.\" Then ask: \"Any questions about that?\" Answer briefly if they ask. Do NOT mention a consultation link. Do NOT ask for an address.\n\nIMPORTANT: Deliver this full explanation only ONCE per call. If you have already given it (for example you're returning after answering a question), do NOT repeat the whole thing — just ask briefly, \"Do you have any other questions, or are you all set?\" and wait."
         }
       },
       {
@@ -724,29 +724,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Confirm/collect contact details in the caller's language, ONE ask per turn — NEVER bundle two asks in a single turn.\n\nTURN 1 — Name vs driver's license. Say: \"I've got your name as {{Name}} — is that the same name as it appears on your driver's license?\" Then STOP and wait.\n- If they say YES: spell the name back to confirm, per the Pronunciation rules for the caller's language (English: hyphens, e.g. \"j-o-h-n\"; Spanish: the Spanish letter names, e.g. \"te, o, eme, a, ese\") — for example, in English, \"Great — let me confirm the spelling: j-o-h-n, d-o-e.\", wait for their yes, then move on.\n- If they say NO: say \"No problem — could you spell out your full name for me, first and last?\" and wait. When they spell it, in the NEXT turn spell it back to reconfirm and STOP — that turn contains ONLY the spelling confirmation and nothing else: in English \"Thanks — so that's j-a-n-e, s-m-i-t-h, is that right?\", or in Spanish \"Gracias — entonces es te, o, eme, a, ese... ¿es correcto?\" Wait for their YES before continuing. Do NOT read the phone or email in this turn.\n\nTURN 2 — only AFTER the name is confirmed. Read back ONLY the email and ask permission together in ONE turn: \"And I've got your email as {{Email}} — is it okay if our team reaches you by text and email?\" Then wait. Do NOT read back or confirm the phone number, and do NOT spell the email out. If the caller corrects their email, capture the corrected version (you don't need to spell it back).\n\nOnce the name is confirmed and they've answered the text-and-email permission, stop. Do NOT deliver any closing here."
-        }
-      },
-      {
-        "name": "Speak: Non-Retainer Close",
-        "id": "node-speak-nonret-close",
-        "type": "conversation",
-        "display_position": {
-          "x": 3600,
-          "y": 1000
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Say warmly (caller's language), in one short turn: \"Great — we may still be able to help. We'll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.\""
-        },
-        "edges": [],
-        "skip_response_edge": {
-          "destination_node_id": "node-end-nonret",
-          "id": "e-nonret-close-skip",
-          "transition_condition": {
-            "type": "prompt",
-            "prompt": "Skip response"
-          }
+          "text": "Confirm/collect contact details in the caller's language, ONE ask per turn — NEVER bundle two asks in a single turn.\n\nTURN 1 — Name vs driver's license. Say: \"I've got your name as {{Name}} — is that the same name as it appears on your driver's license?\" Then STOP and wait.\n- If they say YES: spell the name back to confirm, per the Pronunciation rules for the caller's language (English: hyphens, e.g. \"j-o-h-n\"; Spanish: the Spanish letter names, e.g. \"te, o, eme, a, ese\") — for example, in English, \"Great — let me confirm the spelling: j-o-h-n, d-o-e.\", wait for their yes, then move on.\n- If they say NO: say \"No problem — could you spell out your full name for me, first and last?\" and wait. When they spell it, in the NEXT turn spell it back to reconfirm and STOP — that turn contains ONLY the spelling confirmation and nothing else: in English \"Thanks — so that's j-a-n-e, s-m-i-t-h, is that right?\", or in Spanish \"Gracias — entonces es te, o, eme, a, ese... ¿es correcto?\" Wait for their YES before continuing. Do NOT read the phone or email in this turn.\n\nTURN 2 — only AFTER the name is confirmed. Read the phone and email and ask permission together in ONE turn: \"And I've got your number as {{Phone}} and your email {{Email}} — is it okay if our team reaches you there by text and email?\" Then wait. Do NOT spell the phone or email out.\n\nOnce the name is confirmed and they've answered the text-and-email permission, stop. Do NOT deliver any closing here."
         }
       },
       {
@@ -909,7 +887,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Answer the caller's question helpfully in two to three short sentences from the Knowledge Base, in the caller's language. If the question is about the vehicle's problems, defects, or what makes a case (for example \"don't you want to know what happened?\", \"how do I know if I have a case?\"), lead with genuine empathy and reassurance — for example: \"I'm sorry you've had to deal with that. Our team will gather all the details, including any issues, defects, or experience with your vehicle.\" Only the FIRST time, offer to answer anything else; after that, vary how you check in and keep it light (like \"Anything else I can help with?\" or \"Happy to cover anything else\") and do NOT repeat the same \"does that help\" line every turn. Do NOT ask any qualification or intake questions here; only offer to answer more questions. If the Knowledge Base has no answer, say once that our team can cover the specifics at (310) 552-2250. If the caller was already told earlier in this call that they do NOT qualify, keep it brief and let the call wrap up — never restart qualification. Never give individual legal advice or quote settlement amounts."
+          "text": "Answer the caller's question helpfully in two to three short sentences from the Knowledge Base, in the caller's language. Then ask warmly whether there's anything else they'd like to know (e.g. \"Does that help — was there anything else you wanted to ask?\"). Do NOT ask any qualification or intake questions here; only offer to answer more questions. If the Knowledge Base has no answer, say once that our team can cover the specifics at (310) 552-2250. If the caller was already told earlier in this call that they do NOT qualify, keep it brief and let the call wrap up — never restart qualification. Never give individual legal advice or quote settlement amounts."
         },
         "name": "GLOBAL - FAQ Handler",
         "edges": [],
@@ -986,35 +964,51 @@
         }
       },
       {
-        "instruction": {
-          "type": "prompt",
-          "text": "The caller asked for a human, wants to be transferred, or doesn't want to deal with the AI. Overcome the objection ONCE, warmly and in the caller's language, without being pushy — for example: \"I completely understand. I'm an automated assistant, but I'm fully set up to take down your basic details and pre-qualify your case so I can hand you straight to a human agent. Can I quickly run through a few questions with you first?\" Then wait. Do NOT transfer yet, and do NOT repeat this more than once. If the caller is fine continuing, pick up exactly where you left off. If they still insist on a person or refuse to continue with the AI, they'll be connected. Never claim to be a human."
-        },
         "name": "GLOBAL - Human Request",
         "id": "node-global-human",
-        "type": "conversation",
+        "type": "branch",
+        "display_position": {
+          "x": 4600,
+          "y": 2000
+        },
         "edges": [
           {
             "destination_node_id": "node-xfer-lang",
-            "id": "gh-insist",
+            "id": "gh-route",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "The caller still insists on a human, a person, an attorney, or the team after Alice's explanation; declines to continue with Alice; refuses to keep talking to the AI or bot; or repeats the request to be connected or transferred."
+              "prompt": "Caller wants to be connected to a person or the team, or has confirmed they want to speak with someone."
             }
           }
         ],
+        "else_edge": {
+          "destination_node_id": "node-xfer-lang",
+          "id": "gh-to-gate",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        },
         "global_node_setting": {
-          "condition": "User asks to speak to a real person, a human, a representative, an attorney, or the team; asks to be connected or transferred to someone; says they do not want to talk to an AI, a bot, or a robot; or says to stop calling specifically because it is an AI. NOT a general informational question, and NOT a genuine statement that they are not interested in pursuing their case at all (that is an opt-out).",
-          "go_back_conditions": [
+          "condition": "User explicitly asks to speak to a real person, a human, a representative, an attorney, or our team; asks to be connected, transferred, or to talk to someone. NOT a general informational question, and NOT a request to stop or hang up.",
+          "negative_finetune_examples": [
             {
-              "id": "gh-continue",
-              "transition_condition": {
-                "type": "prompt",
-                "prompt": "The caller agrees to continue with Alice, says okay / sure / go ahead, starts answering a question, or otherwise stops asking to be transferred to a person."
-              }
+              "transcript": [
+                {
+                  "content": "How much does it cost?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "What exactly is the lemon law?",
+                  "role": "user"
+                }
+              ]
             }
           ],
-          "cool_down": 3,
           "positive_finetune_examples": [
             {
               "transcript": [
@@ -1035,7 +1029,7 @@
             {
               "transcript": [
                 {
-                  "content": "I don't want to talk to a robot.",
+                  "content": "I'd like to speak with your team.",
                   "role": "user"
                 }
               ]
@@ -1049,34 +1043,13 @@
               ]
             }
           ],
-          "negative_finetune_examples": [
-            {
-              "transcript": [
-                {
-                  "content": "How much does it cost?",
-                  "role": "user"
-                }
-              ]
-            },
-            {
-              "transcript": [
-                {
-                  "content": "What exactly is the lemon law?",
-                  "role": "user"
-                }
-              ]
-            }
-          ]
-        },
-        "display_position": {
-          "x": 4600,
-          "y": 2000
+          "cool_down": 3
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Say warmly (caller's language): \"No problem at all — we'll reach back out at a better time. Take care.\" Then end the call."
+          "text": "Say warmly (caller's language): \"No problem at all — feel free to give us a call back anytime at (310) 552-2250 whenever it works for you. Take care.\" Then end the call."
         },
         "name": "GLOBAL - Stop / Busy",
         "global_node_setting": {
@@ -1150,7 +1123,7 @@
         },
         "name": "GLOBAL - Opt Out",
         "global_node_setting": {
-          "condition": "Caller genuinely does not want to pursue their case or be contacted about it at all — not interested, wants to be removed from the list, stop receiving calls, or not be contacted again, about the CASE itself. If the objection is that they don't want to talk to an AI/bot or that they want a human instead, that is NOT an opt-out — it is a human request. NOT just 'call me back later' (that is a callback), and NOT a general question.",
+          "condition": "Caller says they are not interested, do not want to pursue this, want to be removed from the list, want to stop receiving calls, or ask not to be contacted again — a permanent opt-out. NOT just 'call me back later' (that is a callback), and NOT a general question.",
           "negative_finetune_examples": [
             {
               "transcript": [
@@ -1164,14 +1137,6 @@
               "transcript": [
                 {
                   "content": "How much does this cost?",
-                  "role": "user"
-                }
-              ]
-            },
-            {
-              "transcript": [
-                {
-                  "content": "I don't want to talk to a robot, get me a person.",
                   "role": "user"
                 }
               ]
@@ -1198,7 +1163,7 @@
             {
               "transcript": [
                 {
-                  "content": "Stop calling me, I don't want a lawyer.",
+                  "content": "Stop calling me.",
                   "role": "user"
                 }
               ]
@@ -1228,24 +1193,89 @@
         }
       },
       {
-        "name": "node-intro-lang",
-        "id": "node-intro-lang",
+        "name": "Inbound Router",
+        "id": "node-inbound-route",
         "type": "branch",
         "display_position": {
-          "x": -120,
+          "x": -280,
           "y": 200
         },
         "edges": [
           {
-            "destination_node_id": "node-intro-es",
-            "id": "e-introlang-es",
+            "destination_node_id": "node-resume-lang",
+            "id": "e-inb-incomplete",
             "transition_condition": {
               "type": "equation",
               "equations": [
                 {
-                  "left": "{{lead_language}}",
+                  "left": "{{lead_status}}",
                   "operator": "==",
-                  "right": "Spanish"
+                  "right": "Incomplete Lead"
+                },
+                {
+                  "left": "{{has_prior_data}}",
+                  "operator": "==",
+                  "right": "true"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-xfer-lang",
+            "id": "e-inb-retainer",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Retainer Lead"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-xfer-lang",
+            "id": "e-inb-nonret",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Non-Retainer Lead"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-xfer-lang",
+            "id": "e-inb-bad",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Bad Lead"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-optout-lang",
+            "id": "e-inb-optout",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_status}}",
+                  "operator": "==",
+                  "right": "Opt-Out Consent"
                 }
               ],
               "operator": "&&"
@@ -1254,7 +1284,7 @@
         ],
         "else_edge": {
           "destination_node_id": "node-intro",
-          "id": "e-introlang-en",
+          "id": "e-inb-else",
           "transition_condition": {
             "type": "prompt",
             "prompt": "Else"
@@ -1262,44 +1292,166 @@
         }
       },
       {
-        "name": "Introduction (Spanish)",
-        "id": "node-intro-es",
+        "name": "Inbound: Resume (Incomplete)",
+        "id": "node-inbound-resume",
         "type": "conversation",
         "start_speaker": "agent",
         "display_position": {
-          "x": 200,
-          "y": -40
+          "x": 40,
+          "y": -120
         },
         "instruction": {
           "type": "prompt",
-          "text": "Saludo de seguimiento saliente, EN ESPAÑOL, UNA intervención: \"¡Hola! Le habla Alice de Knight Law Group en una línea grabada. Le llamo para dar seguimiento a su consulta sobre su vehículo. ¿Está teniendo problemas con él?\" Luego espere. Continúe toda la llamada en español."
+          "text": "Returning lead who gave us some details before but didn't finish. Greet by name and confirm what we have, in ONE turn (English): \"Hi {{Name}}, thanks for calling Knight Law Group back — this is Alice. Last time, you told us {{recap_line}}. Is that all still right?\" Then wait. If they correct something, the new value wins. Do NOT re-ask anything already covered in that recap."
         },
         "edges": [
           {
             "destination_node_id": "node-q-ca",
-            "id": "e-intro-es-yes",
+            "id": "e-resume-need-ca",
             "transition_condition": {
-              "type": "prompt",
-              "prompt": "Caller confirms they ARE having vehicle issues (yes, yeah, correct, or describes a problem)"
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{ca_purchase}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
             }
           },
           {
-            "destination_node_id": "node-disq-nonlemon",
-            "id": "e-intro-es-no",
+            "destination_node_id": "node-q-possession",
+            "id": "e-resume-need-poss",
             "transition_condition": {
-              "type": "prompt",
-              "prompt": "Caller clearly states they are NOT having any vehicle issues / the car is running fine"
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{in_possession}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
             }
           },
           {
-            "destination_node_id": "node-end-incomplete",
-            "id": "e-intro-es-busy",
+            "destination_node_id": "node-q-vehicle",
+            "id": "e-resume-need-veh-make",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{vehicle_make}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-q-vehicle",
+            "id": "e-resume-need-veh-year",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{vehicle_year}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-extract-vehicle",
+            "id": "e-resume-confirmed",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller says it's not a good time, they're busy, or asks to be called back later"
+              "prompt": "The caller has confirmed (or did not dispute) the vehicle and purchase details already on file."
             }
           }
         ]
+      },
+      {
+        "name": "Inbound: Opt-Out",
+        "id": "node-inbound-optout",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": 1140
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Returning caller who previously asked NOT to be contacted (on our do-not-contact list) — but THEY have called us now. Be respectful and brief (English); greet by name if we have it: \"Hi {{Name}}, thanks for calling Knight Law Group. I have a note that you'd asked us not to reach out — I'm happy to help if you'd like, or we can keep you off our list. What can I do for you?\" Then wait. Only continue if they want to; never pressure."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-intro",
+            "id": "e-optout-reengage",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to move forward, discuss their vehicle, or get help with a claim."
+            }
+          },
+          {
+            "destination_node_id": "node-end-optout-inbound",
+            "id": "e-optout-stay",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms they don't need anything, want to stay off the list, or are just confirming removal."
+            }
+          }
+        ]
+      },
+      {
+        "name": "End: Opt-Out (inbound)",
+        "id": "node-end-optout-inbound",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 340,
+          "y": 1400
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say respectfully (caller's language): \"Understood — I'll keep you on our do-not-contact list. Thanks for calling, and take care.\" Then end the call."
+        }
+      },
+      {
+        "name": "End: Generic",
+        "id": "node-end-generic",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 5800,
+          "y": 1000
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language): \"Thanks again for calling Knight Law Group — take care and have a great day.\" Then end the call."
+        }
+      },
+      {
+        "name": "Speak: Non-Retainer Close",
+        "id": "node-speak-nonret-close",
+        "type": "conversation",
+        "display_position": {
+          "x": 3600,
+          "y": 1000
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say warmly (caller's language), in one short turn: \"Great — we may still be able to help. We'll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.\""
+        },
+        "edges": [],
+        "skip_response_edge": {
+          "destination_node_id": "node-end-nonret",
+          "id": "e-nonret-close-skip",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Skip response"
+          }
+        }
       },
       {
         "name": "Transfer Language Router",
@@ -1307,7 +1459,7 @@
         "type": "branch",
         "display_position": {
           "x": 5200,
-          "y": 2000
+          "y": 600
         },
         "edges": [
           {
@@ -1341,11 +1493,11 @@
         "type": "transfer_call",
         "display_position": {
           "x": 5500,
-          "y": 1880
+          "y": 480
         },
         "instruction": {
           "type": "static_text",
-          "text": "Thanks so much. Please hold for just a moment while I connect you with one of our specialists."
+          "text": "Thank you for calling Knight Law Group. Please hold for just a moment while I transfer your call to one of our specialists."
         },
         "transfer_destination": {
           "type": "predefined",
@@ -1372,11 +1524,11 @@
         "type": "transfer_call",
         "display_position": {
           "x": 5500,
-          "y": 2120
+          "y": 720
         },
         "instruction": {
           "type": "static_text",
-          "text": "Gracias. Por favor, espere un momento mientras le conecto con uno de nuestros especialistas."
+          "text": "Gracias por llamar a Knight Law Group. Por favor, espere un momento mientras transfiero su llamada a uno de nuestros especialistas."
         },
         "transfer_destination": {
           "type": "predefined",
@@ -1398,22 +1550,188 @@
         "speak_during_execution": true
       },
       {
-        "name": "End: Generic",
-        "id": "node-end-generic",
-        "type": "end",
-        "speak_during_execution": true,
+        "name": "node-resume-lang",
+        "id": "node-resume-lang",
+        "type": "branch",
         "display_position": {
-          "x": 5800,
-          "y": 2000
+          "x": -120,
+          "y": -120
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-resume-es",
+            "id": "e-resumelang-es",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_language}}",
+                  "operator": "==",
+                  "right": "Spanish"
+                }
+              ],
+              "operator": "&&"
+            }
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-inbound-resume",
+          "id": "e-resumelang-en",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        }
+      },
+      {
+        "name": "Inbound: Resume (Spanish)",
+        "id": "node-inbound-resume-es",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": -340
         },
         "instruction": {
           "type": "prompt",
-          "text": "Say warmly (caller's language): \"Thanks again — take care and have a great day.\" Then end the call."
+          "text": "Cliente que regresa, nos dio algunos datos antes pero no terminó. Salude por su nombre y confirme lo que tenemos, en UNA sola intervención, EN ESPAÑOL: \"Hola {{Name}}, gracias por volver a llamar a Knight Law Group, le habla Alice. La última vez nos comentó que {{recap_line}}. ¿Sigue siendo todo correcto?\" Luego espere. Si corrige algo, el nuevo valor prevalece. No vuelva a preguntar nada que ya esté cubierto en ese resumen. Continúe toda la llamada en español."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-q-ca",
+            "id": "e-resume-es-need-ca",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{ca_purchase}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-q-possession",
+            "id": "e-resume-es-need-poss",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{in_possession}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-q-vehicle",
+            "id": "e-resume-es-need-make",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{vehicle_make}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-q-vehicle",
+            "id": "e-resume-es-need-year",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{vehicle_year}}",
+                  "operator": "not_exist"
+                }
+              ],
+              "operator": "&&"
+            }
+          },
+          {
+            "destination_node_id": "node-extract-vehicle",
+            "id": "e-resume-es-confirmed",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The caller has confirmed (or did not dispute) the vehicle and purchase details already on file."
+            }
+          }
+        ]
+      },
+      {
+        "name": "node-optout-lang",
+        "id": "node-optout-lang",
+        "type": "branch",
+        "display_position": {
+          "x": -120,
+          "y": 1140
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-inbound-optout-es",
+            "id": "e-optoutlang-es",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{lead_language}}",
+                  "operator": "==",
+                  "right": "Spanish"
+                }
+              ],
+              "operator": "&&"
+            }
+          }
+        ],
+        "else_edge": {
+          "destination_node_id": "node-inbound-optout",
+          "id": "e-optoutlang-en",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
         }
+      },
+      {
+        "name": "Inbound: Opt-Out (Spanish)",
+        "id": "node-inbound-optout-es",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "display_position": {
+          "x": 40,
+          "y": 1340
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Cliente que regresa y que antes pidió NO ser contactado (en nuestra lista de no contactar) — pero ahora ÉL nos ha llamado. Sea respetuoso y breve, EN ESPAÑOL; salude por su nombre si lo tenemos: \"Hola {{Name}}, gracias por llamar a Knight Law Group. Tengo una nota de que nos pidió no contactarle — con gusto le ayudo si lo desea, o podemos mantenerlo fuera de nuestra lista. ¿En qué puedo ayudarle?\" Luego espere. Solo continúe si ellos quieren; nunca presione. Continúe en español."
+        },
+        "edges": [
+          {
+            "destination_node_id": "node-intro",
+            "id": "e-optout-es-reengage",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to move forward, discuss their vehicle, or get help with a claim."
+            }
+          },
+          {
+            "destination_node_id": "node-end-optout-inbound",
+            "id": "e-optout-es-stay",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms they don't need anything, want to stay off the list, or are just confirming removal."
+            }
+          }
+        ]
       }
     ],
-    "start_node_id": "node-intro-lang",
-    "start_speaker": "user",
+    "start_node_id": "node-inbound-route",
+    "start_speaker": "agent",
     "tools": [
       {
         "parameter_type": "json",
