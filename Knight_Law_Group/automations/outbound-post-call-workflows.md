@@ -1,303 +1,224 @@
 # GHL Knight Law Group - Post Retell workflow
 
 
-High-Level Overview
-Trigger: Inbound webhook from your voice AI / call system.
-Core logic:
-Try to find an existing contact by phone/email.
-If not found, create the contact, then continue.
-Update contact fields from call analysis data.
-Tag the contact as “voice”.
-Branch by Lead Status:
-Incomplete Lead
-Retainer Lead
-Non-Retainer Lead
-Bad Lead
-Opt-Out Consent
-None (fallback)
-For Non-Retainer Leads, further branch by Lead Language (English / Spanish / None).
-Each branch then sends webhooks, manages opportunities, and/or moves contacts into follow-up workflows or removes them from workflows.
-Detailed Architecture
+Overall purpose
+
+This workflow processes inbound webhook calls from your Voice AI system for Knight Law Group. It:
+
+Finds or creates the contact based on phone/email
+Writes detailed call analysis data into custom fields
+Logs the call and adds internal notes
+Routes the contact based on Lead Status and Lead Language
+Triggers the right follow-up (retainer, non‑retainer, bad lead, opt‑out, human requested)
+Manages opportunities and tags
+Starts or stops other follow-up workflows as needed
+1. Trigger & Contact Handling
 Trigger
-Triggers:
 
-Inbound Webhook:
-Type: inbound_webhook
-Starts the workflow whenever your external system posts call data into this webhook.
-Initial Contact Resolution
-Actions:
+Inbound Webhook: Fires whenever your external system (Retell / n8n pipeline) sends a call payload into the platform.
+Contact lookup / creation
 
-Find Contact:
-Type: find_contact (multi-path)
-Looks up a contact using:
+Find Contact
+
+Looks up a contact by:
 Phone: {{inboundWebhookRequest.call.retell_llm_dynamic_variables.Phone}}
-Email: {{inboundWebhookRequest.call.call_analysis.custom_analysis_data._email _address}}
-Has two branches:
-Contact Found
-Contact Not Found
-Path A – Contact Found
-Flow: Inbound Webhook → Find Contact → Contact Found transition
+Email: {{inboundWebhookRequest.call.retell_llm_dynamic_variables.Email}}
+If found → goes down Contact Found branch.
+If not found → goes down Contact Not Found branch.
+Contact Not Found branch
 
-Contact Found (Transition):
+Create Contact: Creates a new contact with phone and email from the webhook.
+Go To: Jumps into the same update step used for existing contacts (so both paths converge).
+Contact Found branch (and post-create path)
 
-Type: transition (branch of Find Contact)
-Next: Update contact field
-Update contact field:
+Update contact field: Writes a large set of call-analysis values into contact fields, including:
 
-Type: update_contact_field
-Updates many fields on the contact from call analysis, including:
-Are you having issues with your vehicle?
-Did you purchase or lease your vehicle from a dealership in California?
-Are you still in possession of the vehicle?
-Vehicle year, make, model
-Purchase condition (new/used/CPO)
-Whether they visited a dealership for repair
-Whether they are the owner / signed the sales contract
-Phone Number
-Email Address
-Lead Status
-Lead Language
-Transcript of the Call
-Full Name
+Vehicle issues, purchase in CA, still in possession, year, make, model
+Repairs attempted, is owner
+Email, phone, full name
+Lead Status, Lead Language
+Purchase condition
 Bad Lead Reason
-Add voice tag:
+Full transcript + Call ID into a “Transcript of the Call” field
+Add voice tag: Adds the tag voice to mark this as a Voice AI lead.
 
-Type: add_contact_tag
-Adds tag: voice
-Lead Status Branching (If/Else):
+n8n Execution Note: Adds a colored internal note with:
 
-Type: if_else (condition node)
-Evaluates: inboundWebhookRequest.call.call_analysis.custom_analysis_data.Lead Status
+Call ID
+Call time
+n8n Execution ID
+Link to the specific n8n workflow
+Log external call: Logs the call as an outbound call record with:
+
+Date, to/from numbers, status, recording URL as attachment.
+2. Lead Status Routing (main decision hub)
+After logging the call, the workflow runs a big If/Else on:
+
+inboundWebhookRequest.call.call_analysis.custom_analysis_data.[Lead Status]
 Branches:
+
 Incomplete Lead
 Retainer Lead
 Non-Retainer Lead
 Bad Lead
 Opt-Out Consent
-None (else)
-From here, each branch has its own sub-flow.
+Human Requested
+None (fallback if Lead Status doesn’t match any of the above)
+Each branch has its own logic.
 
-Branch A1 – Incomplete Lead
-Flow: Lead Status If/Else → Incomplete Lead branch
+3. Incomplete Lead branch
+Add to Followup Workflow: Enrolls the contact into another workflow:
+Workflow ID: d41b1884-7adc-44dc-9930-ad48b6c34f37
+Passes trigger parameters through.
+This is essentially a handoff to a separate “Incomplete Lead” follow-up sequence.
 
-Incomplete Lead (Branch Node):
+4. Retainer Lead branch
+First, it checks whether the contact already has the retainer-sent tag.
 
-Type: if_else (branch-yes)
-Next: Add to Followup Workflow
-Add to Followup Workflow:
+Condition: retainer-sent Tag Exists?
+If No (tag does NOT exist) → run retainer sequence.
+If Yes (tag exists) → do nothing further in this branch.
+If No (retainer not yet sent):
 
-Type: add_to_workflow
-Name: “Add to Followup Workflow”
-Adds the contact to workflow ID: d41b1884-7adc-44dc-9930-ad48b6c34f37
-Passes trigger parameters into that workflow.
-This branch ends here.
-Branch A2 – Retainer Lead
-Flow: Lead Status If/Else → Retainer Lead branch
+Retainer Zapier Webhook - Post Call (Voice AI)
 
-Retainer Lead (Branch Node):
+Sends a POST to a Zapier hook with recording_url from the call.
+Create Or Update Opportunity
 
-Type: if_else (branch-yes)
-Next: Retainer Zapier Webhook - Post Call (Voice AI)
-Retainer Zapier Webhook - Post Call (Voice AI):
-
-Type: webhook
-Method: POST
-URL: https://hooks.zapier.com/hooks/catch/24533896/umwlbur/
-Sends call/lead data to Zapier.
-Create Or Update Opportunity (Retainer):
-
-Type: create_opportunity
 Pipeline: hjM5PWMprkNJNLZbDT6x
 Stage: 1434edf3-c7cd-4e28-988c-91d486181faa
+Status: won
 Name: {{contact.name}}
 Source: {{contact.source}}
-Status: won
-Creates or updates a “won” opportunity for this retainer lead.
-Remove from Workflow (multiple):
+Add retainer-sent Tag
 
-Type: remove_from_workflow
-Removes contact from workflows:
+Adds retainer-sent to the contact.
+Language split (Lead Language)
+
+Checks Lead Language from the inbound webhook:
+English
+Spanish
+None (fallback)
+English sub-branch:
+
+Email: Sends an English retainer email with:
+Explanation of next steps
+Link to sign agreement: https://sign.knightlaw.com/d/JU6yZ9Utb5qpG3
+SMS: Sends an English SMS with the same agreement link and opt-out language.
+Remove from Workflow: Removes the contact from:
 d41b1884-7adc-44dc-9930-ad48b6c34f37
 b60daf25-8c0a-43cb-a01f-fd05598e47ff
 9dfbcfc4-33bc-4f85-b8f4-1322abefd50a
-This branch ends here.
-Branch A3 – Non-Retainer Lead
-Flow: Lead Status If/Else → Non-Retainer Lead branch
+Spanish sub-branch:
 
-Non-Retainer Lead (Branch Node):
+Email: Sends a Spanish retainer email with:
+Link: https://sign.knightlaw.com/d/ES92PraGmTb2ym
+SMS: Sends a Spanish SMS with the same link and opt-out language.
+Remove from Workflow: Same three workflows removed as in English.
+None sub-branch:
 
-Type: if_else (branch-yes)
-Next: Non-Retainer Zapier Webhook - Post Call (Voice AI)
-Non-Retainer Zapier Webhook - Post Call (Voice AI):
+Does nothing further (no language match).
+5. Non-Retainer Lead branch
+First, it checks whether the contact already has the non-retainer-followup tag.
 
-Type: webhook
-Method: POST
-URL: https://hooks.zapier.com/hooks/catch/24533896/umwlbur/
-Sends non-retainer lead data to Zapier.
-Remove from Workflow (Non-Retainer – initial):
+Condition: non-retainer-followup Tag Exists?
+If No → run non-retainer follow-up.
+If Yes → do nothing further in this branch.
+If No:
 
-Type: remove_from_workflow
-Removes from workflow:
-d41b1884-7adc-44dc-9930-ad48b6c34f37
-Next: Lead Language If/Else
-Lead Language Branching (If/Else):
+Non-Retainer Zapier Webhook - Post Call (Voice AI)
 
-Type: if_else (condition node)
-Evaluates: inboundWebhookRequest.call.call_analysis.custom_analysis_data.Lead Language
-Branches:
+POST to the same Zapier hook with recording_url.
+Add non-retainer-followup Tag
+
+Adds non-retainer-followup.
+Remove from Workflow
+
+Removes from workflow d41b1884-7adc-44dc-9930-ad48b6c34f37 (the incomplete follow-up).
+Language split (Lead Language)
+
 English
 Spanish
-None (else)
-Branch A3a – Non-Retainer, English
-English (Branch Node):
+None
+English sub-branch:
 
-Type: if_else (branch-yes)
-Next: Add to Workflow - Non-Retainer Leads - Follow up English
-Add to Workflow - Non-Retainer Leads - Follow up English:
+Add to Workflow - Non-Retainer Leads - Follow up English
+Adds to workflow b60daf25-8c0a-43cb-a01f-fd05598e47ff.
+Create Or Update Opportunity
+Same pipeline and stage as Retainer Lead, status won.
+Spanish sub-branch:
 
-Type: add_to_workflow
-Workflow ID: b60daf25-8c0a-43cb-a01f-fd05598e47ff
-Adds English-speaking non-retainer leads to the English follow-up workflow.
-Create Or Update Opportunity (Non-Retainer English):
+Add to Workflow - Non-Retainer Leads - Follow up Spanish
+Adds to workflow 9dfbcfc4-33bc-4f85-b8f4-1322abefd50a.
+Create Or Update Opportunity
+Same pipeline/stage, status won.
+None sub-branch:
 
-Type: create_opportunity
-Pipeline: hjM5PWMprkNJNLZbDT6x
-Stage: 1434edf3-c7cd-4e28-988c-91d486181faa
-Name: {{contact.name}}
-Source: {{contact.source}}
-Status: won
-This branch ends here.
-Branch A3b – Non-Retainer, Spanish
-Spanish (Branch Node):
+No further actions.
+6. Bad Lead branch
+Bad Lead Zapier Webhook - Post Call (Voice AI)
 
-Type: if_else (branch-yes)
-Next: Add to Workflow - Non-Retainer Leads - Follow up Spanish
-Add to Workflow - Non-Retainer Leads - Follow up Spanish:
+POST to Zapier with recording_url.
+Create Or Update Opportunity
 
-Type: add_to_workflow
-Workflow ID: 9dfbcfc4-33bc-4f85-b8f4-1322abefd50a
-Adds Spanish-speaking non-retainer leads to the Spanish follow-up workflow.
-Create Or Update Opportunity (Non-Retainer Spanish):
-
-Type: create_opportunity
-Pipeline: hjM5PWMprkNJNLZbDT6x
-Stage: 1434edf3-c7cd-4e28-988c-91d486181faa
-Name: {{contact.name}}
-Source: {{contact.source}}
-Status: won
-This branch ends here.
-Branch A3c – Non-Retainer, None (Language not matched)
-None (Language Else Branch):
-Type: if_else (branch-no)
-No further actions configured.
-This branch ends with no follow-up workflow or opportunity.
-Branch A4 – Bad Lead
-Flow: Lead Status If/Else → Bad Lead branch
-
-Bad Lead (Branch Node):
-
-Type: if_else (branch-yes)
-Next: Bad Lead Zapier Webhook - Post Call (Voice AI)
-Bad Lead Zapier Webhook - Post Call (Voice AI):
-
-Type: webhook
-Method: POST
-URL: https://hooks.zapier.com/hooks/catch/24533896/umwlbur/
-Sends bad lead data to Zapier.
-Create Or Update Opportunity (Bad Lead):
-
-Type: create_opportunity
 Pipeline: hjM5PWMprkNJNLZbDT6x
 Stage: b23bab57-3063-44a9-81ba-4acbac350e16
-Name: {{contact.name}}
-Source: {{contact.source}}
 Status: lost
-Tracks this as a lost opportunity.
-Remove from Workflow (Bad Lead):
+Name/source from contact.
+Remove from Workflow
 
-Type: remove_from_workflow
-Removes from workflow:
-d41b1884-7adc-44dc-9930-ad48b6c34f37
-This branch ends here.
-Branch A5 – Opt-Out Consent
-Flow: Lead Status If/Else → Opt-Out Consent branch
+Removes from workflow d41b1884-7adc-44dc-9930-ad48b6c34f37.
+7. Opt-Out Consent branch
+Opt-out Zapier Webhook - Post Call (Voice AI)
 
-Opt-Out Consent (Branch Node):
+POST to Zapier with recording_url.
+Wait
 
-Type: if_else (branch-yes)
-Next: Opt-out Zapier Webhook - Post Call (Voice AI)
-Opt-out Zapier Webhook - Post Call (Voice AI):
+Waits 5 minutes.
+Remove from Workflow
 
-Type: webhook
-Method: POST
-URL: https://hooks.zapier.com/hooks/catch/24533896/umwlbur/
-Sends opt-out consent data to Zapier.
-Wait:
+Removes the contact from all workflows, including the current one.
+This effectively cleans the contact out of all automations after an opt-out.
 
-Type: wait
-Waits 5 minutes after the webhook:
-Mode: time-based
-Unit: minutes
-Value: 5
-Remove from Workflow (All):
+8. Human Requested branch
+This branch is triggered when the Lead Status logic routes to “Human Requested” (and also there’s a separate branch in the main condition that checks the contact’s Lead Status field for “Human Requested”).
 
-Type: remove_from_workflow
-Attributes:
-allWorkflows: true
-includeCurrent: true
-Removes the contact from all workflows, including this one.
-This branch ends here.
-Branch A6 – None (Lead Status Else)
-None (Lead Status Else Branch):
-Type: if_else (branch-no)
-No further actions configured.
-If Lead Status doesn’t match any of the defined values, the contact reaches this node and the flow ends with no additional processing.
-Path B – Contact Not Found
-Flow: Inbound Webhook → Find Contact → Contact Not Found transition
+HR Zapier Webhook - Post Call (Voice AI)
 
-Contact Not Found (Transition):
+POST to Zapier with recording_url.
+Language split (Lead Language)
 
-Type: transition
-Next: Create Contact
-Create Contact:
+English
+Spanish
+None
+English sub-branch:
 
-Type: create_update_contact
-Creates a new contact with:
-Phone: {{inboundWebhookRequest.call.call_analysis.custom_analysis_data._phone _number}}
-Email: {{inboundWebhookRequest.call.call_analysis.custom_analysis_data._email _address}}
-Go To (Existing Contact Path):
+SMS: Sends an English SMS with a Calendly link:
+https://calendly.com/knight-law/ca-lemon-case-evaluation
+Email: Sends an English email with the same Calendly link and explanation.
+Remove from Workflow: Removes from all workflows (include current).
+Spanish sub-branch:
 
-Type: goto
-Target Node: Update contact field (846ca259-690d-42c5-8611-d3d4a6ac936c)
-After creating the contact, the flow jumps into the same path as “Contact Found”:
-Update contact fields → Add voice tag → Lead Status branching → all the same branches described above.
-Summary of Action Types Used
-Trigger:
+SMS: Sends a Spanish SMS with Calendly link:
+https://calendly.com/knight-law/consultagratis-california
+Email: Sends a Spanish email with the same link and explanation.
+Remove from Workflow: Removes from all workflows (include current).
+None sub-branch:
 
-Inbound Webhook
-Contact Management:
-
-Find Contact
-Create Contact (create_update_contact)
-Update contact field
-Add contact tag
-Logic / Branching:
-
-If/Else (Lead Status)
-If/Else (Lead Language)
-Branch nodes (Incomplete, Retainer, Non-Retainer, Bad Lead, Opt-Out, None; English, Spanish, None)
-Goto
-External Integrations:
-
-Webhook (multiple to Zapier URL)
-Sales Pipeline:
-
-Create Or Update Opportunity (various stages and statuses)
-Workflow Control:
-
-Add to Workflow (3 different follow-up workflows)
-Remove from Workflow (specific workflows and all workflows)
-Wait (5 minutes before global removal in Opt-Out branch)
+No further actions.
+9. None (fallback) branch
+If Lead Status doesn’t match any of the defined values, the None branch under the main Lead Status condition is taken.
+This branch has no actions; the workflow effectively ends for that contact.
+10. Summary of key behaviors
+Data capture: Rich call analysis is stored on the contact, including transcript and custom fields.
+Tagging: Uses voice, retainer-sent, and non-retainer-followup to control logic and prevent duplicates.
+Opportunities: Creates/updates opportunities in a single pipeline, with different stages/statuses for retainer, non-retainer, and bad leads.
+External systems:
+Multiple POSTs to a single Zapier hook for downstream processing.
+Links out to n8n for execution tracking.
+Uses Calendly links for human-requested consults.
+Language-aware: All client-facing communication (email/SMS) is split between English and Spanish based on Lead Language.
+Workflow hygiene: Several branches remove contacts from other workflows or all workflows to avoid conflicting automations.
 
 ---
 
