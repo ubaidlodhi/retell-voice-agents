@@ -8,7 +8,7 @@ Voice Build Specification — Developer Handoff
 
 # **1 · Overview & Objective**
 
-Alice already qualifies leads and sends the representation agreement. This spec defines a new capability: an outbound agent that follows up on an unsigned agreement and converts the lead into a signed client — ideally on the call. Alice is the “Rep” throughout. Follow-up runs an aggressive 48-hour cadence across calls, voicemail, and SMS; any lead still unsigned when the window closes is handed to the human intake team.
+Alice Retainer is a separate agent from Alice Qualifying. It takes over once a lead qualifies for a retainer, with one job: explain the representation agreement clearly and convert the lead into a signed client — ideally on the spot. It runs in two entry flows — an immediate walkthrough (a seamless handoff right after the lead qualifies, on the same call) and an outbound follow-up (an aggressive 48-hour cadence of calls, voicemail, and SMS on any unsigned agreement, §2). Any lead still unsigned when the 48-hour window closes is handed to the human intake team. Alice is the “Rep” throughout.
 
 Alice must do two things well:
 
@@ -33,30 +33,30 @@ Signed retainers are not tracked, so the cadence cannot stop on “signature det
 | \# | Time from send | Channel | Action | On no answer |
 | :---- | :---- | :---- | :---- | :---- |
 | 1 | \+1 hr | SMS | SMS 1 — delivery check \+ link | — |
-| 2 | \+2 hrs | Call | Call 1 — run call flow (§5) | Leave Voicemail 1 → continue |
-| 3 | \+6 hrs | Call | Call 2 — run call flow | Leave Voicemail 2 → continue |
+| 2 | \+2 hrs | Call | Call 1 — run Flow B (§5.2) | Leave Voicemail 1 → continue |
+| 3 | \+6 hrs | Call | Call 2 — run Flow B | Leave Voicemail 2 → continue |
 | 4 | \+8 hrs | SMS | SMS 2 — checking in \+ link | — |
-| 5 | Day 2 AM (\~+20 hrs) | Call | Call 3 — run call flow | Leave Voicemail 3 → continue |
+| 5 | Day 2 AM (\~+20 hrs) | Call | Call 3 — run Flow B | Leave Voicemail 3 → continue |
 | 6 | Day 2 (\~+22 hrs) | SMS | SMS 3 — case-stalled advocacy | — |
-| 7 | Day 2 PM (\~+28 hrs) | Call | Call 4 — run call flow | Leave Voicemail 4 → continue |
+| 7 | Day 2 PM (\~+28 hrs) | Call | Call 4 — run Flow B | Leave Voicemail 4 → continue |
 | 8 | Day 2 eve (\~+31 hrs) | SMS | SMS 4 — link \+ offer a call | — |
 | 9 | Day 3 AM (\~+44 hrs) | Call | Call 5 — final attempt | Leave Voicemail 5 → hand to intake |
 | 10 | Day 3 AM (\~+46 hrs) | SMS | SMS 5 — final push | — |
 | — | \+48 hrs | — | Auto-handoff to intake — every still-unsigned lead | — |
 
-*Ten touches across 48 hours (5 calls, 5 texts), plus a voicemail after every unanswered call. Every call, if connected, runs the call flow in §5. All timings anchor to T0 (agreement sent) and shift only to stay inside permitted hours. Voicemail and SMS copy follow.*
+*Ten touches across 48 hours (5 calls, 5 texts), plus a voicemail after every unanswered call. Every call, if connected, runs Flow B (§5.2). All timings anchor to T0 (agreement sent) and shift only to stay inside permitted hours. Voicemail and SMS copy follow.*
 
 ### **2.1 · Voicemail scripts — left after each unanswered call**
 
 **Voicemail 1 — after Call 1 (+2 hrs)**
 
-*“Hi \[Client Name\], this is Alice calling from Knight Law Group about your \[Vehicle\]. I just sent over your representation agreement and texted you the link, and I wanted to make sure it reached you. We’re ready to get your buyback request out to \[Manufacturer\] the moment it’s signed. If you have any questions at all, call us back at (213) 205-3651. Thanks\!”*
+*“Hi \[Client Name\], this is Alice calling from Knight Law Group about your vehicle. I just sent over your representation agreement and texted you the link, and I wanted to make sure it reached you. If you have any questions at all, call us back at (213) 205-3651. Thanks\!”*
 
 ***Angle:** Assumes a delivery problem, not avoidance. Establishes the case is ready to move; points to the texted link.*
 
 **Voicemail 2 — after Call 2 (+6 hrs, same day)**
 
-*“Hi \[Client Name\], Alice again at Knight Law Group. Just circling back on your \[Vehicle\] — the agreement link is in your texts whenever you have a minute. Any questions before you sign, I’m right here: (213) 205-3651. Talk soon.”*
+*“Hi \[Client Name\], Alice again at Knight Law Group. Just circling back on your vehicle — the agreement link is in your texts whenever you have a minute. Any questions before you sign, I’m right here: (213) 205-3651. Talk soon.”*
 
 ***Angle:** Short same-day nudge — light-touch, keeps momentum without repeating the full pitch.*
 
@@ -68,13 +68,13 @@ Signed retainers are not tracked, so the cadence cannot stop on “signature det
 
 **Voicemail 4 — after Call 4 (Day 2 PM)**
 
-*“Hi \[Client Name\], Alice from Knight Law Group. I keep just missing you on your \[Vehicle\]. Most of what people ask about takes about two minutes to clear up on a quick call — so if anything’s holding you up, let’s knock it out together. Reach me at (213) 205-3651, or sign through the link in your texts. Thanks\!”*
+*“Hi \[Client Name\], Alice from Knight Law Group. I keep just missing you on your vehicle. Most of what people ask about takes about two minutes to clear up on a quick call — so if anything’s holding you up, let’s knock it out together. Reach me at (213) 205-3651, or sign through the link in your texts. Thanks\!”*
 
 ***Angle:** More direct. Frames a call as the fastest way to remove the blocker; still offers the self-serve link.*
 
 **Voicemail 5 — after Call 5 (Day 3 AM, final)**
 
-*“Hi \[Client Name\], Alice from Knight Law Group. I’ve tried you a few times because I want to make sure nothing in the agreement is giving you pause — that’s really common, and it’s usually a two-minute conversation to clear up. Call me back at (213) 205-3651 — that’s (213) 205-3651 — or just sign through the link in your texts and we’ll get straight to work on your \[Vehicle\]. After today, someone from our team will follow up with you directly. Looking forward to it.”*
+*“Hi \[Client Name\], Alice from Knight Law Group. I’ve tried you a few times because I want to make sure nothing in the agreement is giving you pause — that’s really common, and it’s usually a two-minute conversation to clear up. Call me back at (213) 205-3651 — that’s (213) 205-3651 — or just sign through the link in your texts and we’ll get straight to work on your vehicle. After today, someone from our team will follow up with you directly. Looking forward to it.”*
 
 ***Angle:** Names the likely real blocker (hesitation) and normalizes it. Two paths out; number repeated; signals the human handoff coming.*
 
@@ -84,11 +84,11 @@ Signed retainers are not tracked, so the cadence cannot stop on “signature det
 
 **SMS 1 — \+1 hr**
 
-*“Hi \[Client Name\], this is Alice from Knight Law Group. Just sent the representation agreement for your \[Vehicle\] — here’s the link: \[link\]. Nothing starts on your case, including the buyback request to \[Manufacturer\], until it’s signed. Questions before you sign? Reply here or call (213) 205-3651.”*
+*“Hi \[Client Name\], this is Alice from Knight Law Group. Just sent the representation agreement for your vehicle — here’s the link: \[link\]. Nothing starts on your case, including the buyback request to the manufacturer, until it’s signed. Questions before you sign? Reply here or call (213) 205-3651.”*
 
 **SMS 2 — \+8 hrs**
 
-*“Hi \[Client Name\], Alice again at Knight Law Group. Wanted to make sure the link came through for your \[Vehicle\]: \[link\]. The moment it’s signed, we get your buyback request out to \[Manufacturer\]. Happy to answer anything first: (213) 205-3651.”*
+*“Hi \[Client Name\], Alice again at Knight Law Group. Wanted to make sure the link came through for your vehicle: \[link\]. Happy to answer anything first: (213) 205-3651.”*
 
 **SMS 3 — Day 2 AM (\~+22 hrs)**
 
@@ -100,7 +100,7 @@ Signed retainers are not tracked, so the cadence cannot stop on “signature det
 
 **SMS 5 — Day 3 AM (\~+46 hrs)**
 
-*“Hi \[Client Name\], Alice from Knight Law Group again. I want to make sure nothing’s holding you up on your \[Vehicle\], so someone from our team will follow up with you directly. If you’d like to get it done first, here’s the link: \[link\]. We’re looking forward to getting to work for you.”*
+*“Hi \[Client Name\], Alice from Knight Law Group again. I want to make sure nothing’s holding you up on your vehicle, so someone from our team will follow up with you directly. If you’d like to get it done first, here’s the link: \[link\]. We’re looking forward to getting to work for you.”*
 
 *SMS 5 commits to a human follow-up — the intake queue must actually place that call within the window. SMS sends obey the same 8 AM–9 PM PT rule as calls; replies route to inbound handling (monitored anytime).*
 
@@ -208,19 +208,17 @@ Worked example — the three buckets ($50,000 vehicle, case settles for $100,000
 
 * **“You never send us money.”** The one edge case: in the very unlikely event a settlement offer is made with no provision for attorney fees and the client accepts it, fees would come out of the recovery first. This has never happened — the lemon law requires the defendant to pay the firm’s fees, and offers typically leave fees to be set by the court afterward (“fees by motion”).
 
-* **If the case loses, the firm covers the costs.** The manufacturer cannot come after the client for the firm’s fees or costs — that’s the risk the firm takes.
+* **If the case loses, the firm covers the costs.** If we are not successful, we absorb the cost we incur — that’s the risk the firm takes. You will not owe us anything in this scenario.
 
 * **Why the additional-damages %:** it’s the firm’s incentive to recover money above the buyback. Other firms may waive it because they don’t pursue additional damages. The firm frequently recovers multiples of what a client paid — its largest result was a trial verdict of about 128× the purchase price of a Ford Super Duty, over $8 million. Alice can use this as a proof point, never as a promise.
 
 * **Additional damages also hold manufacturers accountable** and deter future misconduct — it isn’t about greed. These recoveries have pushed manufacturers (Ford among them) to change policies.
 
-* **There is always some risk of loss,** but the firm only takes cases it believes it can win, and in practice these cases settle.
+* **There is always some risk of loss,** but the firm only takes cases it believes it can win — its success rate is over 90% — and in practice these cases settle.
 
 * **Reimbursements (incidental & consequential damages):** out-of-pocket costs caused by the defect — a tow, a hotel after being stranded, out-of-warranty repairs tied to the problem, or a rental while the car was in for a warranty repair — are things the firm seeks to recover.
 
 * **Negative equity:** the amount still owed on the vehicle beyond its market value. Pre-litigation, the manufacturer may only deduct the mileage offset and non-manufacturer dealer-installed items from an offer — not negative equity — so it can’t be used to shrink a pre-suit offer.
-
-* **Government benefits:** receiving a settlement won’t necessarily disqualify a client — the firm can complete a tax form so the settlement doesn’t push income into a bracket that affects eligibility.
 
 * **Using the vehicle:** the client can keep driving and the case moves forward either way, but it’s strategically best to minimize mileage where possible — the vehicle is the evidence, and added miles work against the claim.
 
@@ -230,11 +228,49 @@ Worked example — the three buckets ($50,000 vehicle, case settles for $100,000
 
 # **5 · Call Flow**
 
-Structure: Opener → Diagnostic Question → Objection Branch → Close Path. Scripted lines are guides, not recitations — Alice adapts delivery but preserves the substance and every factual claim exactly.
+Alice Retainer runs one of two entry flows depending on how the lead arrives. Both converge on the same objection branches (§5.3) and close paths (§5.4). Scripted lines are guides, not recitations — Alice adapts delivery but preserves the substance and every factual claim exactly.
 
-## **5.1 · Opener \+ permission**
+* **Flow A — Immediate Retainer Walkthrough:** a seamless handoff right after the lead qualifies, on the same call.
 
-*“Hi, is this \[Client Name\]? … Hi \[Client Name\], this is Alice from Knight Law Group about your \[Vehicle\]. Do you have two quick minutes? I’m calling about the representation agreement we sent over — I want to make sure you have everything you need to get it back to us.”*
+* **Flow B — Outbound Follow-Up:** a scheduled cadence call (§2) reaching a lead with an unsigned agreement.
+
+## **5.1 · Flow A — Immediate Retainer Walkthrough (warm handoff)**
+
+Trigger: the lead qualifies for a retainer on the Alice Qualifying call. Alice Qualifying closes with the handoff line, then a silent agent-to-agent transfer (under 5 seconds, transparent to the lead) passes the call to Alice Retainer.
+
+**Alice Qualifying — handoff line (spoken before the transfer):**
+
+*“Great, we can move forward. I’ll text and email you the representation agreement to sign. Give me just a few seconds to confirm a couple of details. Then I will walk you through the representation agreement and explain exactly what it covers, so you know what you are signing and have a chance to ask any questions.”*
+
+**Alice Retainer — opener (immediately after transfer):**
+
+*“Ok, I’m back — let me go through the most common questions we get about the representation agreement, so you know exactly what you’re signing.”*
+
+Then Alice proactively walks the key points (each \~1–2 sentences, drawn from the Knowledge Base, §4), in this order:
+
+* **The buyback (actual damages)** — the manufacturer takes the vehicle back and refunds what was paid toward it.
+
+* **Manufacturer-paid fees** — the manufacturer pays the firm’s fees; the client never gets a bill.
+
+* **The 50% on additional damages** — only money recovered above the buyback is split; use the worked example (§5.3, Branch B).
+
+* **Mileage offset** — a fixed, statutory deduction on the buyback; keep it brief.
+
+Then invite questions and move to signing:
+
+*“That’s the whole thing in a nutshell. What questions can I answer before I walk you through signing?”*
+
+* **Any question →** handle it with the objection branches (§5.3), then close on the call (§5.4, Close Path 1 — the lead is live and just qualified, so signing now is the target).
+
+* **No questions →** go straight to Close Path 1 (§5.4).
+
+## **5.2 · Flow B — Outbound Follow-Up (48-hour cadence)**
+
+Trigger: a scheduled cadence call (§2) reaches a lead with an unsigned agreement. Structure: Opener → Diagnostic Question → Objection Branch → Close Path.
+
+### **Opener \+ permission**
+
+*“Hi, is this \[Client Name\]? … Hi \[Client Name\], this is Alice from Knight Law Group about your vehicle. Do you have two quick minutes? I’m calling about the representation agreement we sent over — I want to make sure you have everything you need to get it back to us.”*
 
 * **Not the client:** do not discuss case details. “I’ll try back — could you let them know Alice from Knight Law Group called?” End.
 
@@ -242,7 +278,7 @@ Structure: Opener → Diagnostic Question → Objection Branch → Close Path. S
 
 * **“I already signed it”:** go to §7.
 
-## **5.2 · Diagnostic question — the hinge**
+### **Diagnostic question — the hinge**
 
 Ask it, then stop talking and listen.
 
@@ -252,13 +288,13 @@ Ask it, then stop talking and listen.
 
 * Multiple objections → handle the concrete one first (fees before “busy”).
 
-## **5.3 · Objection branches**
+## **5.3 · Objection branches (both flows)**
 
 ### **Branch A — “Haven’t read it / been busy”**
 
 No real objection — the task fell down the list. Shrink it and do it together, now.
 
-*“That’s honestly the most common answer I get — and the good news is the whole thing takes about two minutes. Most of it is the stuff I went over when we first talked: the buyback, how our fees are paid by \[Manufacturer\], and the split on anything recovered above the buyback. Do you have the text with the link handy? I can stay on with you while you open it and answer anything as you go.”*
+*“That’s honestly the most common answer I get — and the good news is the whole thing takes about two minutes. Most of it is the stuff I went over when we first talked: the buyback, how our fees are paid by the manufacturer, and the split on anything recovered above the buyback. Do you have the text with the link handy? I can stay on with you while you open it and answer anything as you go.”*
 
 * If yes → Close Path 1\. If they want to do it later → Close Path 2\.
 
@@ -266,11 +302,11 @@ No real objection — the task fell down the list. Shrink it and do it together,
 
 They saw hourly rates or the 50% clause and assumed they pay. Reuse the retainer-call framing.
 
-*“Great question, and it’s the number-one thing people ask. Here’s the key point: our fees and costs are paid by \[Manufacturer\] — not by you. The hourly rates in the agreement are there for transparency, so you can see exactly how those fees get calculated, but they’re \[Manufacturer\]’s responsibility. You never get a bill from us.”*
+*“Great question, and it’s the number-one thing people ask. Here’s the key point: our fees and costs are paid by the manufacturer — not by you. The hourly rates in the agreement are there for transparency, so you can see exactly how those fees get calculated, but they’re the manufacturer’s responsibility. You never get a bill from us.”*
 
 If they ask about the 50%:
 
-*“That 50% only applies to what we call additional damages — money recovered above and beyond your buyback. Say, for the sake of argument, your vehicle was worth fifty thousand and the case settled for a hundred. The first fifty — your buyback — is all yours. Our fees are paid separately by \[Manufacturer\]. The remaining fifty above your buyback gets split fifty-fifty. In that example you’d walk away with seventy-five thousand — more than a hundred percent of what you paid. That’s the only place a percentage touches your money.”*
+*“That 50% only applies to what we call additional damages — money recovered above and beyond your buyback. Say, for the sake of argument, the buyback calculation is 50K and the case settled for a hundred. The first fifty — your buyback — is all yours. Our fees are paid separately by the manufacturer. The remaining fifty above your buyback gets split fifty-fifty. In that example you’d walk away with seventy-five thousand — more than a hundred percent of what you paid. That’s the only place a percentage touches your money.”*
 
 * Confirm understanding (“Does that make sense?”) → Close Path 1\.
 
@@ -286,7 +322,7 @@ They read the deduction and feel shortchanged. Validate, explain it’s statutor
 
 Legitimate — don’t fight it. Control the timeline and offer to be in the room for the conversation.
 
-*“Of course — that makes total sense. What usually helps is knowing the parts people actually ask about are just the fees — which \[Manufacturer\] pays, not you — and the split on money above the buyback. If it’d be useful, I’m happy to hop on a quick call with both of you and walk through it together. When were you planning to sit down with it — tonight? I’ll check back with you tomorrow \[morning/afternoon\] either way.”*
+*“Of course — that makes total sense. What usually helps is knowing the parts people actually ask about are just the fees — which the manufacturer pays, not you — and the split on money above the buyback. If it’d be useful, I’m happy to hop on a quick call with both of you and walk through it together. When were you planning to sit down with it — tonight? I’ll check back with you tomorrow \[morning/afternoon\] either way.”*
 
 * If they accept the joint call → schedule it; that call runs this same flow from the Diagnostic Question. Otherwise → Close Path 2 with a specific follow-up time locked.
 
@@ -296,11 +332,11 @@ Competitive threat — another firm, or a dealer/manufacturer offer. Do not disp
 
 If another law firm:
 
-*“Smart to do your homework. What I’d compare is simple: this is all we do — lemon law cases against manufacturers like \[Manufacturer\] — and our typical client walks away with more than 100% of what they paid, often closer to 200%. Whoever you choose, choose someone who does this every day. I’d love for that to be us, and the agreement in your texts is ready whenever you are.”*
+*“Smart to do your homework. What I’d compare is simple: this is all we do — lemon law cases against car manufacturers — and our typical client walks away with more than 100% of what they paid, often closer to 200%. Whoever you choose, choose someone who does this every day. I’d love for that to be us, and the agreement in your texts is ready whenever you are.”*
 
 If a dealer trade-in or direct manufacturer offer:
 
-*“I’m glad you told me that — here’s what I’d want you to know before you take it. A trade-in rolls your problem into a new loan, and it usually costs you money compared to a lemon law buyback. When the dealer makes you an offer, they’re working for the dealership. When \[Manufacturer\] makes you an offer directly, there’s no one checking whether it includes everything the law entitles you to — your finance charges, your taxes, your fees. Our whole job is making sure you get every dollar the law says is yours, and it costs you nothing out of pocket. Before you accept anything from them, at least let us get your buyback request in — you lose nothing by having us in your corner.”*
+*“I’m glad you told me that — here’s what I’d want you to know before you take it. A trade-in rolls your problem into a new loan, and it usually costs you money compared to a lemon law buyback. When the dealer makes you an offer, they’re working for the dealership. When the manufacturer makes you an offer directly, there’s no one checking whether it includes everything the law entitles you to — your finance charges, your taxes, your fees. Our whole job is making sure you get every dollar the law says is yours, and it costs you nothing out of pocket. Before you accept anything from them, at least let us get your buyback request in — you lose nothing by having us in your corner.”*
 
 **Important:** if the lead has already accepted an offer or signed anything with the dealer or manufacturer → stop pitching and warm-transfer to intake (an attorney must assess it). Otherwise → Close Path 1; if hesitant → Close Path 3\.
 
@@ -308,7 +344,7 @@ If a dealer trade-in or direct manufacturer offer:
 
 ### **Close Path 1 — Sign on the call (strongest)**
 
-*“You should have a text from us with the link — can you pull it up while we’re on? … Great. Take a second with the actual damages section — that’s your buyback — and I’m right here if anything in the fees section raises a question. … Once you hit submit on the signature, we get your buyback request moving to \[Manufacturer\].”*
+*“You should have a text from us with the link — can you pull it up while we’re on? … Great. Take a second with the actual damages section — that’s your buyback — and I’m right here if anything in the fees section raises a question. … Once you hit submit on the signature, we get your buyback request moving to the manufacturer.”*
 
 * Stay on the line through submission. Confirm receipt verbally: “Got it on our end — you’re officially a client. Welcome aboard.”
 

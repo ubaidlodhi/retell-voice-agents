@@ -20,13 +20,13 @@ Yes — there is **plenty of free private parking** on-site for clients.
 
 ### Q: What is your cancellation policy?
 
-We kindly ask for **twenty-four hours' notice** for cancellations or changes.
+We kindly ask for **twenty-four hours' notice** for cancellations or changes whenever possible.
 
 ---
 
 ### Q: How do I reschedule or cancel my appointment?
 
-You can call or text the spa to cancel or reschedule. We kindly ask for twenty-four hours' notice.
+You can call or text the spa to cancel or reschedule. We kindly ask for twenty-four hours' notice whenever possible.
 
 ---
 
@@ -110,7 +110,7 @@ Yes, we offer **prenatal massage** for expecting mothers. We recommend consultin
 
 ### Q: Do you offer couples massage?
 
-Yes — we offer couples massage and have a dedicated **couples massage room**. Both guests can pick any massage type from the menu (Signature, Swedish, Deep Tissue, etc.). Let us know your preferred date and time, and we'll check availability.
+Yes — we offer couples massage and have a dedicated **couples massage room** where two massages run side by side. Let us know your preferred date and time and we'll check availability. The spa confirms each guest's massage details when it reaches out ahead of the appointment.
 
 ---
 

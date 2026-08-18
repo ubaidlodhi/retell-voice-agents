@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-16T09:17:34.124Z",
+  "updatedAt": "2026-08-16T08:43:52.370Z",
   "createdAt": "2026-05-01T19:09:54.355Z",
   "id": "s5dWZOMRl0X7PV65",
   "name": "Retell AI ↔ Wix Bookings | TEST CREDENTIALS (rebuild)",
@@ -39,7 +39,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const inputJson = $input.first().json;\nconst { args } = inputJson;\nconst errors = [];\n\n// serviceName OR serviceId is enough - \"Resolve: Service (Slots)\" downstream\n// settles which one wins against the live catalog.\nif (!args.serviceId && !args.serviceName) errors.push('serviceId or serviceName is required');\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\nif (!args.durationInMinutes) errors.push('durationInMinutes is required');\n\n// Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss\nfunction formatForWix(dateStr, isEnd = false) {\n    if (!dateStr) return dateStr;\n    let cleanStr = String(dateStr).replace('Z', '');\n    cleanStr = cleanStr.replace(/[+-]\\d{2}:\\d{2}$/, '');\n    if (cleanStr.length === 10) {\n        cleanStr += isEnd ? 'T23:59:59.000' : 'T00:00:00.000';\n    }\n    return cleanStr;\n}\n\nif (args.startDate) {\n    if (isNaN(Date.parse(args.startDate))) {\n        errors.push('startDate is not a valid date');\n    } else {\n        args.startDate = formatForWix(args.startDate, false);\n    }\n}\n\nif (args.endDate) {\n    if (isNaN(Date.parse(args.endDate))) {\n        errors.push('endDate is not a valid date');\n    } else {\n        args.endDate = formatForWix(args.endDate, true);\n    }\n}\n\n// --- Normalize optional filter args ---\n\n// staffId: trim or null\nif (args.staffId === '' || args.staffId === undefined) {\n    args.staffId = null;\n} else if (args.staffId) {\n    args.staffId = String(args.staffId).trim();\n}\n\n// timeOfDay: lowercase one of morning/afternoon/evening/any (default any)\nconst validTOD = ['morning', 'afternoon', 'evening', 'any'];\nif (args.timeOfDay) {\n    const tod = String(args.timeOfDay).toLowerCase().trim();\n    args.timeOfDay = validTOD.includes(tod) ? tod : 'any';\n} else {\n    args.timeOfDay = 'any';\n}\n\n// earliestFirst: coerce to boolean\nif (args.earliestFirst === true || String(args.earliestFirst).toLowerCase() === 'true') {\n    args.earliestFirst = true;\n} else {\n    args.earliestFirst = false;\n}\n\n// --- NEW (V26): preferredTime -> normalized \"HH:MM\" 24-hour, or null ---\n// Accepts \"14:00\", \"14:00:00\", \"2 PM\", \"2pm\", \"2:30 PM\", \"2:30pm\".\n// When present, the formatter returns the slots NEAREST this time instead of\n// blindly returning the earliest N — this is what caused the agent to claim\n// \"no 2 PM slot\" when 2 PM existed but fell outside the first 6 results.\nfunction normalizePreferredTime(v) {\n    if (v === undefined || v === null || v === '') return null;\n    const s = String(v).trim().toLowerCase();\n\n    // 12-hour form first (\"2 pm\", \"2:30 pm\", \"2pm\")\n    let m = s.match(/^(\\d{1,2})(?::(\\d{2}))?\\s*([ap])\\.?\\s*m\\.?$/);\n    if (m) {\n        let h = parseInt(m[1], 10);\n        const mi = m[2] ? parseInt(m[2], 10) : 0;\n        if (h < 1 || h > 12 || mi > 59) return null;\n        if (h === 12) h = 0;\n        if (m[3] === 'p') h += 12;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    // 24-hour form (\"14:00\", \"14:00:00\", \"09:30\")\n    m = s.match(/^(\\d{1,2}):(\\d{2})(?::\\d{2})?$/);\n    if (m) {\n        const h = parseInt(m[1], 10);\n        const mi = parseInt(m[2], 10);\n        if (h > 23 || mi > 59) return null;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    return null;\n}\nargs.preferredTime = normalizePreferredTime(args.preferredTime);\n\n// limit: integer 1..50, default 6 (3 if earliestFirst and not set)\nif (args.limit !== undefined && args.limit !== null && args.limit !== '') {\n    const n = parseInt(args.limit, 10);\n    if (!isNaN(n) && n >= 1 && n <= 50) {\n        args.limit = n;\n    } else {\n        args.limit = args.earliestFirst ? 3 : 6;\n    }\n} else {\n    args.limit = args.earliestFirst ? 3 : 6;\n}\n\nreturn [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+        "jsCode": "const inputJson = $input.first().json;\nconst { args } = inputJson;\nconst errors = [];\n\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\nif (!args.durationInMinutes) errors.push('durationInMinutes is required');\n\n// Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss\nfunction formatForWix(dateStr, isEnd = false) {\n    if (!dateStr) return dateStr;\n    let cleanStr = String(dateStr).replace('Z', '');\n    cleanStr = cleanStr.replace(/[+-]\\d{2}:\\d{2}$/, '');\n    if (cleanStr.length === 10) {\n        cleanStr += isEnd ? 'T23:59:59.000' : 'T00:00:00.000';\n    }\n    return cleanStr;\n}\n\nif (args.startDate) {\n    if (isNaN(Date.parse(args.startDate))) {\n        errors.push('startDate is not a valid date');\n    } else {\n        args.startDate = formatForWix(args.startDate, false);\n    }\n}\n\nif (args.endDate) {\n    if (isNaN(Date.parse(args.endDate))) {\n        errors.push('endDate is not a valid date');\n    } else {\n        args.endDate = formatForWix(args.endDate, true);\n    }\n}\n\n// --- Normalize optional filter args ---\n\n// staffId: trim or null\nif (args.staffId === '' || args.staffId === undefined) {\n    args.staffId = null;\n} else if (args.staffId) {\n    args.staffId = String(args.staffId).trim();\n}\n\n// timeOfDay: lowercase one of morning/afternoon/evening/any (default any)\nconst validTOD = ['morning', 'afternoon', 'evening', 'any'];\nif (args.timeOfDay) {\n    const tod = String(args.timeOfDay).toLowerCase().trim();\n    args.timeOfDay = validTOD.includes(tod) ? tod : 'any';\n} else {\n    args.timeOfDay = 'any';\n}\n\n// earliestFirst: coerce to boolean\nif (args.earliestFirst === true || String(args.earliestFirst).toLowerCase() === 'true') {\n    args.earliestFirst = true;\n} else {\n    args.earliestFirst = false;\n}\n\n// --- NEW (V26): preferredTime -> normalized \"HH:MM\" 24-hour, or null ---\n// Accepts \"14:00\", \"14:00:00\", \"2 PM\", \"2pm\", \"2:30 PM\", \"2:30pm\".\n// When present, the formatter returns the slots NEAREST this time instead of\n// blindly returning the earliest N — this is what caused the agent to claim\n// \"no 2 PM slot\" when 2 PM existed but fell outside the first 6 results.\nfunction normalizePreferredTime(v) {\n    if (v === undefined || v === null || v === '') return null;\n    const s = String(v).trim().toLowerCase();\n\n    // 12-hour form first (\"2 pm\", \"2:30 pm\", \"2pm\")\n    let m = s.match(/^(\\d{1,2})(?::(\\d{2}))?\\s*([ap])\\.?\\s*m\\.?$/);\n    if (m) {\n        let h = parseInt(m[1], 10);\n        const mi = m[2] ? parseInt(m[2], 10) : 0;\n        if (h < 1 || h > 12 || mi > 59) return null;\n        if (h === 12) h = 0;\n        if (m[3] === 'p') h += 12;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    // 24-hour form (\"14:00\", \"14:00:00\", \"09:30\")\n    m = s.match(/^(\\d{1,2}):(\\d{2})(?::\\d{2})?$/);\n    if (m) {\n        const h = parseInt(m[1], 10);\n        const mi = parseInt(m[2], 10);\n        if (h > 23 || mi > 59) return null;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    return null;\n}\nargs.preferredTime = normalizePreferredTime(args.preferredTime);\n\n// limit: integer 1..50, default 6 (3 if earliestFirst and not set)\nif (args.limit !== undefined && args.limit !== null && args.limit !== '') {\n    const n = parseInt(args.limit, 10);\n    if (!isNaN(n) && n >= 1 && n <= 50) {\n        args.limit = n;\n    } else {\n        args.limit = args.earliestFirst ? 3 : 6;\n    }\n} else {\n    args.limit = args.earliestFirst ? 3 : 6;\n}\n\nreturn [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
       },
       "id": "811220a5-52b4-498e-9176-6d39af0388c9",
       "name": "Validate: Slots Args",
@@ -169,7 +169,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Slot Context (staffId is optional — caller may have said \"no preference\")\n// serviceName OR serviceId is enough - \"Resolve: Service (Booking)\" downstream\n// settles which one wins against the live catalog.\nif (!args.serviceId && !args.serviceName) errors.push('serviceId or serviceName is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.phone) errors.push('phone is required');\n\n// Date format checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\n// addOns: array of { id, groupId } — both required per entry\nif (args.addOns) {\n    if (!Array.isArray(args.addOns)) {\n        errors.push('addOns must be an array of {id, groupId} objects');\n    } else {\n        args.addOns.forEach((a, i) => {\n            if (!a || typeof a !== 'object') errors.push(`addOns[${i}] must be an object`);\n            else {\n                if (!a.id) errors.push(`addOns[${i}].id is required`);\n                if (!a.groupId) errors.push(`addOns[${i}].groupId is required`);\n            }\n        });\n    }\n}\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Slot Context (staffId is optional — caller may have said \"no preference\")\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.phone) errors.push('phone is required');\n\n// Date format checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\n// addOns: array of { id, groupId } — both required per entry\nif (args.addOns) {\n    if (!Array.isArray(args.addOns)) {\n        errors.push('addOns must be an array of {id, groupId} objects');\n    } else {\n        args.addOns.forEach((a, i) => {\n            if (!a || typeof a !== 'object') errors.push(`addOns[${i}] must be an object`);\n            else {\n                if (!a.id) errors.push(`addOns[${i}].id is required`);\n                if (!a.groupId) errors.push(`addOns[${i}].groupId is required`);\n            }\n        });\n    }\n}\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
       },
       "id": "da3de9b2-dc00-4a30-9bee-896ec0436faf",
       "name": "Validate: Booking Args",
@@ -208,7 +208,7 @@
         "nodeCredentialType": "wixApi",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      {{ $('IF: Booking Args Valid').item.json.args.variantId ? '\"variantId\": \"' + $('IF: Booking Args Valid').item.json.args.variantId + '\",' : '' }}\n{{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? '\"title\": \"' + 'Couple Massage\",' : '' }}\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n        \"timezone\": \"America/Los_Angeles\"\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n      }\n    },\n    \"contactDetails\": {\n\"contactId\": \"{{ $('Wix: Create Contact').isExecuted ? $('Wix: Create Contact').item.json.contact.id : $('Wix: Search Contact1').item.json.contacts[0].id }}\",\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      {{ $('IF: Booking Args Valid').item.json.args.email ? '\"email\": \"' + $('IF: Booking Args Valid').item.json.args.email + '\",' : '' }}\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1,\n\"additionalFields\": [\n  {\n    \"id\": \"00000000-0000-0000-0000-000000000008\",\n    \"value\": \"Booking type: {{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? 'Couple Massage' : $('Validate: Booking Args').item.json.args.numberOfParticipants + ' Participant(s)' }}\\nNotes: {{ $('IF: Booking Args Valid').item.json.args.notes || 'None' }}\"\n  }\n]\n    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
+        "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      {{ $('IF: Booking Args Valid').item.json.args.variantId ? '\"variantId\": \"' + $('IF: Booking Args Valid').item.json.args.variantId + '\",' : '' }}\n{{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? '\"title\": \"' + 'Couple Massage\",' : '' }}\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n        \"timezone\": \"America/Los_Angeles\",\n        \"location\": {\n  \"locationType\": \"OWNER_BUSINESS\",\n  \"id\": \"11419ccb-e58e-420f-b3cd-a8f2bfc78741\"\n}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n      }\n    },\n    \"contactDetails\": {\n\"contactId\": \"{{ $('Wix: Create Contact').isExecuted ? $('Wix: Create Contact').item.json.contact.id : $('Wix: Search Contact1').item.json.contacts[0].id }}\",\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      {{ $('IF: Booking Args Valid').item.json.args.email ? '\"email\": \"' + $('IF: Booking Args Valid').item.json.args.email + '\",' : '' }}\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1,\n\"additionalFields\": [\n  {\n    \"id\": \"00000000-0000-0000-0000-000000000008\",\n    \"value\": \"Booking type: {{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? 'Couple Massage' : $('Validate: Booking Args').item.json.args.numberOfParticipants + ' Participant(s)' }}\\nNotes: {{ $('IF: Booking Args Valid').item.json.args.notes || 'None' }}\"\n  }\n]\n    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
         "options": {}
       },
       "id": "dd697b40-403d-4a8d-9109-e86761f63b7f",
@@ -434,7 +434,7 @@
         "nodeCredentialType": "wixApi",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"slot\": {\n    \"serviceId\": \"{{ $json.args.serviceId }}\",\n    \"scheduleId\": \"{{ $json.args.scheduleId }}\",\n    \"startDate\": \"{{ $json.args.startDate }}\",\n    \"endDate\": \"{{ $json.args.endDate }}\",\n    \"timezone\": \"America/Los_Angeles\",\n    \"resource\": {\n      \"id\": \"{{ $json.args.staffId }}\"\n    }\n  },\n  \"revision\": {{ $json.args.revision }},\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
+        "jsonBody": "={\n  \"slot\": {\n    \"serviceId\": \"{{ $json.args.serviceId }}\",\n    \"scheduleId\": \"{{ $json.args.scheduleId }}\",\n    \"startDate\": \"{{ $json.args.startDate }}\",\n    \"endDate\": \"{{ $json.args.endDate }}\",\n    \"timezone\": \"America/Los_Angeles\",\n    \"resource\": {\n      \"id\": \"{{ $json.args.staffId }}\"\n    },\n    \"location\": {\n  \"locationType\": \"OWNER_BUSINESS\",\n  \"id\": \"11419ccb-e58e-420f-b3cd-a8f2bfc78741\"\n}\n  },\n  \"revision\": {{ $json.args.revision }},\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
         "options": {}
       },
       "id": "f517bf09-7bd0-4a1f-84ca-885aca99883a",
@@ -575,7 +575,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json }}",
+        "responseBody": "={{ { success: $json.success, mode: $json.mode, count: $json.count, availabilityByDay: $json.availabilityByDay, slots: $json.slots } }}",
         "options": {}
       },
       "id": "7c074019-7c44-42ec-8fb2-beb582a23a95",
@@ -1129,7 +1129,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const servicesData = $('Wix: Query Services').first().json;\n// Read the normalized args from Parse Retell Payload (handles args_at_root:\n// true, where there is no body.args wrapper). Reading body.args directly off\n// the raw webhook throws under args_at_root: true.\nconst args = $('Parse Retell Payload').first().json.args || {};\nconst serviceName = args.serviceName;\nif (servicesData.message || servicesData.details || !servicesData.services) {\n  return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];\n}\nconst services = servicesData.services || [];\n// 1. Map Pricing Variants\nconst pricingLookup = {};\ntry {\n  const pricingItems = $('Wix: Get Pricing Variants').all();\n  pricingItems.forEach(item => {\n    const sv = item.json.serviceVariants || item.json;\n    if (sv && sv.serviceId && sv.variants && sv.variants.values) {\n      pricingLookup[sv.serviceId] = sv.variants.values.map(v => ({\n        id: v.id,\n        duration: v.choices?.[0]?.duration?.minutes + \" min\",\n        price: \"USD \" + (v.price?.value || 0)\n      }));\n    }\n  });\n} catch (e) {\n  console.error(\"Pricing map skipped or failed.\");\n}\n// 2. Map Add-ons (Base Details Only: Name, Price, Duration)\nconst addOnLookup = {};\ntry {\n  const addonItems = $('Wix: Get Add-ons').all();\n  for (const item of addonItems) {\n    const addon = item.json?.addOn || item.json;\n    if (addon?.id) {\n      addOnLookup[addon.id] = {\n        name: addon.name || \"Unknown\",\n        price: \"USD \" + (addon.price?.value || 0),\n        duration: (addon.durationInMinutes || 0) + \" min\"\n      };\n    }\n  }\n} catch (e) {\n  console.error(\"Error mapping Add-on base details:\", e);\n}\n// 3. Final Lean Mapping (Extracts Group IDs directly from original data)\nconst formattedServices = services.map(s => {\n  let availableAddOns = [];\n  if (s.addOnGroups && s.addOnGroups.length > 0) {\n    const localGroupMap = {};\n    s.addOnGroups.forEach(group => {\n      const groupId = group.id;\n      const addOnIds = group.addOnIds || [];\n      addOnIds.forEach(addOnId => {\n        if (!localGroupMap[addOnId]) {\n          localGroupMap[addOnId] = [];\n        }\n        if (!localGroupMap[addOnId].includes(groupId)) {\n          localGroupMap[addOnId].push(groupId);\n        }\n      });\n    });\n    const uniqueIds = Object.keys(localGroupMap);\n    availableAddOns = uniqueIds.map(id => {\n      const details = addOnLookup[id] || {\n        name: \"Unknown\",\n        price: \"USD 0\",\n        duration: \"0 min\"\n      };\n      return {\n        id,\n        name: details.name,\n        price: details.price,\n        duration: details.duration,\n        groupIds: localGroupMap[id]\n      };\n    });\n  }\n  const isVaried = s.payment?.rateType === 'VARIED';\n  const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;\n  const fixedPrice =\n    !isVaried && s.payment?.fixed?.price?.value\n      ? \"USD \" + s.payment.fixed.price.value\n      : undefined;\n  return {\n    id: s.id,\n    name: s.name,\n    description: s.description,\n    _locations: s.locations,\n    price: fixedPrice,\n    pricingVariants,\n    availableAddOns: availableAddOns.length > 0 ? availableAddOns : undefined\n  };\n});\n\n// 3b. V28 - drop non-bookable / demo entries.\n// Wix sites ship default placeholder services (e.g. \"30 min meeting\") that carry\n// no price and no pricing variants. The agent was reading these back to callers\n// as if they were treatments. A real spa service always has a price, so filter on\n// that rather than a hardcoded name blocklist - this stays correct when the client\n// adds or renames services.\nconst bookableServices = formattedServices.filter(\n  s => s.price || (Array.isArray(s.pricingVariants) && s.pricingVariants.length > 0)\n);\n\n// 4. Filter by serviceName if provided. Exact match first, then substring, so a\n// loose partial can never shadow the intended service.\nconst normalizedInput = (serviceName || '').trim().toLowerCase();\nlet matchedServices = [];\nif (normalizedInput) {\n  matchedServices = bookableServices.filter(s => s.name.trim().toLowerCase() === normalizedInput);\n  if (matchedServices.length === 0) {\n    matchedServices = bookableServices.filter(s => s.name.toLowerCase().includes(normalizedInput));\n  }\n}\n\nconst finalServices = matchedServices.length > 0 ? matchedServices : bookableServices;\n\nreturn [{ json: { success: true, count: finalServices.length, services: finalServices } }];"
+        "jsCode": "const servicesData = $('Wix: Query Services').first().json;\n// Read the normalized args from Parse Retell Payload (handles args_at_root:\n// true, where there is no body.args wrapper). Reading body.args directly off\n// the raw webhook throws under args_at_root: true.\nconst args = $('Parse Retell Payload').first().json.args || {};\nconst serviceName = args.serviceName;\nif (servicesData.message || servicesData.details || !servicesData.services) {\n  return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];\n}\nconst services = servicesData.services || [];\n// 1. Map Pricing Variants\nconst pricingLookup = {};\ntry {\n  const pricingItems = $('Wix: Get Pricing Variants').all();\n  pricingItems.forEach(item => {\n    const sv = item.json.serviceVariants || item.json;\n    if (sv && sv.serviceId && sv.variants && sv.variants.values) {\n      pricingLookup[sv.serviceId] = sv.variants.values.map(v => ({\n        id: v.id,\n        duration: v.choices?.[0]?.duration?.minutes + \" min\",\n        price: \"USD \" + (v.price?.value || 0)\n      }));\n    }\n  });\n} catch (e) {\n  console.error(\"Pricing map skipped or failed.\");\n}\n// 2. Map Add-ons (Base Details Only: Name, Price, Duration)\nconst addOnLookup = {};\ntry {\n  const addonItems = $('Wix: Get Add-ons').all();\n  for (const item of addonItems) {\n    const addon = item.json?.addOn || item.json;\n    if (addon?.id) {\n      addOnLookup[addon.id] = {\n        name: addon.name || \"Unknown\",\n        price: \"USD \" + (addon.price?.value || 0),\n        duration: (addon.durationInMinutes || 0) + \" min\"\n      };\n    }\n  }\n} catch (e) {\n  console.error(\"Error mapping Add-on base details:\", e);\n}\n// 3. Final Lean Mapping (Extracts Group IDs directly from original data)\nconst formattedServices = services.map(s => {\n  let availableAddOns = [];\n  if (s.addOnGroups && s.addOnGroups.length > 0) {\n    const localGroupMap = {};\n    s.addOnGroups.forEach(group => {\n      const groupId = group.id;\n      const addOnIds = group.addOnIds || [];\n      addOnIds.forEach(addOnId => {\n        if (!localGroupMap[addOnId]) {\n          localGroupMap[addOnId] = [];\n        }\n        if (!localGroupMap[addOnId].includes(groupId)) {\n          localGroupMap[addOnId].push(groupId);\n        }\n      });\n    });\n    const uniqueIds = Object.keys(localGroupMap);\n    availableAddOns = uniqueIds.map(id => {\n      const details = addOnLookup[id] || {\n        name: \"Unknown\",\n        price: \"USD 0\",\n        duration: \"0 min\"\n      };\n      return {\n        id,\n        name: details.name,\n        price: details.price,\n        duration: details.duration,\n        groupIds: localGroupMap[id]\n      };\n    });\n  }\n  const isVaried = s.payment?.rateType === 'VARIED';\n  const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;\n  const fixedPrice =\n    !isVaried && s.payment?.fixed?.price?.value\n      ? \"USD \" + s.payment.fixed.price.value\n      : undefined;\n  return {\n    id: s.id,\n    name: s.name,\n    description: s.description,\n    price: fixedPrice,\n    pricingVariants,\n    availableAddOns: availableAddOns.length > 0 ? availableAddOns : undefined\n  };\n});\n\n// 3b. V28 - drop non-bookable / demo entries.\n// Wix sites ship default placeholder services (e.g. \"30 min meeting\") that carry\n// no price and no pricing variants. The agent was reading these back to callers\n// as if they were treatments. A real spa service always has a price, so filter on\n// that rather than a hardcoded name blocklist - this stays correct when the client\n// adds or renames services.\nconst bookableServices = formattedServices.filter(\n  s => s.price || (Array.isArray(s.pricingVariants) && s.pricingVariants.length > 0)\n);\n\n// 4. Filter by serviceName if provided. Exact match first, then substring, so a\n// loose partial can never shadow the intended service.\nconst normalizedInput = (serviceName || '').trim().toLowerCase();\nlet matchedServices = [];\nif (normalizedInput) {\n  matchedServices = bookableServices.filter(s => s.name.trim().toLowerCase() === normalizedInput);\n  if (matchedServices.length === 0) {\n    matchedServices = bookableServices.filter(s => s.name.toLowerCase().includes(normalizedInput));\n  }\n}\n\nconst finalServices = matchedServices.length > 0 ? matchedServices : bookableServices;\n\nreturn [{ json: { success: true, count: finalServices.length, services: finalServices } }];"
       },
       "id": "e04e5787-b8d6-4c74-842c-99603c294428",
       "name": "Format: Services Response",
@@ -1629,83 +1629,19 @@
       "onError": "continueErrorOutput"
     },
     {
-      "id": "188ee660-8b9d-4bde-95b2-29870f5af2ed",
-      "name": "Wix: Services (Booking)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
+      "id": "c4ecc672-e312-4f14-8914-82097b9cea63",
+      "name": "MCP Write Test",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
       "position": [
-        -848,
-        7040
+        -1536,
+        7168
       ],
       "parameters": {
-        "method": "POST",
-        "url": "https://www.wixapis.com/bookings/v2/services/query",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
-        "options": {}
-      },
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "id": "e53ddf29-5320-40b1-b8a6-a748db01488c",
-      "name": "Resolve: Service (Booking)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -624,
-        7040
-      ],
-      "parameters": {
-        "jsCode": "// Settle on ONE serviceId from the two signals the agent sends.\n//\n// The agent passes BOTH serviceName (what the caller actually said) and serviceId\n// (a UUID it copied out of an earlier get_services response). The UUID is the\n// fragile signal: across V24/V25/V26 the model repeatedly spliced a Frankenstein\n// UUID out of a pricingVariant id or an add-on groupId, and Wix rejected it with\n// an opaque error that dead-ended the caller.\n//\n// Order of trust:\n//   1. Resolve serviceName against the live catalog (exact -> substring -> fuzzy).\n//   2. Check whether the supplied serviceId actually exists in the catalog.\n//   3. Prefer the NAME match - it reflects the caller's own words. Fall back to\n//      the UUID only when the name cannot be resolved. If both fail, return an\n//      actionable error listing real service names so the agent self-corrects.\n\nconst catalogRaw = $input.first().json;\nconst prev = $('Validate: Booking Args').first().json;\nconst args = Object.assign({}, prev.args || {});\n\n// Upstream validation already failed - pass straight through.\nif (prev._valid === false) {\n    return [{ json: prev }];\n}\n\nconst raw = Array.isArray(catalogRaw) ? catalogRaw[0] : catalogRaw;\nconst services = (raw && raw.services) || [];\nconst catalog = services\n    .filter(s => s && s.id && s.name)\n    .map(s => ({ id: s.id, name: String(s.name).trim() }));\n\nconst sentId = args.serviceId ? String(args.serviceId).trim() : null;\n\n// Catalog call failed - trust whatever the agent sent, let Wix judge.\n// Degrading to old behaviour beats a hard failure.\nif (catalog.length === 0) {\n    return [{ json: Object.assign({}, prev, { args,\n        _serviceResolution: { source: 'catalog-unavailable', serviceId: sentId } }) }];\n}\n\nfunction norm(v) {\n    return String(v || '').toLowerCase()\n        .replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n}\nconst STOP = ['massage', 'min', 'mins', 'minute', 'session', 'the', 'a'];\nfunction tokens(v) {\n    return norm(v).split(' ').filter(t => t && STOP.indexOf(t) === -1);\n}\n\nconst wanted = args.serviceName ? String(args.serviceName).trim() : null;\nlet resolved = null;\nlet how = 'none';\nlet ambiguousNames = null;\n\nif (wanted) {\n    const w = norm(wanted);\n\n    resolved = catalog.find(s => norm(s.name) === w) || null;\n    if (resolved) how = 'exact';\n\n    if (!resolved) {\n        const subs = catalog.filter(s => norm(s.name).indexOf(w) !== -1 || w.indexOf(norm(s.name)) !== -1);\n        if (subs.length === 1) { resolved = subs[0]; how = 'substring'; }\n        else if (subs.length > 1) { how = 'ambiguous'; ambiguousNames = subs.map(s => s.name); }\n    }\n\n    // token overlap with prefix tolerance - catches 'dip tissue', 'lymphatic drain'\n    if (!resolved && how !== 'ambiguous') {\n        const wt = tokens(wanted);\n        if (wt.length) {\n            let best = null, bestScore = 0;\n            for (const s of catalog) {\n                const st = tokens(s.name);\n                if (!st.length) continue;\n                const hits = wt.filter(t => st.some(x => x.slice(0, 4) === t.slice(0, 4))).length;\n                const score = hits / Math.max(wt.length, st.length);\n                if (score > bestScore) { bestScore = score; best = s; }\n            }\n            if (best && bestScore >= 0.5) { resolved = best; how = 'fuzzy'; }\n        }\n    }\n}\n\nconst idEntry = sentId ? (catalog.find(s => s.id === sentId) || null) : null;\nconst idValid = !!idEntry;\n\nlet finalId = null, source = null, mismatch = false;\n\nif (resolved) {\n    finalId = resolved.id;\n    source = 'serviceName:' + how;\n    if (idValid && idEntry.id !== resolved.id) mismatch = true;\n} else if (idValid) {\n    finalId = idEntry.id;\n    source = 'serviceId';\n}\n\nif (!finalId) {\n    const names = catalog.map(s => s.name);\n    let reason;\n    if (how === 'ambiguous') {\n        reason = 'serviceName \"' + wanted + '\" matches more than one service (' +\n            ambiguousNames.join(', ') + '). Ask the caller which one they want.';\n    } else if (sentId && !idValid) {\n        reason = 'serviceId \"' + sentId + '\" is not a real service id' +\n            (wanted ? ', and serviceName \"' + wanted + '\" could not be matched' : '') +\n            '. Use the top-level id from get_services - not a pricingVariants id and not an add-on groupId.';\n    } else {\n        reason = 'Could not identify the service. Pass serviceName exactly as get_services returned it.';\n    }\n    return [{ json: Object.assign({}, prev, { args, _valid: false,\n        _validationError: reason,\n        _serviceResolution: { resolved: null, how, idValid, availableServices: names } }) }];\n}\n\nargs.serviceId = finalId;\nargs.serviceName = (resolved || idEntry).name;\n\nreturn [{ json: Object.assign({}, prev, { args, _serviceResolution: {\n    serviceId: finalId, serviceName: args.serviceName, source: source, how: how,\n    sentServiceId: sentId, sentServiceIdValid: idValid, mismatch: mismatch } }) }];"
-      }
-    },
-    {
-      "id": "8d5deb89-105d-438f-b711-ff36823593e0",
-      "name": "Wix: Services (Slots)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        -848,
-        6368
-      ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.wixapis.com/bookings/v2/services/query",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "wixApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
-        "options": {}
-      },
-      "credentials": {
-        "wixApi": {
-          "id": "wLpWbblaihcY4xnw",
-          "name": "Test: Wix Sage Site"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "id": "95bb978c-196a-4179-9c2c-54c45a8482a8",
-      "name": "Resolve: Service (Slots)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -624,
-        6368
-      ],
-      "parameters": {
-        "jsCode": "// Settle on ONE serviceId from the two signals the agent sends.\n// See Resolve: Service (Booking) for the full rationale - same logic, slots branch.\n//\n// Order of trust:\n//   1. Resolve serviceName against the live catalog (exact -> substring -> fuzzy).\n//   2. Check whether the supplied serviceId actually exists in the catalog.\n//   3. Prefer the NAME match. Fall back to the UUID only when the name cannot be\n//      resolved. If both fail, return an actionable error listing real names.\n\nconst catalogRaw = $input.first().json;\nconst prev = $('Validate: Slots Args').first().json;\nconst args = Object.assign({}, prev.args || {});\n\nif (prev._valid === false) {\n    return [{ json: prev }];\n}\n\nconst raw = Array.isArray(catalogRaw) ? catalogRaw[0] : catalogRaw;\nconst services = (raw && raw.services) || [];\nconst catalog = services\n    .filter(s => s && s.id && s.name)\n    .map(s => ({ id: s.id, name: String(s.name).trim() }));\n\nconst sentId = args.serviceId ? String(args.serviceId).trim() : null;\n\n// Catalog call failed - trust whatever the agent sent, let Wix judge.\nif (catalog.length === 0) {\n    return [{ json: Object.assign({}, prev, { args,\n        _serviceResolution: { source: 'catalog-unavailable', serviceId: sentId } }) }];\n}\n\nfunction norm(v) {\n    return String(v || '').toLowerCase()\n        .replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n}\nconst STOP = ['massage', 'min', 'mins', 'minute', 'session', 'the', 'a'];\nfunction tokens(v) {\n    return norm(v).split(' ').filter(t => t && STOP.indexOf(t) === -1);\n}\n\nconst wanted = args.serviceName ? String(args.serviceName).trim() : null;\nlet resolved = null;\nlet how = 'none';\nlet ambiguousNames = null;\n\nif (wanted) {\n    const w = norm(wanted);\n\n    resolved = catalog.find(s => norm(s.name) === w) || null;\n    if (resolved) how = 'exact';\n\n    if (!resolved) {\n        const subs = catalog.filter(s => norm(s.name).indexOf(w) !== -1 || w.indexOf(norm(s.name)) !== -1);\n        if (subs.length === 1) { resolved = subs[0]; how = 'substring'; }\n        else if (subs.length > 1) { how = 'ambiguous'; ambiguousNames = subs.map(s => s.name); }\n    }\n\n    if (!resolved && how !== 'ambiguous') {\n        const wt = tokens(wanted);\n        if (wt.length) {\n            let best = null, bestScore = 0;\n            for (const s of catalog) {\n                const st = tokens(s.name);\n                if (!st.length) continue;\n                const hits = wt.filter(t => st.some(x => x.slice(0, 4) === t.slice(0, 4))).length;\n                const score = hits / Math.max(wt.length, st.length);\n                if (score > bestScore) { bestScore = score; best = s; }\n            }\n            if (best && bestScore >= 0.5) { resolved = best; how = 'fuzzy'; }\n        }\n    }\n}\n\nconst idEntry = sentId ? (catalog.find(s => s.id === sentId) || null) : null;\nconst idValid = !!idEntry;\n\nlet finalId = null, source = null, mismatch = false;\n\nif (resolved) {\n    finalId = resolved.id;\n    source = 'serviceName:' + how;\n    if (idValid && idEntry.id !== resolved.id) mismatch = true;\n} else if (idValid) {\n    finalId = idEntry.id;\n    source = 'serviceId';\n}\n\nif (!finalId) {\n    const names = catalog.map(s => s.name);\n    let reason;\n    if (how === 'ambiguous') {\n        reason = 'serviceName \"' + wanted + '\" matches more than one service (' +\n            ambiguousNames.join(', ') + '). Ask the caller which one they want.';\n    } else if (sentId && !idValid) {\n        reason = 'serviceId \"' + sentId + '\" is not a real service id' +\n            (wanted ? ', and serviceName \"' + wanted + '\" could not be matched' : '') +\n            '. Use the top-level id from get_services - not a pricingVariants id and not an add-on groupId.';\n    } else {\n        reason = 'Could not identify the service. Pass serviceName exactly as get_services returned it.';\n    }\n    return [{ json: Object.assign({}, prev, { args, _valid: false,\n        _validationError: reason,\n        _serviceResolution: { resolved: null, how, idValid, availableServices: names } }) }];\n}\n\nargs.serviceId = finalId;\nargs.serviceName = (resolved || idEntry).name;\n\nreturn [{ json: Object.assign({}, prev, { args, _serviceResolution: {\n    serviceId: finalId, serviceName: args.serviceName, source: source, how: how,\n    sentServiceId: sentId, sentServiceIdValid: idValid, mismatch: mismatch } }) }];"
+        "content": "## MCP Write Test\nAdded via n8n MCP to verify API write access. Safe to delete.",
+        "height": 140,
+        "width": 320,
+        "color": 4
       }
     }
   ],
@@ -1726,6 +1662,17 @@
         [
           {
             "node": "Route by Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Slots Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Slots Args Valid",
             "type": "main",
             "index": 0
           }
@@ -1802,6 +1749,17 @@
         [
           {
             "node": "Respond: Get Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Booking Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Booking Args Valid",
             "type": "main",
             "index": 0
           }
@@ -2529,72 +2487,6 @@
           }
         ]
       ]
-    },
-    "Validate: Booking Args": {
-      "main": [
-        [
-          {
-            "node": "Wix: Services (Booking)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wix: Services (Booking)": {
-      "main": [
-        [
-          {
-            "node": "Resolve: Service (Booking)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Resolve: Service (Booking)": {
-      "main": [
-        [
-          {
-            "node": "IF: Booking Args Valid",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate: Slots Args": {
-      "main": [
-        [
-          {
-            "node": "Wix: Services (Slots)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wix: Services (Slots)": {
-      "main": [
-        [
-          {
-            "node": "Resolve: Service (Slots)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Resolve: Service (Slots)": {
-      "main": [
-        [
-          {
-            "node": "IF: Slots Args Valid",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "settings": {
@@ -2736,9 +2628,9 @@
       }
     ]
   },
-  "versionId": "2917abbf-2aed-49b3-8e98-4a4d11b6c3c8",
-  "activeVersionId": "2917abbf-2aed-49b3-8e98-4a4d11b6c3c8",
-  "versionCounter": 1427,
+  "versionId": "80a067a0-ac70-42a4-89a6-b185d2c324ad",
+  "activeVersionId": "80a067a0-ac70-42a4-89a6-b185d2c324ad",
+  "versionCounter": 1418,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -2763,9 +2655,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-08-16T09:17:34.127Z",
-    "createdAt": "2026-08-16T09:17:34.127Z",
-    "versionId": "2917abbf-2aed-49b3-8e98-4a4d11b6c3c8",
+    "updatedAt": "2026-08-16T08:43:52.373Z",
+    "createdAt": "2026-08-16T08:43:52.373Z",
+    "versionId": "80a067a0-ac70-42a4-89a6-b185d2c324ad",
     "workflowId": "s5dWZOMRl0X7PV65",
     "nodes": [
       {
@@ -2800,7 +2692,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const inputJson = $input.first().json;\nconst { args } = inputJson;\nconst errors = [];\n\n// serviceName OR serviceId is enough - \"Resolve: Service (Slots)\" downstream\n// settles which one wins against the live catalog.\nif (!args.serviceId && !args.serviceName) errors.push('serviceId or serviceName is required');\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\nif (!args.durationInMinutes) errors.push('durationInMinutes is required');\n\n// Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss\nfunction formatForWix(dateStr, isEnd = false) {\n    if (!dateStr) return dateStr;\n    let cleanStr = String(dateStr).replace('Z', '');\n    cleanStr = cleanStr.replace(/[+-]\\d{2}:\\d{2}$/, '');\n    if (cleanStr.length === 10) {\n        cleanStr += isEnd ? 'T23:59:59.000' : 'T00:00:00.000';\n    }\n    return cleanStr;\n}\n\nif (args.startDate) {\n    if (isNaN(Date.parse(args.startDate))) {\n        errors.push('startDate is not a valid date');\n    } else {\n        args.startDate = formatForWix(args.startDate, false);\n    }\n}\n\nif (args.endDate) {\n    if (isNaN(Date.parse(args.endDate))) {\n        errors.push('endDate is not a valid date');\n    } else {\n        args.endDate = formatForWix(args.endDate, true);\n    }\n}\n\n// --- Normalize optional filter args ---\n\n// staffId: trim or null\nif (args.staffId === '' || args.staffId === undefined) {\n    args.staffId = null;\n} else if (args.staffId) {\n    args.staffId = String(args.staffId).trim();\n}\n\n// timeOfDay: lowercase one of morning/afternoon/evening/any (default any)\nconst validTOD = ['morning', 'afternoon', 'evening', 'any'];\nif (args.timeOfDay) {\n    const tod = String(args.timeOfDay).toLowerCase().trim();\n    args.timeOfDay = validTOD.includes(tod) ? tod : 'any';\n} else {\n    args.timeOfDay = 'any';\n}\n\n// earliestFirst: coerce to boolean\nif (args.earliestFirst === true || String(args.earliestFirst).toLowerCase() === 'true') {\n    args.earliestFirst = true;\n} else {\n    args.earliestFirst = false;\n}\n\n// --- NEW (V26): preferredTime -> normalized \"HH:MM\" 24-hour, or null ---\n// Accepts \"14:00\", \"14:00:00\", \"2 PM\", \"2pm\", \"2:30 PM\", \"2:30pm\".\n// When present, the formatter returns the slots NEAREST this time instead of\n// blindly returning the earliest N — this is what caused the agent to claim\n// \"no 2 PM slot\" when 2 PM existed but fell outside the first 6 results.\nfunction normalizePreferredTime(v) {\n    if (v === undefined || v === null || v === '') return null;\n    const s = String(v).trim().toLowerCase();\n\n    // 12-hour form first (\"2 pm\", \"2:30 pm\", \"2pm\")\n    let m = s.match(/^(\\d{1,2})(?::(\\d{2}))?\\s*([ap])\\.?\\s*m\\.?$/);\n    if (m) {\n        let h = parseInt(m[1], 10);\n        const mi = m[2] ? parseInt(m[2], 10) : 0;\n        if (h < 1 || h > 12 || mi > 59) return null;\n        if (h === 12) h = 0;\n        if (m[3] === 'p') h += 12;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    // 24-hour form (\"14:00\", \"14:00:00\", \"09:30\")\n    m = s.match(/^(\\d{1,2}):(\\d{2})(?::\\d{2})?$/);\n    if (m) {\n        const h = parseInt(m[1], 10);\n        const mi = parseInt(m[2], 10);\n        if (h > 23 || mi > 59) return null;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    return null;\n}\nargs.preferredTime = normalizePreferredTime(args.preferredTime);\n\n// limit: integer 1..50, default 6 (3 if earliestFirst and not set)\nif (args.limit !== undefined && args.limit !== null && args.limit !== '') {\n    const n = parseInt(args.limit, 10);\n    if (!isNaN(n) && n >= 1 && n <= 50) {\n        args.limit = n;\n    } else {\n        args.limit = args.earliestFirst ? 3 : 6;\n    }\n} else {\n    args.limit = args.earliestFirst ? 3 : 6;\n}\n\nreturn [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+          "jsCode": "const inputJson = $input.first().json;\nconst { args } = inputJson;\nconst errors = [];\n\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\nif (!args.durationInMinutes) errors.push('durationInMinutes is required');\n\n// Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss\nfunction formatForWix(dateStr, isEnd = false) {\n    if (!dateStr) return dateStr;\n    let cleanStr = String(dateStr).replace('Z', '');\n    cleanStr = cleanStr.replace(/[+-]\\d{2}:\\d{2}$/, '');\n    if (cleanStr.length === 10) {\n        cleanStr += isEnd ? 'T23:59:59.000' : 'T00:00:00.000';\n    }\n    return cleanStr;\n}\n\nif (args.startDate) {\n    if (isNaN(Date.parse(args.startDate))) {\n        errors.push('startDate is not a valid date');\n    } else {\n        args.startDate = formatForWix(args.startDate, false);\n    }\n}\n\nif (args.endDate) {\n    if (isNaN(Date.parse(args.endDate))) {\n        errors.push('endDate is not a valid date');\n    } else {\n        args.endDate = formatForWix(args.endDate, true);\n    }\n}\n\n// --- Normalize optional filter args ---\n\n// staffId: trim or null\nif (args.staffId === '' || args.staffId === undefined) {\n    args.staffId = null;\n} else if (args.staffId) {\n    args.staffId = String(args.staffId).trim();\n}\n\n// timeOfDay: lowercase one of morning/afternoon/evening/any (default any)\nconst validTOD = ['morning', 'afternoon', 'evening', 'any'];\nif (args.timeOfDay) {\n    const tod = String(args.timeOfDay).toLowerCase().trim();\n    args.timeOfDay = validTOD.includes(tod) ? tod : 'any';\n} else {\n    args.timeOfDay = 'any';\n}\n\n// earliestFirst: coerce to boolean\nif (args.earliestFirst === true || String(args.earliestFirst).toLowerCase() === 'true') {\n    args.earliestFirst = true;\n} else {\n    args.earliestFirst = false;\n}\n\n// --- NEW (V26): preferredTime -> normalized \"HH:MM\" 24-hour, or null ---\n// Accepts \"14:00\", \"14:00:00\", \"2 PM\", \"2pm\", \"2:30 PM\", \"2:30pm\".\n// When present, the formatter returns the slots NEAREST this time instead of\n// blindly returning the earliest N — this is what caused the agent to claim\n// \"no 2 PM slot\" when 2 PM existed but fell outside the first 6 results.\nfunction normalizePreferredTime(v) {\n    if (v === undefined || v === null || v === '') return null;\n    const s = String(v).trim().toLowerCase();\n\n    // 12-hour form first (\"2 pm\", \"2:30 pm\", \"2pm\")\n    let m = s.match(/^(\\d{1,2})(?::(\\d{2}))?\\s*([ap])\\.?\\s*m\\.?$/);\n    if (m) {\n        let h = parseInt(m[1], 10);\n        const mi = m[2] ? parseInt(m[2], 10) : 0;\n        if (h < 1 || h > 12 || mi > 59) return null;\n        if (h === 12) h = 0;\n        if (m[3] === 'p') h += 12;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    // 24-hour form (\"14:00\", \"14:00:00\", \"09:30\")\n    m = s.match(/^(\\d{1,2}):(\\d{2})(?::\\d{2})?$/);\n    if (m) {\n        const h = parseInt(m[1], 10);\n        const mi = parseInt(m[2], 10);\n        if (h > 23 || mi > 59) return null;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    return null;\n}\nargs.preferredTime = normalizePreferredTime(args.preferredTime);\n\n// limit: integer 1..50, default 6 (3 if earliestFirst and not set)\nif (args.limit !== undefined && args.limit !== null && args.limit !== '') {\n    const n = parseInt(args.limit, 10);\n    if (!isNaN(n) && n >= 1 && n <= 50) {\n        args.limit = n;\n    } else {\n        args.limit = args.earliestFirst ? 3 : 6;\n    }\n} else {\n    args.limit = args.earliestFirst ? 3 : 6;\n}\n\nreturn [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
         },
         "id": "811220a5-52b4-498e-9176-6d39af0388c9",
         "name": "Validate: Slots Args",
@@ -2930,7 +2822,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Slot Context (staffId is optional — caller may have said \"no preference\")\n// serviceName OR serviceId is enough - \"Resolve: Service (Booking)\" downstream\n// settles which one wins against the live catalog.\nif (!args.serviceId && !args.serviceName) errors.push('serviceId or serviceName is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.phone) errors.push('phone is required');\n\n// Date format checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\n// addOns: array of { id, groupId } — both required per entry\nif (args.addOns) {\n    if (!Array.isArray(args.addOns)) {\n        errors.push('addOns must be an array of {id, groupId} objects');\n    } else {\n        args.addOns.forEach((a, i) => {\n            if (!a || typeof a !== 'object') errors.push(`addOns[${i}] must be an object`);\n            else {\n                if (!a.id) errors.push(`addOns[${i}].id is required`);\n                if (!a.groupId) errors.push(`addOns[${i}].groupId is required`);\n            }\n        });\n    }\n}\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+          "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Slot Context (staffId is optional — caller may have said \"no preference\")\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.phone) errors.push('phone is required');\n\n// Date format checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\n// addOns: array of { id, groupId } — both required per entry\nif (args.addOns) {\n    if (!Array.isArray(args.addOns)) {\n        errors.push('addOns must be an array of {id, groupId} objects');\n    } else {\n        args.addOns.forEach((a, i) => {\n            if (!a || typeof a !== 'object') errors.push(`addOns[${i}] must be an object`);\n            else {\n                if (!a.id) errors.push(`addOns[${i}].id is required`);\n                if (!a.groupId) errors.push(`addOns[${i}].groupId is required`);\n            }\n        });\n    }\n}\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
         },
         "id": "da3de9b2-dc00-4a30-9bee-896ec0436faf",
         "name": "Validate: Booking Args",
@@ -2969,7 +2861,7 @@
           "nodeCredentialType": "wixApi",
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      {{ $('IF: Booking Args Valid').item.json.args.variantId ? '\"variantId\": \"' + $('IF: Booking Args Valid').item.json.args.variantId + '\",' : '' }}\n{{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? '\"title\": \"' + 'Couple Massage\",' : '' }}\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n        \"timezone\": \"America/Los_Angeles\"\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n      }\n    },\n    \"contactDetails\": {\n\"contactId\": \"{{ $('Wix: Create Contact').isExecuted ? $('Wix: Create Contact').item.json.contact.id : $('Wix: Search Contact1').item.json.contacts[0].id }}\",\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      {{ $('IF: Booking Args Valid').item.json.args.email ? '\"email\": \"' + $('IF: Booking Args Valid').item.json.args.email + '\",' : '' }}\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1,\n\"additionalFields\": [\n  {\n    \"id\": \"00000000-0000-0000-0000-000000000008\",\n    \"value\": \"Booking type: {{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? 'Couple Massage' : $('Validate: Booking Args').item.json.args.numberOfParticipants + ' Participant(s)' }}\\nNotes: {{ $('IF: Booking Args Valid').item.json.args.notes || 'None' }}\"\n  }\n]\n    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
+          "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      {{ $('IF: Booking Args Valid').item.json.args.variantId ? '\"variantId\": \"' + $('IF: Booking Args Valid').item.json.args.variantId + '\",' : '' }}\n{{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? '\"title\": \"' + 'Couple Massage\",' : '' }}\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n        \"timezone\": \"America/Los_Angeles\",\n        \"location\": {\n  \"locationType\": \"OWNER_BUSINESS\",\n  \"id\": \"11419ccb-e58e-420f-b3cd-a8f2bfc78741\"\n}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n      }\n    },\n    \"contactDetails\": {\n\"contactId\": \"{{ $('Wix: Create Contact').isExecuted ? $('Wix: Create Contact').item.json.contact.id : $('Wix: Search Contact1').item.json.contacts[0].id }}\",\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      {{ $('IF: Booking Args Valid').item.json.args.email ? '\"email\": \"' + $('IF: Booking Args Valid').item.json.args.email + '\",' : '' }}\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1,\n\"additionalFields\": [\n  {\n    \"id\": \"00000000-0000-0000-0000-000000000008\",\n    \"value\": \"Booking type: {{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? 'Couple Massage' : $('Validate: Booking Args').item.json.args.numberOfParticipants + ' Participant(s)' }}\\nNotes: {{ $('IF: Booking Args Valid').item.json.args.notes || 'None' }}\"\n  }\n]\n    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
           "options": {}
         },
         "id": "dd697b40-403d-4a8d-9109-e86761f63b7f",
@@ -3195,7 +3087,7 @@
           "nodeCredentialType": "wixApi",
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "={\n  \"slot\": {\n    \"serviceId\": \"{{ $json.args.serviceId }}\",\n    \"scheduleId\": \"{{ $json.args.scheduleId }}\",\n    \"startDate\": \"{{ $json.args.startDate }}\",\n    \"endDate\": \"{{ $json.args.endDate }}\",\n    \"timezone\": \"America/Los_Angeles\",\n    \"resource\": {\n      \"id\": \"{{ $json.args.staffId }}\"\n    }\n  },\n  \"revision\": {{ $json.args.revision }},\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
+          "jsonBody": "={\n  \"slot\": {\n    \"serviceId\": \"{{ $json.args.serviceId }}\",\n    \"scheduleId\": \"{{ $json.args.scheduleId }}\",\n    \"startDate\": \"{{ $json.args.startDate }}\",\n    \"endDate\": \"{{ $json.args.endDate }}\",\n    \"timezone\": \"America/Los_Angeles\",\n    \"resource\": {\n      \"id\": \"{{ $json.args.staffId }}\"\n    },\n    \"location\": {\n  \"locationType\": \"OWNER_BUSINESS\",\n  \"id\": \"11419ccb-e58e-420f-b3cd-a8f2bfc78741\"\n}\n  },\n  \"revision\": {{ $json.args.revision }},\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
           "options": {}
         },
         "id": "f517bf09-7bd0-4a1f-84ca-885aca99883a",
@@ -3336,7 +3228,7 @@
       {
         "parameters": {
           "respondWith": "json",
-          "responseBody": "={{ $json }}",
+          "responseBody": "={{ { success: $json.success, mode: $json.mode, count: $json.count, availabilityByDay: $json.availabilityByDay, slots: $json.slots } }}",
           "options": {}
         },
         "id": "7c074019-7c44-42ec-8fb2-beb582a23a95",
@@ -3890,7 +3782,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const servicesData = $('Wix: Query Services').first().json;\n// Read the normalized args from Parse Retell Payload (handles args_at_root:\n// true, where there is no body.args wrapper). Reading body.args directly off\n// the raw webhook throws under args_at_root: true.\nconst args = $('Parse Retell Payload').first().json.args || {};\nconst serviceName = args.serviceName;\nif (servicesData.message || servicesData.details || !servicesData.services) {\n  return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];\n}\nconst services = servicesData.services || [];\n// 1. Map Pricing Variants\nconst pricingLookup = {};\ntry {\n  const pricingItems = $('Wix: Get Pricing Variants').all();\n  pricingItems.forEach(item => {\n    const sv = item.json.serviceVariants || item.json;\n    if (sv && sv.serviceId && sv.variants && sv.variants.values) {\n      pricingLookup[sv.serviceId] = sv.variants.values.map(v => ({\n        id: v.id,\n        duration: v.choices?.[0]?.duration?.minutes + \" min\",\n        price: \"USD \" + (v.price?.value || 0)\n      }));\n    }\n  });\n} catch (e) {\n  console.error(\"Pricing map skipped or failed.\");\n}\n// 2. Map Add-ons (Base Details Only: Name, Price, Duration)\nconst addOnLookup = {};\ntry {\n  const addonItems = $('Wix: Get Add-ons').all();\n  for (const item of addonItems) {\n    const addon = item.json?.addOn || item.json;\n    if (addon?.id) {\n      addOnLookup[addon.id] = {\n        name: addon.name || \"Unknown\",\n        price: \"USD \" + (addon.price?.value || 0),\n        duration: (addon.durationInMinutes || 0) + \" min\"\n      };\n    }\n  }\n} catch (e) {\n  console.error(\"Error mapping Add-on base details:\", e);\n}\n// 3. Final Lean Mapping (Extracts Group IDs directly from original data)\nconst formattedServices = services.map(s => {\n  let availableAddOns = [];\n  if (s.addOnGroups && s.addOnGroups.length > 0) {\n    const localGroupMap = {};\n    s.addOnGroups.forEach(group => {\n      const groupId = group.id;\n      const addOnIds = group.addOnIds || [];\n      addOnIds.forEach(addOnId => {\n        if (!localGroupMap[addOnId]) {\n          localGroupMap[addOnId] = [];\n        }\n        if (!localGroupMap[addOnId].includes(groupId)) {\n          localGroupMap[addOnId].push(groupId);\n        }\n      });\n    });\n    const uniqueIds = Object.keys(localGroupMap);\n    availableAddOns = uniqueIds.map(id => {\n      const details = addOnLookup[id] || {\n        name: \"Unknown\",\n        price: \"USD 0\",\n        duration: \"0 min\"\n      };\n      return {\n        id,\n        name: details.name,\n        price: details.price,\n        duration: details.duration,\n        groupIds: localGroupMap[id]\n      };\n    });\n  }\n  const isVaried = s.payment?.rateType === 'VARIED';\n  const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;\n  const fixedPrice =\n    !isVaried && s.payment?.fixed?.price?.value\n      ? \"USD \" + s.payment.fixed.price.value\n      : undefined;\n  return {\n    id: s.id,\n    name: s.name,\n    description: s.description,\n    _locations: s.locations,\n    price: fixedPrice,\n    pricingVariants,\n    availableAddOns: availableAddOns.length > 0 ? availableAddOns : undefined\n  };\n});\n\n// 3b. V28 - drop non-bookable / demo entries.\n// Wix sites ship default placeholder services (e.g. \"30 min meeting\") that carry\n// no price and no pricing variants. The agent was reading these back to callers\n// as if they were treatments. A real spa service always has a price, so filter on\n// that rather than a hardcoded name blocklist - this stays correct when the client\n// adds or renames services.\nconst bookableServices = formattedServices.filter(\n  s => s.price || (Array.isArray(s.pricingVariants) && s.pricingVariants.length > 0)\n);\n\n// 4. Filter by serviceName if provided. Exact match first, then substring, so a\n// loose partial can never shadow the intended service.\nconst normalizedInput = (serviceName || '').trim().toLowerCase();\nlet matchedServices = [];\nif (normalizedInput) {\n  matchedServices = bookableServices.filter(s => s.name.trim().toLowerCase() === normalizedInput);\n  if (matchedServices.length === 0) {\n    matchedServices = bookableServices.filter(s => s.name.toLowerCase().includes(normalizedInput));\n  }\n}\n\nconst finalServices = matchedServices.length > 0 ? matchedServices : bookableServices;\n\nreturn [{ json: { success: true, count: finalServices.length, services: finalServices } }];"
+          "jsCode": "const servicesData = $('Wix: Query Services').first().json;\n// Read the normalized args from Parse Retell Payload (handles args_at_root:\n// true, where there is no body.args wrapper). Reading body.args directly off\n// the raw webhook throws under args_at_root: true.\nconst args = $('Parse Retell Payload').first().json.args || {};\nconst serviceName = args.serviceName;\nif (servicesData.message || servicesData.details || !servicesData.services) {\n  return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];\n}\nconst services = servicesData.services || [];\n// 1. Map Pricing Variants\nconst pricingLookup = {};\ntry {\n  const pricingItems = $('Wix: Get Pricing Variants').all();\n  pricingItems.forEach(item => {\n    const sv = item.json.serviceVariants || item.json;\n    if (sv && sv.serviceId && sv.variants && sv.variants.values) {\n      pricingLookup[sv.serviceId] = sv.variants.values.map(v => ({\n        id: v.id,\n        duration: v.choices?.[0]?.duration?.minutes + \" min\",\n        price: \"USD \" + (v.price?.value || 0)\n      }));\n    }\n  });\n} catch (e) {\n  console.error(\"Pricing map skipped or failed.\");\n}\n// 2. Map Add-ons (Base Details Only: Name, Price, Duration)\nconst addOnLookup = {};\ntry {\n  const addonItems = $('Wix: Get Add-ons').all();\n  for (const item of addonItems) {\n    const addon = item.json?.addOn || item.json;\n    if (addon?.id) {\n      addOnLookup[addon.id] = {\n        name: addon.name || \"Unknown\",\n        price: \"USD \" + (addon.price?.value || 0),\n        duration: (addon.durationInMinutes || 0) + \" min\"\n      };\n    }\n  }\n} catch (e) {\n  console.error(\"Error mapping Add-on base details:\", e);\n}\n// 3. Final Lean Mapping (Extracts Group IDs directly from original data)\nconst formattedServices = services.map(s => {\n  let availableAddOns = [];\n  if (s.addOnGroups && s.addOnGroups.length > 0) {\n    const localGroupMap = {};\n    s.addOnGroups.forEach(group => {\n      const groupId = group.id;\n      const addOnIds = group.addOnIds || [];\n      addOnIds.forEach(addOnId => {\n        if (!localGroupMap[addOnId]) {\n          localGroupMap[addOnId] = [];\n        }\n        if (!localGroupMap[addOnId].includes(groupId)) {\n          localGroupMap[addOnId].push(groupId);\n        }\n      });\n    });\n    const uniqueIds = Object.keys(localGroupMap);\n    availableAddOns = uniqueIds.map(id => {\n      const details = addOnLookup[id] || {\n        name: \"Unknown\",\n        price: \"USD 0\",\n        duration: \"0 min\"\n      };\n      return {\n        id,\n        name: details.name,\n        price: details.price,\n        duration: details.duration,\n        groupIds: localGroupMap[id]\n      };\n    });\n  }\n  const isVaried = s.payment?.rateType === 'VARIED';\n  const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;\n  const fixedPrice =\n    !isVaried && s.payment?.fixed?.price?.value\n      ? \"USD \" + s.payment.fixed.price.value\n      : undefined;\n  return {\n    id: s.id,\n    name: s.name,\n    description: s.description,\n    price: fixedPrice,\n    pricingVariants,\n    availableAddOns: availableAddOns.length > 0 ? availableAddOns : undefined\n  };\n});\n\n// 3b. V28 - drop non-bookable / demo entries.\n// Wix sites ship default placeholder services (e.g. \"30 min meeting\") that carry\n// no price and no pricing variants. The agent was reading these back to callers\n// as if they were treatments. A real spa service always has a price, so filter on\n// that rather than a hardcoded name blocklist - this stays correct when the client\n// adds or renames services.\nconst bookableServices = formattedServices.filter(\n  s => s.price || (Array.isArray(s.pricingVariants) && s.pricingVariants.length > 0)\n);\n\n// 4. Filter by serviceName if provided. Exact match first, then substring, so a\n// loose partial can never shadow the intended service.\nconst normalizedInput = (serviceName || '').trim().toLowerCase();\nlet matchedServices = [];\nif (normalizedInput) {\n  matchedServices = bookableServices.filter(s => s.name.trim().toLowerCase() === normalizedInput);\n  if (matchedServices.length === 0) {\n    matchedServices = bookableServices.filter(s => s.name.toLowerCase().includes(normalizedInput));\n  }\n}\n\nconst finalServices = matchedServices.length > 0 ? matchedServices : bookableServices;\n\nreturn [{ json: { success: true, count: finalServices.length, services: finalServices } }];"
         },
         "id": "e04e5787-b8d6-4c74-842c-99603c294428",
         "name": "Format: Services Response",
@@ -4390,83 +4282,19 @@
         "onError": "continueErrorOutput"
       },
       {
-        "id": "188ee660-8b9d-4bde-95b2-29870f5af2ed",
-        "name": "Wix: Services (Booking)",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.1,
+        "id": "c4ecc672-e312-4f14-8914-82097b9cea63",
+        "name": "MCP Write Test",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
         "position": [
-          -848,
-          7040
+          -1536,
+          7168
         ],
         "parameters": {
-          "method": "POST",
-          "url": "https://www.wixapis.com/bookings/v2/services/query",
-          "authentication": "predefinedCredentialType",
-          "nodeCredentialType": "wixApi",
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
-          "options": {}
-        },
-        "credentials": {
-          "wixApi": {
-            "id": "wLpWbblaihcY4xnw",
-            "name": "Test: Wix Sage Site"
-          }
-        },
-        "onError": "continueRegularOutput"
-      },
-      {
-        "id": "e53ddf29-5320-40b1-b8a6-a748db01488c",
-        "name": "Resolve: Service (Booking)",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -624,
-          7040
-        ],
-        "parameters": {
-          "jsCode": "// Settle on ONE serviceId from the two signals the agent sends.\n//\n// The agent passes BOTH serviceName (what the caller actually said) and serviceId\n// (a UUID it copied out of an earlier get_services response). The UUID is the\n// fragile signal: across V24/V25/V26 the model repeatedly spliced a Frankenstein\n// UUID out of a pricingVariant id or an add-on groupId, and Wix rejected it with\n// an opaque error that dead-ended the caller.\n//\n// Order of trust:\n//   1. Resolve serviceName against the live catalog (exact -> substring -> fuzzy).\n//   2. Check whether the supplied serviceId actually exists in the catalog.\n//   3. Prefer the NAME match - it reflects the caller's own words. Fall back to\n//      the UUID only when the name cannot be resolved. If both fail, return an\n//      actionable error listing real service names so the agent self-corrects.\n\nconst catalogRaw = $input.first().json;\nconst prev = $('Validate: Booking Args').first().json;\nconst args = Object.assign({}, prev.args || {});\n\n// Upstream validation already failed - pass straight through.\nif (prev._valid === false) {\n    return [{ json: prev }];\n}\n\nconst raw = Array.isArray(catalogRaw) ? catalogRaw[0] : catalogRaw;\nconst services = (raw && raw.services) || [];\nconst catalog = services\n    .filter(s => s && s.id && s.name)\n    .map(s => ({ id: s.id, name: String(s.name).trim() }));\n\nconst sentId = args.serviceId ? String(args.serviceId).trim() : null;\n\n// Catalog call failed - trust whatever the agent sent, let Wix judge.\n// Degrading to old behaviour beats a hard failure.\nif (catalog.length === 0) {\n    return [{ json: Object.assign({}, prev, { args,\n        _serviceResolution: { source: 'catalog-unavailable', serviceId: sentId } }) }];\n}\n\nfunction norm(v) {\n    return String(v || '').toLowerCase()\n        .replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n}\nconst STOP = ['massage', 'min', 'mins', 'minute', 'session', 'the', 'a'];\nfunction tokens(v) {\n    return norm(v).split(' ').filter(t => t && STOP.indexOf(t) === -1);\n}\n\nconst wanted = args.serviceName ? String(args.serviceName).trim() : null;\nlet resolved = null;\nlet how = 'none';\nlet ambiguousNames = null;\n\nif (wanted) {\n    const w = norm(wanted);\n\n    resolved = catalog.find(s => norm(s.name) === w) || null;\n    if (resolved) how = 'exact';\n\n    if (!resolved) {\n        const subs = catalog.filter(s => norm(s.name).indexOf(w) !== -1 || w.indexOf(norm(s.name)) !== -1);\n        if (subs.length === 1) { resolved = subs[0]; how = 'substring'; }\n        else if (subs.length > 1) { how = 'ambiguous'; ambiguousNames = subs.map(s => s.name); }\n    }\n\n    // token overlap with prefix tolerance - catches 'dip tissue', 'lymphatic drain'\n    if (!resolved && how !== 'ambiguous') {\n        const wt = tokens(wanted);\n        if (wt.length) {\n            let best = null, bestScore = 0;\n            for (const s of catalog) {\n                const st = tokens(s.name);\n                if (!st.length) continue;\n                const hits = wt.filter(t => st.some(x => x.slice(0, 4) === t.slice(0, 4))).length;\n                const score = hits / Math.max(wt.length, st.length);\n                if (score > bestScore) { bestScore = score; best = s; }\n            }\n            if (best && bestScore >= 0.5) { resolved = best; how = 'fuzzy'; }\n        }\n    }\n}\n\nconst idEntry = sentId ? (catalog.find(s => s.id === sentId) || null) : null;\nconst idValid = !!idEntry;\n\nlet finalId = null, source = null, mismatch = false;\n\nif (resolved) {\n    finalId = resolved.id;\n    source = 'serviceName:' + how;\n    if (idValid && idEntry.id !== resolved.id) mismatch = true;\n} else if (idValid) {\n    finalId = idEntry.id;\n    source = 'serviceId';\n}\n\nif (!finalId) {\n    const names = catalog.map(s => s.name);\n    let reason;\n    if (how === 'ambiguous') {\n        reason = 'serviceName \"' + wanted + '\" matches more than one service (' +\n            ambiguousNames.join(', ') + '). Ask the caller which one they want.';\n    } else if (sentId && !idValid) {\n        reason = 'serviceId \"' + sentId + '\" is not a real service id' +\n            (wanted ? ', and serviceName \"' + wanted + '\" could not be matched' : '') +\n            '. Use the top-level id from get_services - not a pricingVariants id and not an add-on groupId.';\n    } else {\n        reason = 'Could not identify the service. Pass serviceName exactly as get_services returned it.';\n    }\n    return [{ json: Object.assign({}, prev, { args, _valid: false,\n        _validationError: reason,\n        _serviceResolution: { resolved: null, how, idValid, availableServices: names } }) }];\n}\n\nargs.serviceId = finalId;\nargs.serviceName = (resolved || idEntry).name;\n\nreturn [{ json: Object.assign({}, prev, { args, _serviceResolution: {\n    serviceId: finalId, serviceName: args.serviceName, source: source, how: how,\n    sentServiceId: sentId, sentServiceIdValid: idValid, mismatch: mismatch } }) }];"
-        }
-      },
-      {
-        "id": "8d5deb89-105d-438f-b711-ff36823593e0",
-        "name": "Wix: Services (Slots)",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.1,
-        "position": [
-          -848,
-          6368
-        ],
-        "parameters": {
-          "method": "POST",
-          "url": "https://www.wixapis.com/bookings/v2/services/query",
-          "authentication": "predefinedCredentialType",
-          "nodeCredentialType": "wixApi",
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
-          "options": {}
-        },
-        "credentials": {
-          "wixApi": {
-            "id": "wLpWbblaihcY4xnw",
-            "name": "Test: Wix Sage Site"
-          }
-        },
-        "onError": "continueRegularOutput"
-      },
-      {
-        "id": "95bb978c-196a-4179-9c2c-54c45a8482a8",
-        "name": "Resolve: Service (Slots)",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -624,
-          6368
-        ],
-        "parameters": {
-          "jsCode": "// Settle on ONE serviceId from the two signals the agent sends.\n// See Resolve: Service (Booking) for the full rationale - same logic, slots branch.\n//\n// Order of trust:\n//   1. Resolve serviceName against the live catalog (exact -> substring -> fuzzy).\n//   2. Check whether the supplied serviceId actually exists in the catalog.\n//   3. Prefer the NAME match. Fall back to the UUID only when the name cannot be\n//      resolved. If both fail, return an actionable error listing real names.\n\nconst catalogRaw = $input.first().json;\nconst prev = $('Validate: Slots Args').first().json;\nconst args = Object.assign({}, prev.args || {});\n\nif (prev._valid === false) {\n    return [{ json: prev }];\n}\n\nconst raw = Array.isArray(catalogRaw) ? catalogRaw[0] : catalogRaw;\nconst services = (raw && raw.services) || [];\nconst catalog = services\n    .filter(s => s && s.id && s.name)\n    .map(s => ({ id: s.id, name: String(s.name).trim() }));\n\nconst sentId = args.serviceId ? String(args.serviceId).trim() : null;\n\n// Catalog call failed - trust whatever the agent sent, let Wix judge.\nif (catalog.length === 0) {\n    return [{ json: Object.assign({}, prev, { args,\n        _serviceResolution: { source: 'catalog-unavailable', serviceId: sentId } }) }];\n}\n\nfunction norm(v) {\n    return String(v || '').toLowerCase()\n        .replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n}\nconst STOP = ['massage', 'min', 'mins', 'minute', 'session', 'the', 'a'];\nfunction tokens(v) {\n    return norm(v).split(' ').filter(t => t && STOP.indexOf(t) === -1);\n}\n\nconst wanted = args.serviceName ? String(args.serviceName).trim() : null;\nlet resolved = null;\nlet how = 'none';\nlet ambiguousNames = null;\n\nif (wanted) {\n    const w = norm(wanted);\n\n    resolved = catalog.find(s => norm(s.name) === w) || null;\n    if (resolved) how = 'exact';\n\n    if (!resolved) {\n        const subs = catalog.filter(s => norm(s.name).indexOf(w) !== -1 || w.indexOf(norm(s.name)) !== -1);\n        if (subs.length === 1) { resolved = subs[0]; how = 'substring'; }\n        else if (subs.length > 1) { how = 'ambiguous'; ambiguousNames = subs.map(s => s.name); }\n    }\n\n    if (!resolved && how !== 'ambiguous') {\n        const wt = tokens(wanted);\n        if (wt.length) {\n            let best = null, bestScore = 0;\n            for (const s of catalog) {\n                const st = tokens(s.name);\n                if (!st.length) continue;\n                const hits = wt.filter(t => st.some(x => x.slice(0, 4) === t.slice(0, 4))).length;\n                const score = hits / Math.max(wt.length, st.length);\n                if (score > bestScore) { bestScore = score; best = s; }\n            }\n            if (best && bestScore >= 0.5) { resolved = best; how = 'fuzzy'; }\n        }\n    }\n}\n\nconst idEntry = sentId ? (catalog.find(s => s.id === sentId) || null) : null;\nconst idValid = !!idEntry;\n\nlet finalId = null, source = null, mismatch = false;\n\nif (resolved) {\n    finalId = resolved.id;\n    source = 'serviceName:' + how;\n    if (idValid && idEntry.id !== resolved.id) mismatch = true;\n} else if (idValid) {\n    finalId = idEntry.id;\n    source = 'serviceId';\n}\n\nif (!finalId) {\n    const names = catalog.map(s => s.name);\n    let reason;\n    if (how === 'ambiguous') {\n        reason = 'serviceName \"' + wanted + '\" matches more than one service (' +\n            ambiguousNames.join(', ') + '). Ask the caller which one they want.';\n    } else if (sentId && !idValid) {\n        reason = 'serviceId \"' + sentId + '\" is not a real service id' +\n            (wanted ? ', and serviceName \"' + wanted + '\" could not be matched' : '') +\n            '. Use the top-level id from get_services - not a pricingVariants id and not an add-on groupId.';\n    } else {\n        reason = 'Could not identify the service. Pass serviceName exactly as get_services returned it.';\n    }\n    return [{ json: Object.assign({}, prev, { args, _valid: false,\n        _validationError: reason,\n        _serviceResolution: { resolved: null, how, idValid, availableServices: names } }) }];\n}\n\nargs.serviceId = finalId;\nargs.serviceName = (resolved || idEntry).name;\n\nreturn [{ json: Object.assign({}, prev, { args, _serviceResolution: {\n    serviceId: finalId, serviceName: args.serviceName, source: source, how: how,\n    sentServiceId: sentId, sentServiceIdValid: idValid, mismatch: mismatch } }) }];"
+          "content": "## MCP Write Test\nAdded via n8n MCP to verify API write access. Safe to delete.",
+          "height": 140,
+          "width": 320,
+          "color": 4
         }
       }
     ],
@@ -4487,6 +4315,17 @@
           [
             {
               "node": "Route by Tool",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate: Slots Args": {
+        "main": [
+          [
+            {
+              "node": "IF: Slots Args Valid",
               "type": "main",
               "index": 0
             }
@@ -4563,6 +4402,17 @@
           [
             {
               "node": "Respond: Get Staff",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate: Booking Args": {
+        "main": [
+          [
+            {
+              "node": "IF: Booking Args Valid",
               "type": "main",
               "index": 0
             }
@@ -5290,72 +5140,6 @@
             }
           ]
         ]
-      },
-      "Validate: Booking Args": {
-        "main": [
-          [
-            {
-              "node": "Wix: Services (Booking)",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Wix: Services (Booking)": {
-        "main": [
-          [
-            {
-              "node": "Resolve: Service (Booking)",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Resolve: Service (Booking)": {
-        "main": [
-          [
-            {
-              "node": "IF: Booking Args Valid",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Validate: Slots Args": {
-        "main": [
-          [
-            {
-              "node": "Wix: Services (Slots)",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Wix: Services (Slots)": {
-        "main": [
-          [
-            {
-              "node": "Resolve: Service (Slots)",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Resolve: Service (Slots)": {
-        "main": [
-          [
-            {
-              "node": "IF: Slots Args Valid",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
       }
     },
     "nodeGroups": [],
@@ -5365,18 +5149,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-08-16T09:17:34.252Z",
-        "id": 204,
+        "createdAt": "2026-08-16T08:43:52.608Z",
+        "id": 186,
         "workflowId": "s5dWZOMRl0X7PV65",
-        "versionId": "2917abbf-2aed-49b3-8e98-4a4d11b6c3c8",
+        "versionId": "80a067a0-ac70-42a4-89a6-b185d2c324ad",
         "event": "activated",
         "userId": "8ddbeedf-bf2d-4044-b454-00133726deaf"
       },
       {
-        "createdAt": "2026-08-16T09:17:34.223Z",
-        "id": 203,
+        "createdAt": "2026-08-16T08:43:52.583Z",
+        "id": 185,
         "workflowId": "s5dWZOMRl0X7PV65",
-        "versionId": "2917abbf-2aed-49b3-8e98-4a4d11b6c3c8",
+        "versionId": "80a067a0-ac70-42a4-89a6-b185d2c324ad",
         "event": "deactivated",
         "userId": "8ddbeedf-bf2d-4044-b454-00133726deaf"
       }

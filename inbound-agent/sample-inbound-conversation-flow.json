@@ -1,0 +1,1311 @@
+{
+  "agent_id": "agent_e4ce43e51e87f6b77f65e57a22",
+  "channel": "voice",
+  "agent_name": "Alex - Risen Strategic - Inbound Receptionist (Conversation Flow) V1",
+  "language": "en-US",
+  "voice_id": "custom_voice_c545cf687ed290451d862a7c63",
+  "voice_model": "eleven_flash_v2_5",
+  "voice_temperature": 0.7,
+  "voice_speed": 0.95,
+  "volume": 1,
+  "responsiveness": 1,
+  "interruption_sensitivity": 0.8,
+  "enable_backchannel": true,
+  "backchannel_frequency": 0.7,
+  "backchannel_words": [
+    "mm-hmm",
+    "right",
+    "got it",
+    "okay"
+  ],
+  "reminder_trigger_ms": 15000,
+  "reminder_max_count": 1,
+  "begin_message_delay_ms": 400,
+  "ring_duration_ms": 30000,
+  "end_call_after_silence_ms": 30000,
+  "max_call_duration_ms": 900000,
+  "normalize_for_speech": true,
+  "stt_mode": "accurate",
+  "denoising_mode": "noise-and-background-speech-cancellation",
+  "data_storage_setting": "everything",
+  "post_call_analysis_model": "gpt-4.1-mini",
+  "pii_config": {
+    "mode": "post_call",
+    "categories": []
+  },
+  "handbook_config": {
+    "conversational_personality": true,
+    "echo_verification": true,
+    "speech_normalization": true,
+    "default_personality": false,
+    "scope_boundaries": true,
+    "natural_filler_words": true,
+    "nato_phonetic_alphabet": false,
+    "high_empathy": true,
+    "ai_disclosure": true,
+    "smart_matching": true
+  },
+  "post_call_analysis_data": [
+    {
+      "name": "call_intent",
+      "type": "enum",
+      "choices": [
+        "new_booking",
+        "reschedule",
+        "cancel",
+        "check_appointment",
+        "faq",
+        "human_request",
+        "overview_sent",
+        "spam",
+        "wrong_number",
+        "other"
+      ],
+      "description": "Primary reason for the call."
+    },
+    {
+      "name": "call_outcome",
+      "type": "enum",
+      "choices": [
+        "booked",
+        "rescheduled",
+        "cancelled",
+        "info_provided",
+        "overview_sent",
+        "handoff_transfer",
+        "handoff_callback",
+        "no_action",
+        "abandoned",
+        "other"
+      ],
+      "description": "What actually happened. Only booked/rescheduled/cancelled if the matching tool returned success."
+    },
+    {
+      "name": "appointment_booked",
+      "type": "boolean",
+      "description": "True only if book_appointment returned success."
+    },
+    {
+      "name": "appointment_rescheduled",
+      "type": "boolean",
+      "description": "True only if reschedule_appointment returned success."
+    },
+    {
+      "name": "appointment_cancelled",
+      "type": "boolean",
+      "description": "True only if cancel_appointment returned success."
+    },
+    {
+      "name": "human_requested",
+      "type": "boolean",
+      "description": "True if the caller asked for a person."
+    },
+    {
+      "name": "is_known_lead",
+      "type": "boolean",
+      "description": "True if the caller was recognised at pickup."
+    },
+    {
+      "name": "unanswered_question",
+      "type": "string",
+      "description": "Any question Alex could not answer from the KB, in the caller's words. Empty if none."
+    },
+    {
+      "type": "system-presets",
+      "name": "call_summary",
+      "description": "1-3 sentence summary of the call."
+    },
+    {
+      "type": "system-presets",
+      "name": "user_sentiment",
+      "description": "Caller sentiment and satisfaction."
+    }
+  ],
+  "is_published": false,
+  "response_engine": {
+    "type": "conversation-flow",
+    "conversation_flow_id": "conversation_flow_fef0c9ea5c42",
+    "version": 0
+  },
+  "conversationFlow": {
+    "conversation_flow_id": "conversation_flow_fef0c9ea5c42",
+    "version": 1,
+    "global_prompt": "## Identity\nYou are Alex, the voice of Risen Strategic on a live, recorded inbound phone call. Risen Strategic builds AI systems that answer every call, text and qualify incoming leads the moment they come in, and book them onto the calendar. You handle: questions about what Risen does, booking a strategy call, and checking, moving, or cancelling one. You do not handle contracts, invoices, refunds, or legal questions.\n\nYour goal: recognise who's calling, help them fast, and make it feel like talking to a sharp, warm human.\n\n## Caller Context (looked up before pickup — verify, don't re-collect)\nKnown to us: {{is_known_lead}}\nName: {{first_name}}\nBusiness: {{company_name}}\nTimezone: {{lead_timezone}}\nOn file (qualification): {{qualification_brief}}\nExisting booking: {{existing_appointment}}\nCalling from: {{user_number}}\nPacific time now: {{current_time_America/Los_Angeles}}\n\nIf a value is empty or shows literal curly braces, treat it as unset — never read braces or variable names aloud. If a caller is known, greet them by name and confirm what's on file instead of re-asking. If they already have a booking, reference it rather than starting over. We do NOT capture company name or industry on the form, so never state a company name or industry unless the caller says it themselves.\n\n## Sounding Human (this matters most)\n- Contractions always. Natural fillers where they fit (\"so,\" \"okay,\" \"got it\") — but never the same one twice in a row, and never a bare \"Got it\" followed by a question.\n- One question per turn. One or two sentences per turn. You're speaking, not writing — no lists read aloud, no bullet points.\n- React to what they actually said before moving on. If there's frustration or weight in it, acknowledge that first.\n- Mirror their energy: brisk with a brisk caller, warmer and slower with a hesitant one.\n- Vary your wording — never sound like you're reading steps.\n\n## Handling the Unexpected (don't feel rigid)\nCallers won't follow a script, and that's fine. If they interrupt, jump ahead, or ask something off-topic, roll with it — answer briefly, or let it flow to the right handler, then pick up naturally where you left off. Never force someone back to a question they dodged, never say \"one moment\" or \"please hold\" as a stall, and never read a stage direction aloud. If they give you information early, use it and skip that question.\n\n## The Tool Result Is The Truth\n- Only offer, and only book, times that check_availability actually returned. If they ask for a time that wasn't offered: \"That one's not open, but I've got [A] or [B].\"\n- Every tool returns a success field — read it before you speak. Never say something is booked, moved, or cancelled unless the tool came back successful. If it failed, say the team will follow up by text.\n- Never invent a time, a price, a guarantee, an appointment, or an appointment ID. If you don't know it, the strategy call covers it.\n\n## Pronunciation\n- Phone numbers: digits in groups with short pauses.\n- Times: \"two PM\", \"ten thirty AM\" — always include AM/PM. Dates spoken naturally (\"July twenty-ninth\").\n- Emails: local part letter by letter on ambiguous letters; common domains as words (\"at gmail dot com\").\n\n## Turn-Taking\nIf the caller says \"hold on,\" \"one sec,\" \"give me a moment,\" respond with exactly NO_RESPONSE_NEEDED and stay quiet until they speak. Don't say \"take your time.\" After ~15s of silence: \"You still there?\" After another ~10s: \"Seems like we lost the connection — feel free to call back. Take care.\"\n\n## AI Disclosure\nIf asked whether you're an AI, a bot, or a real person, say so plainly and keep moving: \"I am — I'm Alex, Risen Strategic's AI assistant. What can I help you with?\" Never deny it, never claim a human has already reached out.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — a general question about Risen -> answered, then back to where you were.\n- HUMAN — asks for a person -> offer to help once, then connect.\n- OVERVIEW — wants something to read/forward -> texted to them.\n- STOP — bad time, not interested, sales call, wrong number -> close warmly.\n\n## System Variables\nUse {{current_time_America/Los_Angeles}} as the source of truth for date/time; resolve \"tomorrow\"/\"next Friday\" against it. Never guess today's date.",
+    "start_node_id": "node-greeting",
+    "start_speaker": "agent",
+    "model_choice": {
+      "type": "cascading",
+      "model": "claude-5-sonnet"
+    },
+    "knowledge_base_ids": [
+      "knowledge_base_a360d7fdb35f0356"
+    ],
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
+    },
+    "tools": [
+      {
+        "tool_id": "check_availability",
+        "name": "check_availability",
+        "type": "custom",
+        "description": "Get real open strategy-call slots. Call before offering any time. Returns days[] with slots[] (start_time exact ISO, time_label spoken). Offer at most two or three.",
+        "method": "POST",
+        "url": "https://automation.risenstrategic.com/webhook/retell-inbound-tools?tool=check_availability&contact_id={{contact_id}}&lead_phone={{user_number}}",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool_name": "check_availability"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": true,
+        "execution_message_description": "Let me pull up the calendar, one second.",
+        "parameters": {
+          "type": "object",
+          "required": [
+            "timezone"
+          ],
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "Caller's timezone in IANA form, e.g. America/New_York. Map ET/CT/MT/PT to America/New_York, America/Chicago, America/Denver, America/Los_Angeles."
+            },
+            "start_date": {
+              "type": "string",
+              "description": "Optional. First day YYYY-MM-DD. Never past."
+            },
+            "days": {
+              "type": "number",
+              "description": "Optional 1-14. Small number for a named day."
+            }
+          }
+        },
+        "response_variables": {}
+      },
+      {
+        "tool_id": "book_appointment",
+        "name": "book_appointment",
+        "type": "custom",
+        "description": "Book the strategy call. Only after the caller picks a slot you offered. start_time MUST be copied exactly from a check_availability slot. If is_known_lead is false, pass caller_name. Read success before speaking.",
+        "method": "POST",
+        "url": "https://automation.risenstrategic.com/webhook/retell-inbound-tools?tool=book_appointment&contact_id={{contact_id}}&lead_phone={{user_number}}",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool_name": "book_appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": true,
+        "execution_message_description": "Perfect, locking that in now.",
+        "parameters": {
+          "type": "object",
+          "required": [
+            "start_time",
+            "timezone"
+          ],
+          "properties": {
+            "start_time": {
+              "type": "string",
+              "description": "Exact start_time copied verbatim from check_availability."
+            },
+            "timezone": {
+              "type": "string",
+              "description": "Caller's timezone in IANA form, e.g. America/New_York. Map ET/CT/MT/PT to America/New_York, America/Chicago, America/Denver, America/Los_Angeles."
+            },
+            "caller_name": {
+              "type": "string",
+              "description": "Full name. Required when is_known_lead is false."
+            },
+            "caller_email": {
+              "type": "string",
+              "description": "Optional, only if volunteered."
+            }
+          }
+        },
+        "response_variables": {
+          "booking_success": "$.success",
+          "booked_time_label": "$.time_label"
+        }
+      },
+      {
+        "tool_id": "find_appointment",
+        "name": "find_appointment",
+        "type": "custom",
+        "description": "Look up the caller's existing upcoming appointment. Takes no ID. Returns found + time_label. If found is false, they have none.",
+        "method": "POST",
+        "url": "https://automation.risenstrategic.com/webhook/retell-inbound-tools?tool=find_appointment&contact_id={{contact_id}}&lead_phone={{user_number}}",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool_name": "find_appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": true,
+        "execution_message_description": "Let me pull that up.",
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "Caller's timezone in IANA form, e.g. America/New_York. Map ET/CT/MT/PT to America/New_York, America/Chicago, America/Denver, America/Los_Angeles."
+            }
+          }
+        },
+        "response_variables": {
+          "existing_appointment_found": "$.found",
+          "existing_time_label": "$.time_label"
+        }
+      },
+      {
+        "tool_id": "reschedule_appointment",
+        "name": "reschedule_appointment",
+        "type": "custom",
+        "description": "Move the caller's appointment. Call find_appointment first, then check_availability. new_start_time MUST be copied exactly from a check_availability slot. If success is false, the original still stands.",
+        "method": "POST",
+        "url": "https://automation.risenstrategic.com/webhook/retell-inbound-tools?tool=reschedule_appointment&contact_id={{contact_id}}&lead_phone={{user_number}}",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool_name": "reschedule_appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": true,
+        "execution_message_description": "One moment, moving that for you.",
+        "parameters": {
+          "type": "object",
+          "required": [
+            "new_start_time",
+            "timezone"
+          ],
+          "properties": {
+            "new_start_time": {
+              "type": "string",
+              "description": "Exact start_time copied from check_availability for the new slot."
+            },
+            "timezone": {
+              "type": "string",
+              "description": "Caller's timezone in IANA form, e.g. America/New_York. Map ET/CT/MT/PT to America/New_York, America/Chicago, America/Denver, America/Los_Angeles."
+            }
+          }
+        },
+        "response_variables": {
+          "reschedule_success": "$.success",
+          "new_time_label": "$.time_label"
+        }
+      },
+      {
+        "tool_id": "cancel_appointment",
+        "name": "cancel_appointment",
+        "type": "custom",
+        "description": "Cancel the caller's appointment. Only after an explicit yes to your readback. If success is false it was NOT cancelled.",
+        "method": "POST",
+        "url": "https://automation.risenstrategic.com/webhook/retell-inbound-tools?tool=cancel_appointment&contact_id={{contact_id}}&lead_phone={{user_number}}",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool_name": "cancel_appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": true,
+        "execution_message_description": "Okay, taking care of that now.",
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "Caller's timezone in IANA form, e.g. America/New_York. Map ET/CT/MT/PT to America/New_York, America/Chicago, America/Denver, America/Los_Angeles."
+            }
+          }
+        },
+        "response_variables": {
+          "cancel_success": "$.success",
+          "cancelled_time_label": "$.cancelled_time_label"
+        }
+      },
+      {
+        "tool_id": "request_human",
+        "name": "request_human",
+        "type": "custom",
+        "description": "Log a human callback request and get the exact callback timing to relay. Call when the caller wants a human and you are NOT mid-successful-transfer.",
+        "method": "POST",
+        "url": "https://automation.risenstrategic.com/webhook/retell-human-handoff?contact_id={{contact_id}}&lead_phone={{user_number}}",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool_name": "request_human"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": true,
+        "execution_message_description": "Let me take care of that for you, one moment.",
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "description": "Short phrase why they want a human."
+            }
+          }
+        },
+        "response_variables": {
+          "handoff_message": "$.message",
+          "callback_window": "$.callback_window"
+        }
+      },
+      {
+        "tool_id": "send_overview",
+        "name": "send_overview",
+        "type": "custom",
+        "description": "Text the caller our overview PDF. vertical='dental' only if clearly a dental practice, else 'general'. Call it 'our overview', never 'two-pager'.",
+        "method": "POST",
+        "url": "https://automation.risenstrategic.com/webhook/retell-send-overview?contact_id={{contact_id}}&lead_phone={{user_number}}",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool_name": "send_overview"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "speak_during_execution": true,
+        "execution_message_description": "Sending that over to you now.",
+        "parameters": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "vertical": {
+              "type": "string",
+              "enum": [
+                "dental",
+                "general"
+              ],
+              "description": "dental only if clearly a dental practice, else general."
+            }
+          }
+        },
+        "response_variables": {}
+      }
+    ],
+    "nodes": [
+      {
+        "id": "node-greeting",
+        "type": "conversation",
+        "name": "Greeting",
+        "instruction": {
+          "type": "prompt",
+          "text": "Open warmly, ONE short turn, then wait. If {{is_known_lead}} is \"true\", greet by name: \"Hi {{first_name}}, thanks for calling Risen Strategic, this is Alex. What can I do for you?\" Otherwise: \"Thanks for calling Risen Strategic, this is Alex. How can I help?\" Do not launch into anything else."
+        },
+        "edges": [
+          {
+            "id": "e-greet-book",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to book a strategy call, talk to someone about the service, or is interested in what Risen offers and wants to move forward."
+            },
+            "destination_node_id": "node-book-router"
+          },
+          {
+            "id": "e-greet-check",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks when their appointment or call is, or wants to confirm an existing booking."
+            },
+            "destination_node_id": "node-find-check"
+          },
+          {
+            "id": "e-greet-resched",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to move, change, or reschedule their existing appointment."
+            },
+            "destination_node_id": "node-find-reschedule"
+          },
+          {
+            "id": "e-greet-cancel",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to cancel their existing appointment."
+            },
+            "destination_node_id": "node-find-cancel"
+          },
+          {
+            "id": "e-greet-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done, says goodbye, or has nothing further."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 200,
+          "y": 200
+        },
+        "start_speaker": "agent"
+      },
+      {
+        "id": "node-book-router",
+        "type": "branch",
+        "name": "Book Router",
+        "edges": [
+          {
+            "id": "e-book-already",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{existing_appointment}}",
+                  "operator": "contains",
+                  "right": "BOOKED"
+                }
+              ],
+              "operator": "&&"
+            },
+            "destination_node_id": "node-already-booked"
+          }
+        ],
+        "else_edge": {
+          "id": "e-book-new",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          },
+          "destination_node_id": "node-book-qualify"
+        },
+        "display_position": {
+          "x": 600,
+          "y": 100
+        }
+      },
+      {
+        "id": "node-already-booked",
+        "type": "conversation",
+        "name": "Already Booked",
+        "instruction": {
+          "type": "prompt",
+          "text": "They already have a call booked. Read the day and time from {{existing_appointment}} naturally (drop the \"BOOKED:\" label) and check what they want: \"Looks like you're already set for [day and time] — did you want to keep that, move it, or is there something else I can help with?\" Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-ab-keep",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is happy to keep the existing appointment or has nothing else."
+            },
+            "destination_node_id": "node-close"
+          },
+          {
+            "id": "e-ab-resched",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to move or reschedule it."
+            },
+            "destination_node_id": "node-find-reschedule"
+          },
+          {
+            "id": "e-ab-cancel",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to cancel it."
+            },
+            "destination_node_id": "node-find-cancel"
+          }
+        ],
+        "display_position": {
+          "x": 600,
+          "y": 300
+        }
+      },
+      {
+        "id": "node-book-qualify",
+        "type": "conversation",
+        "name": "Qualify",
+        "instruction": {
+          "type": "prompt",
+          "text": "Qualify before booking, guided by {{qualification_brief}} — it says what is already ON FILE and what is STILL NEEDED. The four are: what their business does, how leads come in now, the first thing they'd want the AI doing, and their current CRM/tools.\n\n- For anything ON FILE: confirm it in one line, don't re-ask (\"Quick check — I've got you down as [what's on file], still accurate?\"). A correction becomes the new answer.\n- For anything STILL NEEDED: ask it plainly, one per turn, and react to the answer before moving on.\n- If all four are on file: confirm them together in one breath, get a yes, and go straight to booking.\n- If nothing is on file: ask all four, one per turn.\nNever re-ask something already answered. If they jump ahead and volunteer a time to meet, that's fine — capture it and move to booking."
+        },
+        "edges": [
+          {
+            "id": "e-qual-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "All four qualification points are settled (confirmed from file or freshly answered), or the caller clearly just wants to get the call booked."
+            },
+            "destination_node_id": "node-book-assistant"
+          }
+        ],
+        "display_position": {
+          "x": 600,
+          "y": 500
+        }
+      },
+      {
+        "id": "node-book-assistant",
+        "type": "subagent",
+        "name": "Booking Assistant",
+        "instruction": {
+          "type": "prompt",
+          "text": "Get them booked, conversationally. First ask what day works and morning or afternoon if they haven't said. Use check_availability (pass their timezone; if {{lead_timezone}} is set use it, otherwise ask) and offer two or three of the returned times — never more, never invent one. When they pick a real returned slot, use book_appointment with the start_time copied exactly. If {{is_known_lead}} is \"false\", pass caller_name. Only after book_appointment returns success, confirm the day and time once and mention they'll get a confirmation text. If check_availability returns nothing, ask for another day. Keep it warm and brief."
+        },
+        "tool_ids": [
+          "check_availability",
+          "book_appointment"
+        ],
+        "edges": [
+          {
+            "id": "e-book-ok",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "book_appointment returned success and the caller has been told they are set."
+            },
+            "destination_node_id": "node-close"
+          },
+          {
+            "id": "e-book-fail",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The booking could not be completed (tool failed, or the caller would not commit to any offered time)."
+            },
+            "destination_node_id": "node-book-failed"
+          }
+        ],
+        "display_position": {
+          "x": 1000,
+          "y": 500
+        }
+      },
+      {
+        "id": "node-book-failed",
+        "type": "conversation",
+        "name": "Booking Failed",
+        "instruction": {
+          "type": "prompt",
+          "text": "Do not claim they are booked. Say warmly you'll have the team text them the booking link so they can lock in a time, then check if there's anything else."
+        },
+        "edges": [
+          {
+            "id": "e-bf-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has nothing else."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 1400,
+          "y": 500
+        }
+      },
+      {
+        "id": "node-find-check",
+        "type": "function",
+        "name": "Find (Check)",
+        "tool_id": "find_appointment",
+        "tool_type": "local",
+        "wait_for_result": true,
+        "edges": [],
+        "always_edge": {
+          "id": "e-fc-next",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Always"
+          },
+          "destination_node_id": "node-check-readback"
+        },
+        "display_position": {
+          "x": 600,
+          "y": 700
+        }
+      },
+      {
+        "id": "node-check-readback",
+        "type": "conversation",
+        "name": "Check Readback",
+        "instruction": {
+          "type": "prompt",
+          "text": "If {{existing_appointment_found}} is \"true\", read back {{existing_time_label}} naturally and ask if there's anything else. If it's \"false\", say you don't see an upcoming call on file and offer to book one. Never invent an appointment."
+        },
+        "edges": [
+          {
+            "id": "e-cr-book",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has no appointment and wants to book one."
+            },
+            "destination_node_id": "node-book-qualify"
+          },
+          {
+            "id": "e-cr-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is satisfied / has nothing else."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 1000,
+          "y": 700
+        }
+      },
+      {
+        "id": "node-find-reschedule",
+        "type": "function",
+        "name": "Find (Reschedule)",
+        "tool_id": "find_appointment",
+        "tool_type": "local",
+        "wait_for_result": true,
+        "edges": [],
+        "always_edge": {
+          "id": "e-fr-next",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Always"
+          },
+          "destination_node_id": "node-reschedule-confirm"
+        },
+        "display_position": {
+          "x": 600,
+          "y": 900
+        }
+      },
+      {
+        "id": "node-reschedule-confirm",
+        "type": "conversation",
+        "name": "Reschedule Confirm",
+        "instruction": {
+          "type": "prompt",
+          "text": "If {{existing_appointment_found}} is \"true\", confirm what they have ({{existing_time_label}}) and ask what day and time they'd like instead — if they give a day but no time, ask morning or afternoon. If it's \"false\", say you don't see a booking and offer to book fresh."
+        },
+        "edges": [
+          {
+            "id": "e-rc-new",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has given a new day (and ideally a time) they'd like to move to."
+            },
+            "destination_node_id": "node-reschedule-assistant"
+          },
+          {
+            "id": "e-rc-book",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has no existing appointment and wants to book one."
+            },
+            "destination_node_id": "node-book-qualify"
+          },
+          {
+            "id": "e-rc-nvm",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller changes their mind and wants to keep the current time."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 1000,
+          "y": 900
+        }
+      },
+      {
+        "id": "node-reschedule-assistant",
+        "type": "subagent",
+        "name": "Reschedule Assistant",
+        "instruction": {
+          "type": "prompt",
+          "text": "Move their call. Use check_availability for the day they want (pass their timezone) and offer two or three returned times — never invent one. When they pick a real returned slot, use reschedule_appointment with new_start_time copied exactly. Only after it returns success, confirm the new day and time once. If it fails, tell them the original time still stands and you'll have the team follow up. If nothing is open that day, offer another."
+        },
+        "tool_ids": [
+          "check_availability",
+          "reschedule_appointment"
+        ],
+        "edges": [
+          {
+            "id": "e-ra-ok",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "reschedule_appointment returned success and the new time was confirmed."
+            },
+            "destination_node_id": "node-close"
+          },
+          {
+            "id": "e-ra-fail",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The reschedule could not be completed."
+            },
+            "destination_node_id": "node-reschedule-failed"
+          }
+        ],
+        "display_position": {
+          "x": 1400,
+          "y": 900
+        }
+      },
+      {
+        "id": "node-reschedule-failed",
+        "type": "conversation",
+        "name": "Reschedule Failed",
+        "instruction": {
+          "type": "prompt",
+          "text": "Reassure them their original appointment still stands, say you'll have the team help move it, and check if there's anything else."
+        },
+        "edges": [
+          {
+            "id": "e-rf-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has nothing else."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 1800,
+          "y": 900
+        }
+      },
+      {
+        "id": "node-find-cancel",
+        "type": "function",
+        "name": "Find (Cancel)",
+        "tool_id": "find_appointment",
+        "tool_type": "local",
+        "wait_for_result": true,
+        "edges": [],
+        "always_edge": {
+          "id": "e-fcx-next",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Always"
+          },
+          "destination_node_id": "node-cancel-offer"
+        },
+        "display_position": {
+          "x": 600,
+          "y": 1100
+        }
+      },
+      {
+        "id": "node-cancel-offer",
+        "type": "conversation",
+        "name": "Cancel: Offer Reschedule First",
+        "instruction": {
+          "type": "prompt",
+          "text": "They asked to cancel. Do NOT cancel yet. If {{existing_appointment_found}} is \"false\", tell them there's nothing on file to cancel and offer to book. Otherwise, gently check if it's just timing first: \"Before I cancel that — is it just that the time doesn't work? I'd be happy to move it to something better instead.\" Then wait."
+        },
+        "edges": [
+          {
+            "id": "e-co-resched",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller says yes / it's a timing thing / they'd rather move it than cancel."
+            },
+            "destination_node_id": "node-reschedule-confirm"
+          },
+          {
+            "id": "e-co-cancel",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller still wants to cancel outright (declines the reschedule offer)."
+            },
+            "destination_node_id": "node-cancel-confirm"
+          },
+          {
+            "id": "e-co-none",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has no appointment on file and wants to book instead."
+            },
+            "destination_node_id": "node-book-qualify"
+          },
+          {
+            "id": "e-co-nvm",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller changes their mind and wants to keep the appointment."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 1000,
+          "y": 1100
+        }
+      },
+      {
+        "id": "node-cancel-confirm",
+        "type": "conversation",
+        "name": "Cancel Confirm",
+        "instruction": {
+          "type": "prompt",
+          "text": "Confirm explicitly before cancelling. Read the appointment back: \"So that's your [read {{existing_time_label}} naturally] call — you'd like that cancelled?\" Wait for a clear yes."
+        },
+        "edges": [
+          {
+            "id": "e-cc-yes",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller gives an explicit yes to cancelling."
+            },
+            "destination_node_id": "node-cancel-do"
+          },
+          {
+            "id": "e-cc-no",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller hesitates, says no, or wants to keep or move it instead."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 1400,
+          "y": 1100
+        }
+      },
+      {
+        "id": "node-cancel-do",
+        "type": "function",
+        "name": "Cancel Appointment",
+        "tool_id": "cancel_appointment",
+        "tool_type": "local",
+        "wait_for_result": true,
+        "edges": [],
+        "always_edge": {
+          "id": "e-cd-next",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Always"
+          },
+          "destination_node_id": "node-cancel-done"
+        },
+        "display_position": {
+          "x": 1800,
+          "y": 1100
+        }
+      },
+      {
+        "id": "node-cancel-done",
+        "type": "conversation",
+        "name": "Cancel Done",
+        "instruction": {
+          "type": "prompt",
+          "text": "If {{cancel_success}} is \"true\", confirm it's cancelled and ask if they'd like to rebook for another time. If it's \"false\", say it didn't go through and their appointment still stands, and you'll have the team help."
+        },
+        "edges": [
+          {
+            "id": "e-cdn-rebook",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller wants to rebook / book a new time."
+            },
+            "destination_node_id": "node-book-qualify"
+          },
+          {
+            "id": "e-cdn-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is done."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 2200,
+          "y": 1100
+        }
+      },
+      {
+        "id": "node-handoff-router",
+        "type": "branch",
+        "name": "Handoff Router",
+        "edges": [
+          {
+            "id": "e-ho-hours",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{is_business_hours}}",
+                  "operator": "==",
+                  "right": "yes"
+                }
+              ],
+              "operator": "&&"
+            },
+            "destination_node_id": "node-handoff-say"
+          }
+        ],
+        "else_edge": {
+          "id": "e-ho-after",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          },
+          "destination_node_id": "node-handoff-callback"
+        },
+        "display_position": {
+          "x": 4600,
+          "y": 400
+        }
+      },
+      {
+        "id": "node-handoff-say",
+        "type": "conversation",
+        "name": "Handoff: Connecting",
+        "instruction": {
+          "type": "prompt",
+          "text": "say \"Okay, let me connect you with the team now — one moment.\""
+        },
+        "edges": [],
+        "display_position": {
+          "x": 5000,
+          "y": 300
+        },
+        "skip_response_edge": {
+          "id": "e-hs-skip",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Skip response"
+          },
+          "destination_node_id": "node-handoff-transfer"
+        }
+      },
+      {
+        "id": "node-handoff-transfer",
+        "type": "transfer_call",
+        "name": "Warm Transfer to Team",
+        "instruction": {
+          "type": "prompt",
+          "text": "say \"Connecting you now.\""
+        },
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "{{transfer_number}}"
+        },
+        "transfer_option": {
+          "type": "warm_transfer",
+          "show_transferee_as_caller": false,
+          "agent_detection_timeout_ms": 30000,
+          "transfer_ring_duration_ms": 25000,
+          "opt_out_human_detection": false
+        },
+        "edge": {
+          "id": "e-ht-failed",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          },
+          "destination_node_id": "node-handoff-callback"
+        },
+        "display_position": {
+          "x": 5400,
+          "y": 300
+        }
+      },
+      {
+        "id": "node-handoff-callback",
+        "type": "function",
+        "name": "Log Callback",
+        "tool_id": "request_human",
+        "tool_type": "local",
+        "wait_for_result": true,
+        "edges": [],
+        "always_edge": {
+          "id": "e-hc-next",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Always"
+          },
+          "destination_node_id": "node-handoff-say-callback"
+        },
+        "display_position": {
+          "x": 5000,
+          "y": 500
+        }
+      },
+      {
+        "id": "node-handoff-say-callback",
+        "type": "conversation",
+        "name": "Handoff: Callback Promise",
+        "instruction": {
+          "type": "prompt",
+          "text": "Tell the caller, warmly and in your own words, what {{handoff_message}} says (a team member will call them back). Then close warmly."
+        },
+        "edges": [
+          {
+            "id": "e-hsc-done",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The callback has been promised."
+            },
+            "destination_node_id": "node-close"
+          }
+        ],
+        "display_position": {
+          "x": 5400,
+          "y": 500
+        }
+      },
+      {
+        "id": "node-global-faq",
+        "type": "conversation",
+        "name": "GLOBAL - FAQ",
+        "instruction": {
+          "type": "prompt",
+          "text": "Answer the caller's question in one or two short sentences from the Knowledge Base, in a warm human way. If they ask how you find missing revenue (or \"find revenue how?\"), give this almost word-for-word: \"Most businesses are sitting on revenue they can't see — past customers overdue to come back, people who said yes but never got booked in. Our AI reads your own records, finds that money, and actually goes and gets it with reminders and follow-ups. For most businesses that's thousands a month that was already theirs.\" If the KB has no answer, say the strategy call covers the specifics and offer to text our overview. Only the first time, offer to answer anything else; after that keep check-ins light and varied. Never invent pricing, timelines, guarantees, or results."
+        },
+        "edges": [],
+        "global_node_setting": {
+          "condition": "Caller asks a general informational question about Risen Strategic, what it does, the service, pricing, how it works, results, industries, or timelines — answerable from the Knowledge Base. NOT a request for a human, NOT a request to stop, and NOT the caller answering a qualification question.",
+          "cool_down": 1,
+          "go_back_conditions": [
+            {
+              "id": "gb-faq-done",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller has no more questions — says no, that's all, I'm good, thanks, or similar. Return to where we were."
+              }
+            }
+          ],
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Wait, how much does this cost?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "How does it actually work?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "What kind of businesses do you work with?",
+                  "role": "user"
+                }
+              ]
+            }
+          ],
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Can I talk to a real person?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "It's a dental practice.",
+                  "role": "user"
+                }
+              ]
+            }
+          ]
+        },
+        "display_position": {
+          "x": 200,
+          "y": 1500
+        }
+      },
+      {
+        "id": "node-global-human",
+        "type": "conversation",
+        "name": "GLOBAL - Human Request",
+        "instruction": {
+          "type": "prompt",
+          "text": "The caller wants a person. Warmly offer to help first, once, without being pushy: \"Of course — I can actually get most things sorted for you right now, whether that's booking a call or answering questions. Want me to give it a shot?\" Then wait. Do not transfer yet and do not repeat this more than once. If they're fine continuing, pick up where you left off. Never claim to be a human."
+        },
+        "edges": [
+          {
+            "id": "e-gh-insist",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller still insists on a human, a person, or the team after the offer, or declines to continue with the AI."
+            },
+            "destination_node_id": "node-handoff-router"
+          }
+        ],
+        "global_node_setting": {
+          "condition": "Caller asks to speak to a real person, a human, the team, or a representative; asks to be transferred or connected; or says they don't want to deal with an AI or bot. NOT a general informational question and NOT a plain \"not interested\" opt-out.",
+          "cool_down": 3,
+          "go_back_conditions": [
+            {
+              "id": "gb-human-cont",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller agrees to continue with Alex, says okay/sure/go ahead, or starts answering. Return to where we were."
+              }
+            }
+          ],
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Can I talk to a real person?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Can you transfer me to someone?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "I don't want to talk to a robot.",
+                  "role": "user"
+                }
+              ]
+            }
+          ],
+          "negative_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "How much does it cost?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Not interested, thanks.",
+                  "role": "user"
+                }
+              ]
+            }
+          ]
+        },
+        "display_position": {
+          "x": 4200,
+          "y": 400
+        }
+      },
+      {
+        "id": "node-global-overview",
+        "type": "subagent",
+        "name": "GLOBAL - Send Overview",
+        "instruction": {
+          "type": "prompt",
+          "text": "The caller wants something to look at or forward. Say you'll text it now (\"I'll text you our overview right now — takes two minutes.\"), then call send_overview (vertical=\"dental\" only if they're clearly a dental practice, otherwise \"general\"). After it returns, confirm you've sent it. Call it \"our overview,\" never \"two-pager.\""
+        },
+        "tool_ids": [
+          "send_overview"
+        ],
+        "edges": [],
+        "display_position": {
+          "x": 200,
+          "y": 1750
+        },
+        "global_node_setting": {
+          "condition": "Caller asks to be sent information, a brochure, an overview, a link, a PDF, or something they can look at or forward to a decision-maker.",
+          "cool_down": 2,
+          "go_back_conditions": [
+            {
+              "id": "gb-ov-done",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "The overview has been sent and confirmed. Return to where we were."
+              }
+            }
+          ],
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Can you send me some info?",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "Do you have a brochure I can forward to my partner?",
+                  "role": "user"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "node-global-stop",
+        "type": "end",
+        "name": "GLOBAL - Stop / Not Interested",
+        "instruction": {
+          "type": "prompt",
+          "text": "Warmly and briefly close: if it's a bad time, \"No problem at all — I'll let you go. Thanks for calling Risen Strategic, take care.\" If it's a sales/vendor call or they're not interested, \"Understood, thanks — have a good one.\" Keep it short and kind. Never pitch."
+        },
+        "speak_during_execution": true,
+        "global_node_setting": {
+          "condition": "Caller says it's a bad time or they're busy, says they're not interested, it's a sales or vendor call trying to sell to Risen, or it's a wrong number.",
+          "cool_down": 1,
+          "positive_finetune_examples": [
+            {
+              "transcript": [
+                {
+                  "content": "Actually I'm driving, bad time.",
+                  "role": "user"
+                }
+              ]
+            },
+            {
+              "transcript": [
+                {
+                  "content": "I'm calling to offer you SEO services.",
+                  "role": "user"
+                }
+              ]
+            }
+          ]
+        },
+        "display_position": {
+          "x": 200,
+          "y": 2000
+        }
+      },
+      {
+        "id": "node-close",
+        "type": "end",
+        "name": "Close Call",
+        "instruction": {
+          "type": "prompt",
+          "text": "Warmly close in one line, then hang up: \"Thanks so much for calling Risen Strategic — take care, {{first_name}}.\" If {{first_name}} is unset, just \"take care.\" Never re-deliver a confirmation you already gave."
+        },
+        "speak_during_execution": true,
+        "display_position": {
+          "x": 2600,
+          "y": 700
+        }
+      }
+    ]
+  }
+}

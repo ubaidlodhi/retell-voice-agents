@@ -78,7 +78,7 @@ There is no published membership program at this time. For package pricing or sp
 
 ## Cancellation, Rescheduling, and Late Arrivals
 
-The spa kindly asks for **twenty-four hours' notice** for cancellations or changes.
+The spa kindly asks for **twenty-four hours' notice** for cancellations or changes whenever possible.
 
 If a client arrives late, the session may be **shortened** to avoid affecting the next appointment. Arriving five to ten minutes before the session start time is recommended.
 

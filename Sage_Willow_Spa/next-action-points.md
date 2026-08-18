@@ -40,6 +40,7 @@ Live status: V24 built and deployed to Retell for testing. Two critical bugs sur
 - [ ] Verify phone-based `get_booking` / `cancel_booking` / `reschedule_booking` end-to-end
 
 ### Configuration swaps before go-live
+- [ ] 🔴 **n8n credentials back to production** — all 15 `wixApi` nodes in workflow `s5dWZOMRl0X7PV65` were switched to `Test: Wix Sage Site` (`wLpWbblaihcY4xnw`) on 2026-08-14 for the conversation-flow rebuild. Swap back to `Prod: Sage & Willow Spa Wix account` (`poMGaCKgf32bUQQL`) and rename the workflow off "TEST CREDENTIALS (rebuild)"
 - [ ] Replace temporary transfer number `+14064764193` (currently Ubaid's personal) with the spa's real forwarding number
 - [ ] Replace temporary callback email recipient `engineering@aiemply.com` with `sagewillowspa@gmail.com`
 - [ ] Re-upload finalized KB files (business_facts.md, service_descriptions.md, faqs.md) to Retell Knowledge Base after client sign-off on descriptions

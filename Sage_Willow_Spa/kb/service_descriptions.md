@@ -58,7 +58,7 @@ A **thirty-minute** massage that can be focused on your preferred areas (like ba
 
 ## Couples Massage
 
-A couples massage is two massages booked for the same time slot in our dedicated **couples massage room**. Each guest can pick any massage type from the menu (Signature, Swedish, Deep Tissue, etc.) — both massages run side-by-side.
+A couples massage is two massages booked for the same time slot in our dedicated **couples massage room** — both massages run side by side. The spa confirms each guest's massage details when it reaches out ahead of the appointment.
 
 **Best for:** couples, friends, or family who want to relax together.
 
