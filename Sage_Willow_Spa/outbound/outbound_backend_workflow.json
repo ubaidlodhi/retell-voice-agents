@@ -1,0 +1,2664 @@
+{
+  "name": "Retell AI <-> Wix Bookings | OUTBOUND (DEV CREDS)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "retell-wix-outbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "63ea18cb-9b89-4074-bdc1-aaedb6667a97",
+      "name": "Webhook — Retell Tool Call",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        7232
+      ],
+      "webhookId": "retell-wix-outbound-v1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Retell tool-call webhook normalizer\n//\n// With `args_at_root: true` (the production-validated default), Retell sends\n// LLM-extracted args SPREAD AT THE BODY ROOT — there is no `body.args` wrapper\n// and no `body.call` object. Tool routing is via the `tool` HTTP header.\n//\n// This parser is defensive: it also still handles the older `args_at_root: false`\n// shape (`body = { args: {...}, call: {...}, name: \"...\" }`) so flipping the\n// tool flag back doesn't break anything.\n\nconst data = $input.first().json;\nconst headers = data.headers || {};\nconst body = data.body || {};\n\n// Tool name — header-routed (preferred), fall back to body.name for legacy shape\nconst tool = headers.tool || body.name || '';\n\n// Args — nested under body.args (args_at_root: false) OR spread at body root (args_at_root: true)\nlet args;\nif (body.args && typeof body.args === 'object' && !Array.isArray(body.args)) {\n    args = body.args;\n} else {\n    // Strip Retell-internal envelope fields; everything else is an arg.\n    const { call, name, ...rootArgs } = body;\n    args = rootArgs;\n}\n\n\n// Caller's number straight from Retell's own call metadata, when present.\n// Under args_at_root:true there is no body.call, so this is usually null - but\n// when it IS there it beats anything the model passes, because it cannot be\n// forgotten or mistyped. \"Validate: Flag Callback Args\" already had a fallback\n// reading a top-level callerPhone; until now nothing ever set it, so the field\n// was dead code and callback emails went out reading \"Phone: Unknown\".\nconst callObj = body.call || data.call || {};\nconst callerPhone = callObj.from_number || callObj.fromNumber || null;\n\nif (!tool) {\n    return [{\n        json: {\n            tool: '',\n            args: {},\n            _parseError: 'No tool name found. Expected the `tool` HTTP header (set per-tool in the Retell agent config), or body.name for legacy webhook shape.'\n        }\n    }];\n}\n\nreturn [{ json: { tool, args, callerPhone } }];\n"
+      },
+      "id": "a2f9f7db-6423-43f4-9e13-0303e70a7e19",
+      "name": "Parse Retell Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        7232
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.first().json;\nconst { args } = inputJson;\nconst errors = [];\n\n// serviceName OR serviceId is enough - \"Resolve: Service (Slots)\" downstream\n// settles which one wins against the live catalog.\nif (!args.serviceId && !args.serviceName) errors.push('serviceId or serviceName is required');\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\nif (!args.durationInMinutes) errors.push('durationInMinutes is required');\n\n// Force Wix's strict local ISO format: YYYY-MM-DDThh:mm:ss.sss\nfunction formatForWix(dateStr, isEnd = false) {\n    if (!dateStr) return dateStr;\n    let cleanStr = String(dateStr).replace('Z', '');\n    cleanStr = cleanStr.replace(/[+-]\\d{2}:\\d{2}$/, '');\n    if (cleanStr.length === 10) {\n        cleanStr += isEnd ? 'T23:59:59.000' : 'T00:00:00.000';\n    }\n    return cleanStr;\n}\n\nif (args.startDate) {\n    if (isNaN(Date.parse(args.startDate))) {\n        errors.push('startDate is not a valid date');\n    } else {\n        args.startDate = formatForWix(args.startDate, false);\n    }\n}\n\nif (args.endDate) {\n    if (isNaN(Date.parse(args.endDate))) {\n        errors.push('endDate is not a valid date');\n    } else {\n        args.endDate = formatForWix(args.endDate, true);\n    }\n}\n\n// --- Normalize optional filter args ---\n\n// staffId: trim or null\nif (args.staffId === '' || args.staffId === undefined) {\n    args.staffId = null;\n} else if (args.staffId) {\n    args.staffId = String(args.staffId).trim();\n}\n\n// timeOfDay: lowercase one of morning/afternoon/evening/any (default any)\nconst validTOD = ['morning', 'afternoon', 'evening', 'any'];\nif (args.timeOfDay) {\n    const tod = String(args.timeOfDay).toLowerCase().trim();\n    args.timeOfDay = validTOD.includes(tod) ? tod : 'any';\n} else {\n    args.timeOfDay = 'any';\n}\n\n// earliestFirst: coerce to boolean\nif (args.earliestFirst === true || String(args.earliestFirst).toLowerCase() === 'true') {\n    args.earliestFirst = true;\n} else {\n    args.earliestFirst = false;\n}\n\n// --- NEW (V26): preferredTime -> normalized \"HH:MM\" 24-hour, or null ---\n// Accepts \"14:00\", \"14:00:00\", \"2 PM\", \"2pm\", \"2:30 PM\", \"2:30pm\".\n// When present, the formatter returns the slots NEAREST this time instead of\n// blindly returning the earliest N — this is what caused the agent to claim\n// \"no 2 PM slot\" when 2 PM existed but fell outside the first 6 results.\nfunction normalizePreferredTime(v) {\n    if (v === undefined || v === null || v === '') return null;\n    const s = String(v).trim().toLowerCase();\n\n    // 12-hour form first (\"2 pm\", \"2:30 pm\", \"2pm\")\n    let m = s.match(/^(\\d{1,2})(?::(\\d{2}))?\\s*([ap])\\.?\\s*m\\.?$/);\n    if (m) {\n        let h = parseInt(m[1], 10);\n        const mi = m[2] ? parseInt(m[2], 10) : 0;\n        if (h < 1 || h > 12 || mi > 59) return null;\n        if (h === 12) h = 0;\n        if (m[3] === 'p') h += 12;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    // 24-hour form (\"14:00\", \"14:00:00\", \"09:30\")\n    m = s.match(/^(\\d{1,2}):(\\d{2})(?::\\d{2})?$/);\n    if (m) {\n        const h = parseInt(m[1], 10);\n        const mi = parseInt(m[2], 10);\n        if (h > 23 || mi > 59) return null;\n        return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;\n    }\n\n    return null;\n}\nargs.preferredTime = normalizePreferredTime(args.preferredTime);\n\n// limit: integer 1..50, default 6 (3 if earliestFirst and not set)\nif (args.limit !== undefined && args.limit !== null && args.limit !== '') {\n    const n = parseInt(args.limit, 10);\n    if (!isNaN(n) && n >= 1 && n <= 50) {\n        args.limit = n;\n    } else {\n        args.limit = args.earliestFirst ? 3 : 6;\n    }\n} else {\n    args.limit = args.earliestFirst ? 3 : 6;\n}\n\nreturn [{ json: { ...inputJson, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+      },
+      "id": "811220a5-52b4-498e-9176-6d39af0388c9",
+      "name": "Validate: Slots Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        6064
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "899c74bc-2bfb-4a43-9728-94dbd5a1806a",
+      "name": "IF: Slots Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        6064
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/_api/service-availability/v2/time-slots",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"serviceId\": \"{{ $json.args.serviceId }}\",\n  \"fromLocalDate\": \"{{ $json.args.startDate }}\",\n  \"toLocalDate\": \"{{ $json.args.endDate }}\",\n  \"timeZone\": \"America/Los_Angeles\"\n  {{ $json.args.staffId ? ', \"resourceTypes\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"resourceIds\": [\"' + $json.args.staffId + '\"] }]' : ', \"includeResourceTypeIds\": [\"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\"]' }}\n  {{ $json.args.durationInMinutes ? ', \"customerChoices\": { \"durationInMinutes\": ' + $json.args.durationInMinutes + ' }' : '' }}\n}",
+        "options": {}
+      },
+      "id": "6b5ec47e-7360-4ca5-b2a0-54cbec564f8c",
+      "name": "Wix: Query Time Slots",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        64,
+        5984
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reads Wix's per-slot availableResources (populated because the request\n// passes includeResourceTypeIds upstream) and returns therapist names directly\n// from Wix — no STAFF_LOOKUP needed.\n//\n// V26 CHANGE — fixes the \"2 PM is not available\" false negative:\n// Previously grouped mode did `day[band].slice(0, perBand)`, which kept only the\n// EARLIEST N slots and silently discarded everything later in the day. A caller\n// asking for 2 PM was told no such slot existed because the response was cut off\n// at 1:15 PM. Selection is now:\n//   1. preferredTime given  -> return the slots NEAREST that time\n//   2. earliestFirst        -> return the soonest N (unchanged)\n//   3. neither              -> return an EVENLY SPREAD sample across the window\n// The response also now reports totalAvailable / truncated / requestedTimeAvailable\n// so the agent can never mistake a truncated list for the full picture.\n\nconst raw = $input.first().json;\nconst { args } = $('Parse Retell Payload').first().json;\n\nconst data = Array.isArray(raw) ? raw[0] : raw;\n\nif (!data) return [{ json: { success: false, error: 'Empty response from Wix' } }];\nif (data.message || data.details) {\n    return [{ json: { success: false, error: data.message || 'Failed to retrieve slots', details: data.details || null } }];\n}\n\nconst entries = data.timeSlots || [];\n\nconst staffFilter = args.staffId || null;\nconst timeOfDay = (args.timeOfDay || 'any').toLowerCase();\nconst earliestFirst = args.earliestFirst === true;\nconst preferredTime = args.preferredTime || null;   // normalized \"HH:MM\" or null\nconst limit = (typeof args.limit === 'number' && args.limit > 0)\n    ? args.limit\n    : (earliestFirst ? 3 : 6);\n\nfunction parseLocalDateTime(localDateTime) {\n    const [datePart, timePart] = (localDateTime || '').split('T');\n    const [hourStr, minuteStr] = (timePart || '00:00:00').split(':');\n    return {\n        localDate: datePart,\n        hour: parseInt(hourStr, 10),\n        minute: parseInt(minuteStr, 10)\n    };\n}\n\nfunction formatTimeLabel(hour, minute) {\n    const suffix = hour >= 12 ? 'PM' : 'AM';\n    const h = hour % 12 === 0 ? 12 : hour % 12;\n    const m = String(minute).padStart(2, '0');\n    return `${h}:${m} ${suffix}`;\n}\n\nfunction inBand(hour, band) {\n    if (band === 'morning')   return hour >= 10 && hour < 12;\n    if (band === 'afternoon') return hour >= 12 && hour < 17;\n    if (band === 'evening')   return hour >= 17 && hour < 20;\n    return hour >= 10 && hour < 20;\n}\n\nfunction bandOf(hour) {\n    if (hour >= 10 && hour < 12) return 'morning';\n    if (hour >= 12 && hour < 17) return 'afternoon';\n    if (hour >= 17 && hour < 20) return 'evening';\n    return null;\n}\n\nfunction extractTherapists(availableResources) {\n    if (!Array.isArray(availableResources)) return [];\n    const out = [];\n    const seen = new Set();\n    for (const block of availableResources) {\n        const resources = Array.isArray(block?.resources) ? block.resources : [];\n        for (const r of resources) {\n            const id = r?.id || null;\n            const name = r?.name || null;\n            if (!id) continue;\n            if (seen.has(id)) continue;\n            seen.add(id);\n            out.push({ name: name || 'Therapist', staffId: id });\n        }\n    }\n    return out;\n}\n\nfunction mergeTherapists(agg, candidate) {\n    for (const t of candidate.therapists) {\n        const exists = agg.availableTherapists.some(x =>\n            (x.staffId && t.staffId && x.staffId === t.staffId) ||\n            (!x.staffId && !t.staffId && x.name === t.name)\n        );\n        if (!exists) agg.availableTherapists.push({ name: t.name, staffId: t.staffId });\n    }\n}\n\nfunction buildAgg(s) {\n    return {\n        time: s.time,\n        startDate: s.startDate,\n        endDate: s.endDate,\n        scheduleId: s.scheduleId,\n        availableTherapists: s.therapists.map(t => ({ name: t.name, staffId: t.staffId })),\n        // internal sort keys — stripped before returning\n        _date: s.localDate,\n        _min: s.hour * 60 + s.minute\n    };\n}\n\nfunction strip(agg) {\n    const { _date, _min, ...clean } = agg;\n    return clean;\n}\n\n// 1. Map Wix slots -> local + extract therapists per slot\nlet slots = entries\n    .filter(e => e.bookable === true)\n    .map(e => {\n        const startParts = parseLocalDateTime(e.localStartDate);\n        const therapists = extractTherapists(e.availableResources);\n        return {\n            localDate: startParts.localDate,\n            time: formatTimeLabel(startParts.hour, startParts.minute),\n            hour: startParts.hour,\n            minute: startParts.minute,\n            startDate: e.localStartDate,\n            endDate: e.localEndDate,\n            therapists,\n            therapistIds: therapists.map(t => t.staffId).filter(Boolean),\n            scheduleId: e.scheduleId || null\n        };\n    });\n\n// 2. No client-side staff filter — Wix's `resourceTypes.resourceIds` filter\n// already narrows server-side when a staffId is provided.\n\n// 3. Apply time-of-day filter\nslots = slots.filter(s => inBand(s.hour, timeOfDay));\n\n// 4. Dedupe by (date, time), merging therapists — chronological order\nconst seenKey = new Map();\nconst allSlots = [];\nfor (const s of slots.slice().sort((a, b) => new Date(a.startDate) - new Date(b.startDate))) {\n    const key = `${s.localDate}|${s.time}`;\n    if (seenKey.has(key)) {\n        mergeTherapists(seenKey.get(key), s);\n    } else {\n        const agg = buildAgg(s);\n        seenKey.set(key, agg);\n        allSlots.push(agg);\n    }\n}\n\nconst totalAvailable = allSlots.length;\n\n// Did the caller's exact requested time survive? (checked against the FULL set)\nlet requestedTimeAvailable = null;\nlet prefMin = null;\nif (preferredTime) {\n    const [ph, pm] = preferredTime.split(':').map(Number);\n    prefMin = ph * 60 + pm;\n    requestedTimeAvailable = allSlots.some(s => s._min === prefMin);\n}\n\nconst filterApplied = { staffId: staffFilter, timeOfDay, earliestFirst, preferredTime, limit };\n\n// 5. Zero results — tell the agent explicitly so it widens instead of dead-ending\nif (totalAvailable === 0) {\n    return [{\n        json: {\n            success: true,\n            mode: preferredTime ? 'nearest' : (earliestFirst ? 'earliest_first' : 'spread'),\n            count: 0,\n            totalAvailable: 0,\n            truncated: false,\n            requestedTimeAvailable,\n            noSlotsReason: staffFilter\n                ? 'No availability for the requested therapist in this window. Retry WITHOUT staffId to see who else is free.'\n                : 'No availability for this service in this window. Try a different day or a wider date range.',\n            filterApplied,\n            slots: [],\n            slotsAreSample: false,\n            availabilityByDay: {},\n            availabilityByDayComplete: true\n        }\n    }];\n}\n\n// 6. SELECT which slots to return\nlet chosen;\n\nif (preferredTime) {\n    // Nearest to the caller's requested time, then re-sorted chronologically.\n    chosen = allSlots\n        .slice()\n        .sort((a, b) => Math.abs(a._min - prefMin) - Math.abs(b._min - prefMin)\n                     || new Date(a.startDate) - new Date(b.startDate))\n        .slice(0, limit)\n        .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));\n} else if (earliestFirst) {\n    chosen = allSlots.slice(0, limit);\n} else if (totalAvailable <= limit) {\n    chosen = allSlots.slice();\n} else {\n    // Evenly spread across the whole window so the caller hears real choice\n    // (12 PM / 1:30 / 3 PM / 4:30) instead of four near-identical early slots.\n    const idx = [];\n    for (let i = 0; i < limit; i++) {\n        idx.push(Math.round((i * (totalAvailable - 1)) / (limit - 1)));\n    }\n    chosen = [...new Set(idx)].map(i => allSlots[i]);\n}\n\n// 7. CENSUS - group ALL available slots by day/band, not just the chosen sample.\n//\n// V29 CHANGE - fixes the \"the only morning slot is ten AM\" false negative:\n// availabilityByDay used to be built from `chosen`, so a TRUNCATED SAMPLE was\n// handed to the agent as if it were the complete picture. On a day with 19\n// openings the spread selection kept 10:00 and jumped straight to 12:00, so the\n// morning band contained exactly one entry - and the agent stated \"the only\n// morning slot available is ten AM\" as fact while 10:30, 11:00 and 11:30 were\n// all open. The caller then asked for 11:00 and was silently moved to 10:00.\n//\n// The two fields now have distinct jobs:\n//   slots             -> a SAMPLE, curated for reading aloud (2-3 spread apart)\n//   availabilityByDay -> the COMPLETE list, what the agent must consult before\n//                        ever telling a caller a time is unavailable\n//\n// Therapist detail is dropped from census entries to keep the payload small\n// (availableTherapists more than doubles each entry). It stays on `slots`, and\n// staffId is only ever sent when the caller actually picked a therapist.\n\nconst CENSUS_MAX = 120;\n\n// Budget the census PER DAY rather than as one flat slice.\n//\n// The production site books on a 15-minute grid (~37 slots/day) where the test\n// site used 30 minutes (~19/day). A flat slice of the first 60 therefore threw\n// away the entire third day of a three-day search - the agent would have said\n// \"nothing on Saturday\" while Saturday was wide open. Same false-negative class\n// we fixed inside a single day, one level up.\n//\n// Grouping first means every day in the requested range is always represented.\nconst byDay = new Map();\nfor (const agg of allSlots) {\n    if (!byDay.has(agg._date)) byDay.set(agg._date, []);\n    byDay.get(agg._date).push(agg);\n}\n\nconst perDay = Math.max(1, Math.floor(CENSUS_MAX / Math.max(1, byDay.size)));\n\nconst availabilityByDay = {};\nlet censusComplete = true;\n\nfor (const [date, daySlots] of byDay) {\n    let kept = daySlots;\n    if (daySlots.length > perDay) {\n        // Spread the sample across the whole day so the gaps are even and\n        // visible, rather than lopping off the afternoon and evening.\n        if (perDay < 2) {\n            kept = [daySlots[0]];\n        } else {\n            const idx = [];\n            for (let i = 0; i < perDay; i++) {\n                idx.push(Math.round((i * (daySlots.length - 1)) / (perDay - 1)));\n            }\n            kept = [...new Set(idx)].map(i => daySlots[i]);\n        }\n        censusComplete = false;\n    }\n\n    availabilityByDay[date] = {\n        morning: [], afternoon: [], evening: [],\n        complete: kept.length === daySlots.length\n    };\n\n    for (const agg of kept) {\n        const band = bandOf(Math.floor(agg._min / 60));\n        if (!band) continue;\n        availabilityByDay[date][band].push({\n            time: agg.time,\n            startDate: agg.startDate,\n            endDate: agg.endDate,\n            scheduleId: agg.scheduleId\n        });\n    }\n}\n\nreturn [{\n    json: {\n        success: true,\n        mode: preferredTime ? 'nearest' : (earliestFirst ? 'earliest_first' : 'spread'),\n        count: chosen.length,\n        totalAvailable,\n        truncated: chosen.length < totalAvailable,\n        requestedTimeAvailable,\n        filterApplied,\n        slots: chosen.map(strip),\n        slotsAreSample: chosen.length < totalAvailable,\n        availabilityByDay,\n        availabilityByDayComplete: censusComplete\n    }\n}];\n"
+      },
+      "id": "b9233648-1c88-4d6d-ba28-a2714b056195",
+      "name": "Format: Time Slots Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        5888
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "63ce0e85-4a6b-4765-a885-28375fb2bdc3",
+      "name": "Respond: Slots Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        64,
+        6272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v1/staff-members/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": {\n    \"paging\": { \"limit\": 50 }\n  }\n}",
+        "options": {}
+      },
+      "id": "18717f8c-f739-4503-889d-2aa37e8c0397",
+      "name": "Wix: Query Staff Members",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -832,
+        6352
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details || !data.staffMembers) {\n  return [{ json: { success: false, error: data.message || 'Failed to retrieve staff members' } }];\n}\n\nconst staff = (data.staffMembers || []).map(s => ({\n  id: s.id,\n  resourceId: s.resourceId,\n  name: s.name,\n  // description: s.description ?? null,\n  // phone: s.phone ?? null,\n  email: s.email ?? null\n}));\n\nreturn [{ json: { success: true, count: staff.length, staff } }];"
+      },
+      "id": "7a812e9d-1be0-438d-8296-9c9d3cb4f630",
+      "name": "Format: Staff Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        6256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Slot Context (staffId is optional — caller may have said \"no preference\")\n// serviceName OR serviceId is enough - \"Resolve: Service (Booking)\" downstream\n// settles which one wins against the live catalog.\nif (!args.serviceId && !args.serviceName) errors.push('serviceId or serviceName is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// 2. Dates\nif (!args.startDate) errors.push('startDate is required');\nif (!args.endDate) errors.push('endDate is required');\n\n// 3. Customer Details\nif (!args.firstName) errors.push('firstName is required');\nif (!args.lastName) errors.push('lastName is required');\nif (!args.phone) errors.push('phone is required');\n\n// Date format checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\n// addOns: array of { id, groupId } — both required per entry\nif (args.addOns) {\n    if (!Array.isArray(args.addOns)) {\n        errors.push('addOns must be an array of {id, groupId} objects');\n    } else {\n        args.addOns.forEach((a, i) => {\n            if (!a || typeof a !== 'object') errors.push(`addOns[${i}] must be an object`);\n            else {\n                if (!a.id) errors.push(`addOns[${i}].id is required`);\n                if (!a.groupId) errors.push(`addOns[${i}].groupId is required`);\n            }\n        });\n    }\n}\n\n// Drop a staffId the caller never asked for - see the matching guard in\n// \"Validate: Reschedule Args\". Without staffId the booking body already falls\n// back to ANY_RESOURCE, so Wix picks whoever is free.\nif (args.staffRequested !== true && args.staffId) {\n    args._staffIdIgnored = args.staffId;\n    delete args.staffId;\n}\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];\n"
+      },
+      "id": "da3de9b2-dc00-4a30-9bee-896ec0436faf",
+      "name": "Validate: Booking Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        6640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "271bbb67-a593-41e4-9eea-1425a9d69203",
+      "name": "IF: Booking Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        288,
+        6640
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/bookings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"booking\": {\n    \"bookedEntity\": {\n      {{ $('IF: Booking Args Valid').item.json.args.variantId ? '\"variantId\": \"' + $('IF: Booking Args Valid').item.json.args.variantId + '\",' : '' }}\n{{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? '\"title\": \"' + 'Couple Massage\",' : '' }}\n      \"slot\": {\n        \"serviceId\": \"{{ $('IF: Booking Args Valid').item.json.args.serviceId }}\",\n        \"scheduleId\": \"{{ $('IF: Booking Args Valid').item.json.args.scheduleId }}\",\n        \"startDate\": \"{{ $('IF: Booking Args Valid').item.json.args.startDate }}\",\n        \"endDate\": \"{{ $('IF: Booking Args Valid').item.json.args.endDate }}\",\n        \"timezone\": \"America/Los_Angeles\"\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resource\": { \"id\": \"' + $('IF: Booking Args Valid').item.json.args.staffId + '\" }' : '' }}\n        {{ $('IF: Booking Args Valid').item.json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n      }\n    },\n    \"contactDetails\": {\n\"contactId\": \"{{ $('Wix: Create Contact').isExecuted ? $('Wix: Create Contact').item.json.contact.id : $('Wix: Search Contact1').item.json.contacts[0].id }}\",\n      \"firstName\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"lastName\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName }}\",\n      {{ $('IF: Booking Args Valid').item.json.args.email ? '\"email\": \"' + $('IF: Booking Args Valid').item.json.args.email + '\",' : '' }}\n      \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n    },\n    \"numberOfParticipants\": 1,\n\"additionalFields\": [\n  {\n    \"id\": \"00000000-0000-0000-0000-000000000008\",\n    \"value\": \"Booking type: {{ $('Validate: Booking Args').item.json.args.numberOfParticipants == 2 ? 'Couple Massage' : $('Validate: Booking Args').item.json.args.numberOfParticipants + ' Participant(s)' }}\\nNotes: {{ $('IF: Booking Args Valid').item.json.args.notes || 'None' }}\"\n  }\n]\n    {{ $('IF: Booking Args Valid').item.json.args.addOns?.length > 0 ? ',\"bookedAddOns\": ' + JSON.stringify($('IF: Booking Args Valid').item.json.args.addOns.map(a => ({ id: a.id, groupId: a.groupId, quantity: 1 }))) : '' }}\n  },\n  \"flowControlSettings\": {\n    \"withoutPayment\": true\n  }\n}",
+        "options": {}
+      },
+      "id": "dd697b40-403d-4a8d-9109-e86761f63b7f",
+      "name": "Wix: Create Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1632,
+        6496
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.booking?.id ?? '' }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "10fe685a-0a7f-4b97-a24d-3040d3cf01c1",
+      "name": "IF: Booking Created OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        6416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.wixapis.com/bookings/v2/bookings/{{ $json.booking.id }}/confirm",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  },\n  \"revision\": {{ $json.booking.revision }}\n}",
+        "options": {}
+      },
+      "id": "51261160-e85a-4bc3-af09-f01fba1fe45a",
+      "name": "Wix: Confirm Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2080,
+        6352
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const confirmData = $input.first().json;\n// Fallback to the create booking data if confirm had issues\nconst createData = $('Wix: Create Booking').first().json;\n\nconst booking = confirmData.booking || createData.booking || {};\nconst isConfirmed = confirmData.booking?.status === 'CONFIRMED';\n\nif (!booking.id) {\n  return [{ json: { success: false, error: confirmData.message || 'Booking confirmation failed' } }];\n}\n\nreturn [{ json: {\n  success: true,\n  confirmed: isConfirmed,\n  bookingId: booking.id,\n  status: booking.status,\n  serviceId: booking.bookedEntity?.slot?.serviceId,\n  contact: {\n    firstName: booking.contactDetails?.firstName,\n    lastName: booking.contactDetails?.lastName,\n    phone: booking.contactDetails?.phone\n  },\n  message: `Appointment booked for ${booking.contactDetails?.firstName} ${booking.contactDetails?.lastName} on ${booking.bookedEntity?.slot?.startDate}`\n} }];"
+      },
+      "id": "891864d0-1edb-454d-ae7b-f7b7df64b15b",
+      "name": "Format: Booking Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        6304
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "3131cc7d-fbee-4444-8d05-825b70aec86a",
+      "name": "Respond: Booking Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        512,
+        7232
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\nif (!args.bookingId) errors.push('bookingId is required');\n\nreturn [{ json: { ...$input.first().json, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"
+      },
+      "id": "c001fe11-d0b9-443b-9f3e-2608457b3e0c",
+      "name": "Validate: Cancel Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        7024
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "55179f03-05ba-467f-b634-63182a77107e",
+      "name": "IF: Cancel Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        7024
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.wixapis.com/bookings/v2/bookings/{{ $json.args.bookingId }}/cancel",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"revision\": \"{{ $json.args.revision }}\",\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
+        "options": {}
+      },
+      "id": "e10de671-1c76-4926-a9d7-f377e893f274",
+      "name": "Wix: Cancel Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -384,
+        6928
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Wix cancel returns 200 with booking object on success; message+details on error\nif (data.message && data.details) {\n  return [{ json: {\n    success: false,\n    cancelFlag: 'no',\n    error: data.message || 'Failed to cancel booking. It may have already been cancelled or the cancellation policy prevents it.'\n  } }];\n}\n\nreturn [{ json: {\n  success: true,\n  cancelFlag: 'yes',\n  message: 'Booking has been successfully cancelled.',\n  bookingId: data.booking?.id ?? $('Validate: Cancel Args').first().json.args.bookingId,\n  status: data.booking?.status ?? 'CANCELED'\n} }];\n"
+      },
+      "id": "bc0ac709-cede-4ee1-90fb-7f058b4e6c7a",
+      "name": "Format: Cancel Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        6832
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "9ea237dd-4223-4017-a7e9-fabe32096910",
+      "name": "Respond: Cancel Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        7120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args } = $input.first().json;\nconst errors = [];\n\n// 1. Existing Booking Identifiers\nif (!args.bookingId) errors.push('bookingId is required');\n// Note: checking strictly for undefined because revision can technically be 0\nif (args.revision === undefined || args.revision === null) errors.push('revision is required'); \n\n// 2. New Slot Context (Required by Wix V2 API)\nif (!args.serviceId) errors.push('serviceId is required');\nif (!args.scheduleId) errors.push('scheduleId is required');\n\n// staffId is deliberately NOT required, and is dropped unless the caller\n// actually asked for a specific therapist.\n//\n// V29 CHANGE: the model routinely copies a staffId straight off a get_slots\n// entry. On the 2026-08-17 test call it locked a reschedule to Rocky when the\n// caller never named anyone and both therapists were free. Prompt rules have\n// not held here across versions, so this is enforced server-side. With no\n// staffId, \"Wix: Reschedule Booking\" sends ANY_RESOURCE and Wix assigns.\nif (args.staffRequested !== true && args.staffId) {\n    args._staffIdIgnored = args.staffId;\n    delete args.staffId;\n}\n\n// 3. New Dates\nif (!args.startDate) errors.push('startDate is required (new slot start time)');\nif (!args.endDate) errors.push('endDate is required (new slot end time)');\n\n// Date formatting checks\nif (args.startDate && isNaN(Date.parse(args.startDate))) errors.push('startDate is not a valid date');\nif (args.endDate && isNaN(Date.parse(args.endDate))) errors.push('endDate is not a valid date');\n\nreturn [{ json: { ...$input.first().json, args, _valid: errors.length === 0, _validationError: errors.join('; ') } }];"
+      },
+      "id": "206aae85-6f0f-4a60-bd9a-8f29fa561a89",
+      "name": "Validate: Reschedule Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        7408
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "733f17b3-7aaa-4977-b97f-c906b8422361",
+      "name": "IF: Reschedule Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        7408
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.wixapis.com/bookings/v2/bookings/{{ $json.args.bookingId }}/reschedule",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"slot\": {\n    \"serviceId\": \"{{ $json.args.serviceId }}\",\n    \"scheduleId\": \"{{ $json.args.scheduleId }}\",\n    \"startDate\": \"{{ $json.args.startDate }}\",\n    \"endDate\": \"{{ $json.args.endDate }}\",\n    \"timezone\": \"America/Los_Angeles\"\n    {{ $json.args.staffId ? ',\"resource\": { \"id\": \"' + $json.args.staffId + '\" }' : '' }}\n    {{ $json.args.staffId ? ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"SPECIFIC_RESOURCE\" }]' : ',\"resourceSelections\": [{ \"resourceTypeId\": \"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\", \"selectionMethod\": \"ANY_RESOURCE\" }]' }}\n  },\n  \"revision\": {{ $json.args.revision }},\n  \"participantNotification\": {\n    \"notifyParticipants\": true\n  }\n}",
+        "options": {}
+      },
+      "id": "f517bf09-7bd0-4a1f-84ca-885aca99883a",
+      "name": "Wix: Reschedule Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -384,
+        7312
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || !data.booking) {\n  return [{ json: {\n    success: false,\n    rescheduleFlag: 'no',\n    error: data.message || 'Failed to reschedule the booking. The new slot may not be available or rescheduling is not permitted by the service policy.'\n  } }];\n}\n\nconst booking = data.booking;\nconst newStart = booking.bookedEntity?.slot?.startDate;\n\n// Day-of-week from local date part — never let the agent compute it.\nconst DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];\nlet newDayOfWeek = null;\nif (newStart) {\n  const m = String(newStart).split('T')[0].match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);\n  if (m) newDayOfWeek = DOW[new Date(Date.UTC(+m[1], +m[2]-1, +m[3])).getUTCDay()];\n}\n\nreturn [{ json: {\n  success: true,\n  rescheduleFlag: 'yes',\n  message: 'Booking successfully rescheduled.',\n  bookingId: booking.id,\n  newStartDate: newStart,\n  newEndDate: booking.bookedEntity?.slot?.endDate,\n  newDayOfWeek,\n  status: booking.status\n} }];\n"
+      },
+      "id": "0d14109f-c902-4dac-bc5c-7f7ee19c0c21",
+      "name": "Format: Reschedule Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        7216
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "ed5f9988-d86c-405c-b5ac-797478be74c9",
+      "name": "Respond: Reschedule Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        7504
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Unknown tool: \"' + $json.tool + '\". Valid tools are: get-services, get-slots, get-staff, book-appointment, cancel-booking, reschedule-booking, get-booking' } }}",
+        "options": {}
+      },
+      "id": "ed2dcce2-3489-436a-b1c8-09581b79872d",
+      "name": "Respond: Unknown Tool Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        7600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting slots\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        288,
+        6176
+      ],
+      "id": "08d9bec9-9b18-42bf-ba96-3d6286c2654d",
+      "name": "Error: Get Slots"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting staff\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -608,
+        6448
+      ],
+      "id": "48ffca27-f0c9-4c00-a501-00eb7de5e0da",
+      "name": "Error: Get Staff"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error booking service\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2304,
+        6656
+      ],
+      "id": "675dd91a-a80a-48cc-9492-bd38da19665a",
+      "name": "Error: Create Booking"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error cancelling booking\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -160,
+        7024
+      ],
+      "id": "b9149c48-95a6-4f71-9a25-2c1dfdbfca70",
+      "name": "Error: Cancel Booking"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error rescheduling booking\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -160,
+        7408
+      ],
+      "id": "59d80643-e434-4dd5-9c14-113ebd42b5c4",
+      "name": "Error: Rescheduling"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "7c074019-7c44-42ec-8fb2-beb582a23a95",
+      "name": "Respond: Get Slots",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        512,
+        5888
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "b32ba78d-1f47-4f09-8239-04e87886a8e7",
+      "name": "Respond: Get Staff",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        6256
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "7614f29a-0e76-4dfd-bd2d-020d8602ea9e",
+      "name": "Respond: Cancel Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        64,
+        6832
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "da2cf3c7-eaca-452f-a3fd-59cf0dd8c999",
+      "name": "Respond: Book Appointment",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2528,
+        6304
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "1042c27d-8e23-4e0f-9d26-0370248260ea",
+      "name": "Respond: Reschedule Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        64,
+        7216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\nconst reason = (args.reason || '').toString().trim();\nif (!reason) errors.push('reason is required');\n\nconst callerName = (args.callerName || '').toString().trim() || 'Unknown';\n// Order of trust: what the agent passed, then any other phone-ish arg it used,\n// then Retell's own call metadata. Placeholders that survived un-substituted\n// ({{user_number}} and friends) are treated as missing rather than emailed to\n// the team as literal text.\nfunction realPhone(v) {\n    const t = (v || '').toString().trim();\n    if (!t) return null;\n    if (t.indexOf('{{') !== -1 || t.indexOf('}}') !== -1) return null;\n    if (!/\\d/.test(t)) return null;\n    return t;\n}\nconst phoneToContact = realPhone(args.callerPhone)\n    || realPhone(args.phone)\n    || realPhone(callerPhone)\n    || 'Unknown';\nconst questionDetail = (args.questionDetail || '').toString().trim();\n\nconst subject = `New callback request from ${callerName} (${phoneToContact})`;\n\nconst lines = [\n    `A caller asked Aria for a callback. Please follow up.`,\n    ``,\n    `Caller name: ${callerName}`,\n    `Phone:       ${phoneToContact}`,\n    `Reason:      ${reason}`,\n];\nif (questionDetail) {\n    lines.push(``);\n    lines.push(`Question / detail:`);\n    lines.push(questionDetail);\n}\nlines.push(``);\nlines.push(`— Sent automatically by the Sage & Willow Spa AI receptionist`);\n\nconst body = lines.join('\\n');\n\nreturn [{ json: {\n    ...$input.first().json,\n    args,\n    _valid: errors.length === 0,\n    _validationError: errors.join('; '),\n    _emailSubject: subject,\n    _emailBody: body,\n    _callerName: callerName,\n    _callerPhone: phoneToContact,\n    _reason: reason\n} }];\n"
+      },
+      "id": "a871b18b-5767-4f93-8e50-902b61a99698",
+      "name": "Validate: Flag Callback Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        7792
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "0f5fd6dd-6993-4232-9fc9-63ba36ace066",
+      "name": "IF: Flag Callback Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        7792
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "Aria <engineering@aiemply.com>",
+        "toEmail": "engineering@aiemply.com",
+        "subject": "=[DEV] {{ $json._emailSubject }}",
+        "emailFormat": "text",
+        "text": "={{ $json._emailBody }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "engineering@aiemply.com"
+        }
+      },
+      "id": "32d5728b-bfe2-4ea8-a0e5-f9e897c3b0a5",
+      "name": "Send Email: Flag Callback",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -384,
+        7696
+      ],
+      "webhookId": "942f20a6-9eb5-4c9e-b5b4-033da4dc7f25",
+      "credentials": {
+        "smtp": {
+          "id": "m0mbibKf6il36id5",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const v = $('Validate: Flag Callback Args').first().json;\nreturn [{ json: {\n    success: true,\n    flagged: true,\n    message: 'Callback request sent to the team - they will follow up with the caller.',\n    callerName: v._callerName,\n    callerPhone: v._callerPhone,\n    reason: v._reason\n} }];\n"
+      },
+      "id": "58daccb4-be50-4b00-bec4-6ced473dc3f3",
+      "name": "Format: Flag Callback Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        7600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "2ea169bf-69c0-4a12-b453-d5e24a0fa618",
+      "name": "Respond: Flag Callback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        64,
+        7600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "17884e35-a330-453e-a56d-0e862d35c38f",
+      "name": "Respond: Flag Callback Validation Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        7888
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Failed to send callback notification email\"\n}",
+        "options": {}
+      },
+      "id": "a95139ba-5b5f-4683-ac81-56dabb5196f0",
+      "name": "Error: Flag Callback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -160,
+        7808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\nconst phone = args?.phone || callerPhone || null;\nconst email = args?.email || null;\n\nif (!phone && !email) {\n  errors.push('Either phone or email is required to look up a contact');\n}\n\nreturn [{ json: {\n  ...$input.first().json,\n  args: { ...args, _resolvedPhone: phone, _resolvedEmail: email },\n  _valid: errors.length === 0,\n  _validationError: errors.join('; ')\n} }];"
+      },
+      "id": "5a24ecac-d64c-4b14-90a0-566b1a77ede7",
+      "name": "Validate: Get Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        8992
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "5031064a-51f0-401a-ba5e-17cb15129e29",
+      "name": "IF: Contact Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        8992
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/contacts/v4/contacts/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      {{ $json.args._resolvedEmail ? '\"info.emails.email\": \"' + $json.args._resolvedEmail + '\"' : '\"info.phones.phone\": \"' + $json.args._resolvedPhone + '\"' }}\n    },\n    \"paging\": {\n      \"limit\": 1\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "b47f6903-55ca-474e-934f-d81a483a49e0",
+      "name": "Wix: Search Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -384,
+        8912
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to query contact' } }];\n}\n\nconst contacts = data.contacts || [];\n\nif (contacts.length === 0) {\n  return [{ json: { success: true, found: false, message: 'No contact found with this information.' } }];\n}\n\nconst c = contacts[0];\n\n// Use the root primaryInfo that Wix automatically generates for us\nconst primaryEmail = c.primaryInfo?.email || c.primaryEmail?.email || null;\nconst primaryPhone = c.primaryInfo?.phone || c.primaryPhone?.phone || null;\n\nreturn [{ json: { \n  success: true, \n  found: true,\n  contact: {\n    contactId: c.id,\n    firstName: c.info?.name?.first || null,\n    lastName: c.info?.name?.last || null,\n    email: primaryEmail,\n    phone: primaryPhone\n  }\n} }];"
+      },
+      "id": "ff26d3f7-8689-408d-bcdf-1ebe7220fc26",
+      "name": "Format: Contact Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        8864
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "fe324a77-dfc6-4141-ba9e-f15e27da6800",
+      "name": "Respond: Get Contact",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        64,
+        8864
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: 'Validation failed: ' + $json._validationError } }}",
+        "options": {}
+      },
+      "id": "f91a6768-e19e-4535-8bc5-a4d903400d7b",
+      "name": "Respond: Contact Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        9088
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/contacts/v4/contacts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"info\": {\n    \"name\": {\n      \"first\": \"{{ $('IF: Booking Args Valid').item.json.args.firstName }}\",\n      \"last\": \"{{ $('IF: Booking Args Valid').item.json.args.lastName || '' }}\"\n    },\n    {{ $('IF: Booking Args Valid').item.json.args.email ? '\"emails\": { \"items\": [ { \"tag\": \"MAIN\", \"email\": \"' + $('IF: Booking Args Valid').item.json.args.email + '\" } ] },' : '' }}\n    \"phones\": {\n      \"items\": [\n        {\n          \"tag\": \"MAIN\",\n          \"phone\": \"{{ $('IF: Booking Args Valid').item.json.args.phone }}\"\n        }\n      ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "6f2a3896-9256-4b39-b1b0-1d124425d9f0",
+      "name": "Wix: Create Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1184,
+        6688
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to create contact' } }];\n}\n\nreturn [{ json: { success: true, contactId: data.contact.id, message: 'Contact created successfully' } }];"
+      },
+      "id": "61e9c52b-22c0-4b0c-adc8-a5f1ceabdf8c",
+      "name": "Format: Create Contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        6608
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/contacts/v4/contacts/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      {{ $json.args.email ? '\"info.emails.email\": \"' + $json.args.email + '\"' : '\"info.phones.phone\": \"' + $json.args.phone + '\"' }}\n    },\n    \"paging\": {\n      \"limit\": 1\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "8cbbf146-83fa-4876-97b2-3f09a5e963c5",
+      "name": "Wix: Search Contact1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        512,
+        6560
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, error: data.message || 'Failed to query contact' } }];\n}\n\nconst contacts = data.contacts || [];\n\nif (contacts.length === 0) {\n  return [{ json: { success: true, found: false, message: 'No contact found with this information.' } }];\n}\n\nconst c = contacts[0];\n\n// Use the root primaryInfo that Wix automatically generates for us\nconst primaryEmail = c.primaryInfo?.email || c.primaryEmail?.email || null;\nconst primaryPhone = c.primaryInfo?.phone || c.primaryPhone?.phone || null;\n\nreturn [{ json: { \n  success: true, \n  found: true,\n  contact: {\n    contactId: c.id,\n    firstName: c.info?.name?.first || null,\n    lastName: c.info?.name?.last || null,\n    email: primaryEmail,\n    phone: primaryPhone\n  }\n} }];"
+      },
+      "id": "0318cf2b-364a-423d-9cce-9db8b3f04339",
+      "name": "Format: Contact Response1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        6464
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6f49af7b-0308-4dad-90b9-d80823256087",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        6464
+      ],
+      "id": "2ca43cde-7e06-4a8d-8885-310034ea460a",
+      "name": "If: Contact Found"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/services/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "c93078d8-7b26-432d-87d4-684378e76d3e",
+      "name": "Wix: Query Services",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -832,
+        5600
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Wix: Query Services').first().json;\nif (!data.services) return [{ json: { hasVaried: false, serviceId: null } }];\n\nconst varied = data.services.filter(s => s.payment?.rateType === 'VARIED');\nif (varied.length === 0) return [{ json: { hasVaried: false, serviceId: null } }];\n\nreturn varied.map(s => ({ json: { hasVaried: true, serviceId: s.id } }));"
+      },
+      "id": "ebc1eb81-df20-4d5d-b3d3-3f8b3158e547",
+      "name": "Extract Pricing IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasVaried }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "91dde99a-0776-4ac8-9747-714a6378ab0c",
+      "name": "IF: Has Varied",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.wixapis.com/bookings/v1/serviceOptionsAndVariants/service_id/{{ $json.serviceId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "options": {}
+      },
+      "id": "d2e3f2a4-d920-4db9-8d7b-e7f428b7f414",
+      "name": "Wix: Get Pricing Variants",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -160,
+        5456
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Wix: Query Services').first().json;\n\nif (!data.services) {\n  return [{ json: { hasAddOns: false } }];\n}\n\n// Use a Set to automatically remove duplicates globally\nconst uniqueAddOnIds = new Set();\n\ndata.services.forEach(service => {\n  if (service.addOnGroups) {\n    service.addOnGroups.forEach(group => {\n      if (group.addOnIds) {\n        group.addOnIds.forEach(id => uniqueAddOnIds.add(id));\n      }\n    });\n  }\n});\n\nif (uniqueAddOnIds.size === 0) {\n  return [{ json: { hasAddOns: false } }];\n}\n\n// Convert the Set into the flat array format n8n needs for the HTTP node\nreturn Array.from(uniqueAddOnIds).map(id => ({\n  json: { \n    hasAddOns: true, \n    addOnId: id \n  }\n}));"
+      },
+      "id": "cd247814-51fd-4236-9835-8802f5f83aef",
+      "name": "Extract Add-on IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasAddOns }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "828b1fb6-a662-4207-9f0b-b48a687ada22",
+      "name": "IF: Has Add-ons",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        288,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://manage.wix.com/_api/add-ons-service/v1/add-ons/{{ $json.addOnId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "options": {}
+      },
+      "id": "5e3733f1-bf89-43c8-bc86-b04b00326967",
+      "name": "Wix: Get Add-ons",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        512,
+        5456
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const servicesData = $('Wix: Query Services').first().json;\n// Read the normalized args from Parse Retell Payload (handles args_at_root:\n// true, where there is no body.args wrapper). Reading body.args directly off\n// the raw webhook throws under args_at_root: true.\nconst args = $('Parse Retell Payload').first().json.args || {};\nconst serviceName = args.serviceName;\nif (servicesData.message || servicesData.details || !servicesData.services) {\n  return [{ json: { success: false, error: servicesData.message || 'Failed to retrieve services' } }];\n}\nconst services = servicesData.services || [];\n// 1. Map Pricing Variants\nconst pricingLookup = {};\ntry {\n  const pricingItems = $('Wix: Get Pricing Variants').all();\n  pricingItems.forEach(item => {\n    const sv = item.json.serviceVariants || item.json;\n    if (sv && sv.serviceId && sv.variants && sv.variants.values) {\n      pricingLookup[sv.serviceId] = sv.variants.values.map(v => ({\n        id: v.id,\n        duration: v.choices?.[0]?.duration?.minutes + \" min\",\n        price: \"USD \" + (v.price?.value || 0)\n      }));\n    }\n  });\n} catch (e) {\n  console.error(\"Pricing map skipped or failed.\");\n}\n// 2. Map Add-ons (Base Details Only: Name, Price, Duration)\nconst addOnLookup = {};\ntry {\n  const addonItems = $('Wix: Get Add-ons').all();\n  for (const item of addonItems) {\n    const addon = item.json?.addOn || item.json;\n    if (addon?.id) {\n      addOnLookup[addon.id] = {\n        name: addon.name || \"Unknown\",\n        price: \"USD \" + (addon.price?.value || 0),\n        duration: (addon.durationInMinutes || 0) + \" min\"\n      };\n    }\n  }\n} catch (e) {\n  console.error(\"Error mapping Add-on base details:\", e);\n}\n// 3. Final Lean Mapping (Extracts Group IDs directly from original data)\nconst formattedServices = services.map(s => {\n  let availableAddOns = [];\n  if (s.addOnGroups && s.addOnGroups.length > 0) {\n    const localGroupMap = {};\n    s.addOnGroups.forEach(group => {\n      const groupId = group.id;\n      const addOnIds = group.addOnIds || [];\n      addOnIds.forEach(addOnId => {\n        if (!localGroupMap[addOnId]) {\n          localGroupMap[addOnId] = [];\n        }\n        if (!localGroupMap[addOnId].includes(groupId)) {\n          localGroupMap[addOnId].push(groupId);\n        }\n      });\n    });\n    const uniqueIds = Object.keys(localGroupMap);\n    availableAddOns = uniqueIds.map(id => {\n      const details = addOnLookup[id] || {\n        name: \"Unknown\",\n        price: \"USD 0\",\n        duration: \"0 min\"\n      };\n      return {\n        id,\n        name: details.name,\n        price: details.price,\n        duration: details.duration,\n        groupIds: localGroupMap[id]\n      };\n    });\n  }\n  const isVaried = s.payment?.rateType === 'VARIED';\n  const pricingVariants = isVaried ? pricingLookup[s.id] : undefined;\n  const fixedPrice =\n    !isVaried && s.payment?.fixed?.price?.value\n      ? \"USD \" + s.payment.fixed.price.value\n      : undefined;\n  return {\n    id: s.id,\n    name: s.name,\n    description: s.description,\n    _locations: s.locations,\n    price: fixedPrice,\n    pricingVariants,\n    availableAddOns: availableAddOns.length > 0 ? availableAddOns : undefined\n  };\n});\n\n// 3b. V28 - drop non-bookable / demo entries.\n// Wix sites ship default placeholder services (e.g. \"30 min meeting\") that carry\n// no price and no pricing variants. The agent was reading these back to callers\n// as if they were treatments. A real spa service always has a price, so filter on\n// that rather than a hardcoded name blocklist - this stays correct when the client\n// adds or renames services.\nconst bookableServices = formattedServices.filter(\n  s => s.price || (Array.isArray(s.pricingVariants) && s.pricingVariants.length > 0)\n);\n\n// 4. Filter by serviceName if provided. Exact match first, then substring, so a\n// loose partial can never shadow the intended service.\nconst normalizedInput = (serviceName || '').trim().toLowerCase();\nlet matchedServices = [];\nif (normalizedInput) {\n  matchedServices = bookableServices.filter(s => s.name.trim().toLowerCase() === normalizedInput);\n  if (matchedServices.length === 0) {\n    matchedServices = bookableServices.filter(s => s.name.toLowerCase().includes(normalizedInput));\n  }\n}\n\nconst finalServices = matchedServices.length > 0 ? matchedServices : bookableServices;\n\nreturn [{ json: { success: true, count: finalServices.length, services: finalServices } }];"
+      },
+      "id": "e04e5787-b8d6-4c74-842c-99603c294428",
+      "name": "Format: Services Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting services\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        64,
+        5696
+      ],
+      "id": "6333fa7e-0ebf-4f82-b322-05d78bc39f94",
+      "name": "Error: Get Services"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "e0ae40ad-c271-41ef-8c82-464c38a025b8",
+      "name": "Respond: Get Services",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-services",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-services",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Services"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-slots",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-slots",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Slots"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-staff",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-staff",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Staff"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-book-appointment",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "book-appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Book Appointment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-cancel-booking",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "cancel-booking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancel Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-reschedule-booking",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "reschedule-booking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reschedule Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-get-booking",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-booking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "rule-flag-callback",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "flag-callback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Flag Callback"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0138ed3c-4efc-4ce4-a7a9-cef8e1fc01de",
+                    "leftValue": "={{ $json.tool }}",
+                    "rightValue": "get-contact",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Get Contact"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Fallback"
+        }
+      },
+      "id": "300bb079-0200-486d-b391-e8db6dfcbdd6",
+      "name": "Route by Tool",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1056,
+        7104
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { args, callerPhone } = $input.first().json;\nconst errors = [];\n\n// Resolve inputs\nconst phoneToSearch = args.phone || callerPhone || null;\nconst bookingId = args.bookingId || null;\n\n// Determine lookup mode\nlet lookupMode = '';\nif (bookingId) lookupMode = 'by-id';\nelse if (phoneToSearch) lookupMode = 'by-phone';\nelse errors.push('Either bookingId or phone number is required');\n\n// Wix matches the stored phone STRING exactly. A caller dialling in arrives as\n// E.164 (+14255295398) while the same person's contact may have been saved from\n// the website as raw digits (4255295398) - the lookup then returns nothing and\n// the agent tells a real customer they have no appointment. Search every common\n// rendering of the same number instead of just the one we were handed.\nfunction phoneVariants(raw) {\n    if (!raw) return [];\n    const s = String(raw).trim();\n    const digits = s.replace(/\\D/g, '');\n    const last10 = digits.slice(-10);\n    const set = new Set();\n    if (s) set.add(s);\n    if (digits) set.add(digits);\n    if (last10.length === 10) {\n        set.add(last10);\n        set.add('+1' + last10);\n        set.add('1' + last10);\n        set.add('(' + last10.slice(0, 3) + ') ' + last10.slice(3, 6) + '-' + last10.slice(6));\n        set.add(last10.slice(0, 3) + '-' + last10.slice(3, 6) + '-' + last10.slice(6));\n    }\n    return Array.from(set);\n}\nconst phoneCandidates = phoneVariants(phoneToSearch);\n\nreturn [{ json: {\n  ...$input.first().json,\n  args: { ...args, _resolvedPhone: phoneToSearch, _phoneVariants: phoneCandidates, _resolvedBookingId: bookingId },\n  _valid: errors.length === 0,\n  _validationError: errors.join('; '),\n  _lookupMode: lookupMode\n} }];\n"
+      },
+      "id": "114fcf77-788b-4d8d-94b3-ecc5161f9cdb",
+      "name": "Validate: Get Booking Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        8336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "95998ab0-1ccd-4dcc-abf4-2765e880f169",
+      "name": "IF: Get Booking Args Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        8336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json._lookupMode }}",
+              "value2": "by-id"
+            }
+          ]
+        }
+      },
+      "id": "a90c5505-2df0-4bdc-af4b-9a1b2d94a3e4",
+      "name": "IF: Lookup by ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        8240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/bookings/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      \"id\": { \"$in\": [\"{{ $('Validate: Get Booking Args').item.json.args._resolvedBookingId }}\"] },\n      \"status\": { \"$in\": [\"CONFIRMED\", \"PENDING_APPROVAL\", \"CREATED\", \"PENDING\"] }\n    },\n    \"sort\": [{ \"fieldName\": \"createdDate\", \"order\": \"DESC\" }],\n    \"paging\": { \"limit\": 5 }\n  }\n}",
+        "options": {}
+      },
+      "id": "13e3bfde-6104-443b-a489-b1040bb0d950",
+      "name": "Wix: Get Booking (by ID)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        288,
+        7952
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.contacts && $json.contacts.length > 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "427ac8f6-425c-47f5-bbb0-f9d3bfb0c73d",
+      "name": "IF: Contact Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        64,
+        8464
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { bookings: [] } }];"
+      },
+      "id": "ac42e654-df85-4060-863f-074a97aee8a2",
+      "name": "Mock Empty Bookings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        8560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/bookings/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      \"contactDetails.contactId\": { \"$in\": [\"{{ $json.contacts[0].id }}\"] },\n      \"status\": { \"$in\": [\"CONFIRMED\", \"PENDING_APPROVAL\", \"CREATED\", \"PENDING\"] }\n    },\n    \"sort\": [{ \"fieldName\": \"createdDate\", \"order\": \"DESC\" }],\n    \"paging\": { \"limit\": 5 }\n  }\n}",
+        "options": {}
+      },
+      "id": "9f36bb67-4ae6-4936-b7f0-4b426003254a",
+      "name": "Wix: Get Booking (by Contact)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        288,
+        8368
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nif (data.message || data.details) {\n  return [{ json: { success: false, foundFlag: 'no', error: data.message || 'Failed to retrieve booking' } }];\n}\n\nconst now = Date.now();\n\nconst DOW_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\nfunction localDayOfWeek(localIso) {\n  if (!localIso) return null;\n  const datePart = String(localIso).split('T')[0];\n  const m = datePart.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);\n  if (!m) return null;\n  const y = +m[1], mo = +m[2], d = +m[3];\n  return DOW_NAMES[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()];\n}\n\nconst enriched = (data.bookings || []).map(b => {\n  const slot = b.bookedEntity?.slot;\n  const startDate = slot?.startDate;\n  const endDate = slot?.endDate;\n  const startMs = startDate ? Date.parse(startDate) : NaN;\n  const endMs = endDate ? Date.parse(endDate) : NaN;\n  const durationMinutes = (isFinite(startMs) && isFinite(endMs))\n    ? Math.round((endMs - startMs) / 60000)\n    : null;\n  const hoursUntilStart = isFinite(startMs)\n    ? Math.round(((startMs - now) / 3600000) * 10) / 10\n    : null;\n  const within24h = hoursUntilStart !== null && hoursUntilStart > 0 && hoursUntilStart < 24;\n\n  return {\n    bookingId: b.id,\n    status: b.status,\n    revision: b.revision,\n    serviceId: slot?.serviceId,\n    serviceName: b.bookedEntity?.title || null,\n    scheduleId: slot?.scheduleId,\n    staffId: slot?.resource?.id || null,\n    staffName: slot?.resource?.name || null,\n    timezone: slot?.timezone,\n    locationId: slot?.location?.id,\n    locationType: slot?.location?.locationType,\n    startDate,\n    endDate,\n    dayOfWeek: localDayOfWeek(startDate),\n    durationMinutes,\n    hoursUntilStart,\n    withinCancellationWindow: within24h,\n    withinCancellationWindowFlag: within24h ? 'yes' : 'no',\n    firstName: b.contactDetails?.firstName,\n    lastName: b.contactDetails?.lastName,\n    phone: b.contactDetails?.phone,\n    email: b.contactDetails?.email ?? null,\n    createdDate: b.createdDate,\n    _startMs: startMs\n  };\n});\n\nconst bookings = enriched\n  .filter(b => isFinite(b._startMs) && b._startMs > now)\n  .map(({ _startMs, ...rest }) => rest);\n\nconst found = bookings.length > 0;\n\nreturn [{ json: {\n  success: true,\n  foundFlag: found ? 'yes' : 'no',\n  count: bookings.length,\n  bookings: found ? bookings : [],\n  message: found ? undefined : 'No upcoming bookings found for this customer'\n} }];\n"
+      },
+      "id": "2fb829f9-b45d-4e53-bda6-560e63df66de",
+      "name": "Format: Get Booking Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        8240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "e3ee82dc-0967-464d-b41a-6071c28d8ed2",
+      "name": "Respond: Get Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        736,
+        8240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Error getting booking\"\n}",
+        "options": {}
+      },
+      "id": "124379c1-13f1-45b8-b0af-0b8ecb43a7b0",
+      "name": "Error: Getting Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        512,
+        8432
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/contacts/v4/contacts/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {\n    \"filter\": {\n      \"info.phones.phone\": { \"$in\": {{ JSON.stringify($('Validate: Get Booking Args').item.json.args._phoneVariants || []) }} }\n    },\n    \"paging\": {\n      \"limit\": 1\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "574c676a-e95f-4994-9ca3-525a9765e750",
+      "name": "Search Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -160,
+        8384
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/services/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "188ee660-8b9d-4bde-95b2-29870f5af2ed",
+      "name": "Wix: Services (Booking)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -608,
+        6640
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Settle on ONE serviceId from the two signals the agent sends.\n//\n// The agent passes BOTH serviceName (what the caller actually said) and serviceId\n// (a UUID it copied out of an earlier get_services response). The UUID is the\n// fragile signal: across V24/V25/V26 the model repeatedly spliced a Frankenstein\n// UUID out of a pricingVariant id or an add-on groupId, and Wix rejected it with\n// an opaque error that dead-ended the caller.\n//\n// Order of trust:\n//   1. Resolve serviceName against the live catalog (exact -> substring -> fuzzy).\n//   2. Check whether the supplied serviceId actually exists in the catalog.\n//   3. Prefer the NAME match - it reflects the caller's own words. Fall back to\n//      the UUID only when the name cannot be resolved. If both fail, return an\n//      actionable error listing real service names so the agent self-corrects.\n\nconst catalogRaw = $input.first().json;\nconst prev = $('Validate: Booking Args').first().json;\nconst args = Object.assign({}, prev.args || {});\n\n// Upstream validation already failed - pass straight through.\nif (prev._valid === false) {\n    return [{ json: prev }];\n}\n\nconst raw = Array.isArray(catalogRaw) ? catalogRaw[0] : catalogRaw;\nconst services = (raw && raw.services) || [];\nconst catalog = services\n    .filter(s => s && s.id && s.name)\n    .map(s => ({ id: s.id, name: String(s.name).trim() }));\n\nconst sentId = args.serviceId ? String(args.serviceId).trim() : null;\n\n// Catalog call failed - trust whatever the agent sent, let Wix judge.\n// Degrading to old behaviour beats a hard failure.\nif (catalog.length === 0) {\n    return [{ json: Object.assign({}, prev, { args,\n        _serviceResolution: { source: 'catalog-unavailable', serviceId: sentId } }) }];\n}\n\nfunction norm(v) {\n    return String(v || '').toLowerCase()\n        .replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n}\nconst STOP = ['massage', 'min', 'mins', 'minute', 'session', 'the', 'a'];\nfunction tokens(v) {\n    return norm(v).split(' ').filter(t => t && STOP.indexOf(t) === -1);\n}\n\nconst wanted = args.serviceName ? String(args.serviceName).trim() : null;\nlet resolved = null;\nlet how = 'none';\nlet ambiguousNames = null;\n\nif (wanted) {\n    const w = norm(wanted);\n\n    resolved = catalog.find(s => norm(s.name) === w) || null;\n    if (resolved) how = 'exact';\n\n    if (!resolved) {\n        const subs = catalog.filter(s => norm(s.name).indexOf(w) !== -1 || w.indexOf(norm(s.name)) !== -1);\n        if (subs.length === 1) { resolved = subs[0]; how = 'substring'; }\n        else if (subs.length > 1) { how = 'ambiguous'; ambiguousNames = subs.map(s => s.name); }\n    }\n\n    // token overlap with prefix tolerance - catches 'dip tissue', 'lymphatic drain'\n    if (!resolved && how !== 'ambiguous') {\n        const wt = tokens(wanted);\n        if (wt.length) {\n            let best = null, bestScore = 0;\n            for (const s of catalog) {\n                const st = tokens(s.name);\n                if (!st.length) continue;\n                const hits = wt.filter(t => st.some(x => x.slice(0, 4) === t.slice(0, 4))).length;\n                const score = hits / Math.max(wt.length, st.length);\n                if (score > bestScore) { bestScore = score; best = s; }\n            }\n            if (best && bestScore >= 0.5) { resolved = best; how = 'fuzzy'; }\n        }\n    }\n}\n\nconst idEntry = sentId ? (catalog.find(s => s.id === sentId) || null) : null;\nconst idValid = !!idEntry;\n\nlet finalId = null, source = null, mismatch = false;\n\nif (resolved) {\n    finalId = resolved.id;\n    source = 'serviceName:' + how;\n    if (idValid && idEntry.id !== resolved.id) mismatch = true;\n} else if (idValid) {\n    finalId = idEntry.id;\n    source = 'serviceId';\n}\n\nif (!finalId) {\n    const names = catalog.map(s => s.name);\n    let reason;\n    if (how === 'ambiguous') {\n        reason = 'serviceName \"' + wanted + '\" matches more than one service (' +\n            ambiguousNames.join(', ') + '). Ask the caller which one they want.';\n    } else if (sentId && !idValid) {\n        reason = 'serviceId \"' + sentId + '\" is not a real service id' +\n            (wanted ? ', and serviceName \"' + wanted + '\" could not be matched' : '') +\n            '. Use the top-level id from get_services - not a pricingVariants id and not an add-on groupId.';\n    } else {\n        reason = 'Could not identify the service. Pass serviceName exactly as get_services returned it.';\n    }\n    return [{ json: Object.assign({}, prev, { args, _valid: false,\n        _validationError: reason,\n        _serviceResolution: { resolved: null, how, idValid, availableServices: names } }) }];\n}\n\nargs.serviceId = finalId;\nargs.serviceName = (resolved || idEntry).name;\n\nreturn [{ json: Object.assign({}, prev, { args, _serviceResolution: {\n    serviceId: finalId, serviceName: args.serviceName, source: source, how: how,\n    sentServiceId: sentId, sentServiceIdValid: idValid, mismatch: mismatch } }) }];"
+      },
+      "id": "e53ddf29-5320-40b1-b8a6-a748db01488c",
+      "name": "Resolve: Service (Booking)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        6640
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/bookings/v2/services/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": {\n    \"filter\": {\n      \"type\": [\"APPOINTMENT\", \"CLASS\"]\n    },\n    \"paging\": {\n      \"limit\": 100\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "8d5deb89-105d-438f-b711-ff36823593e0",
+      "name": "Wix: Services (Slots)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -608,
+        6064
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Settle on ONE serviceId from the two signals the agent sends.\n// See Resolve: Service (Booking) for the full rationale - same logic, slots branch.\n//\n// Order of trust:\n//   1. Resolve serviceName against the live catalog (exact -> substring -> fuzzy).\n//   2. Check whether the supplied serviceId actually exists in the catalog.\n//   3. Prefer the NAME match. Fall back to the UUID only when the name cannot be\n//      resolved. If both fail, return an actionable error listing real names.\n\nconst catalogRaw = $input.first().json;\nconst prev = $('Validate: Slots Args').first().json;\nconst args = Object.assign({}, prev.args || {});\n\nif (prev._valid === false) {\n    return [{ json: prev }];\n}\n\nconst raw = Array.isArray(catalogRaw) ? catalogRaw[0] : catalogRaw;\nconst services = (raw && raw.services) || [];\nconst catalog = services\n    .filter(s => s && s.id && s.name)\n    .map(s => ({ id: s.id, name: String(s.name).trim() }));\n\nconst sentId = args.serviceId ? String(args.serviceId).trim() : null;\n\n// Catalog call failed - trust whatever the agent sent, let Wix judge.\nif (catalog.length === 0) {\n    return [{ json: Object.assign({}, prev, { args,\n        _serviceResolution: { source: 'catalog-unavailable', serviceId: sentId } }) }];\n}\n\nfunction norm(v) {\n    return String(v || '').toLowerCase()\n        .replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n}\nconst STOP = ['massage', 'min', 'mins', 'minute', 'session', 'the', 'a'];\nfunction tokens(v) {\n    return norm(v).split(' ').filter(t => t && STOP.indexOf(t) === -1);\n}\n\nconst wanted = args.serviceName ? String(args.serviceName).trim() : null;\nlet resolved = null;\nlet how = 'none';\nlet ambiguousNames = null;\n\nif (wanted) {\n    const w = norm(wanted);\n\n    resolved = catalog.find(s => norm(s.name) === w) || null;\n    if (resolved) how = 'exact';\n\n    if (!resolved) {\n        const subs = catalog.filter(s => norm(s.name).indexOf(w) !== -1 || w.indexOf(norm(s.name)) !== -1);\n        if (subs.length === 1) { resolved = subs[0]; how = 'substring'; }\n        else if (subs.length > 1) { how = 'ambiguous'; ambiguousNames = subs.map(s => s.name); }\n    }\n\n    if (!resolved && how !== 'ambiguous') {\n        const wt = tokens(wanted);\n        if (wt.length) {\n            let best = null, bestScore = 0;\n            for (const s of catalog) {\n                const st = tokens(s.name);\n                if (!st.length) continue;\n                const hits = wt.filter(t => st.some(x => x.slice(0, 4) === t.slice(0, 4))).length;\n                const score = hits / Math.max(wt.length, st.length);\n                if (score > bestScore) { bestScore = score; best = s; }\n            }\n            if (best && bestScore >= 0.5) { resolved = best; how = 'fuzzy'; }\n        }\n    }\n}\n\nconst idEntry = sentId ? (catalog.find(s => s.id === sentId) || null) : null;\nconst idValid = !!idEntry;\n\nlet finalId = null, source = null, mismatch = false;\n\nif (resolved) {\n    finalId = resolved.id;\n    source = 'serviceName:' + how;\n    if (idValid && idEntry.id !== resolved.id) mismatch = true;\n} else if (idValid) {\n    finalId = idEntry.id;\n    source = 'serviceId';\n}\n\nif (!finalId) {\n    const names = catalog.map(s => s.name);\n    let reason;\n    if (how === 'ambiguous') {\n        reason = 'serviceName \"' + wanted + '\" matches more than one service (' +\n            ambiguousNames.join(', ') + '). Ask the caller which one they want.';\n    } else if (sentId && !idValid) {\n        reason = 'serviceId \"' + sentId + '\" is not a real service id' +\n            (wanted ? ', and serviceName \"' + wanted + '\" could not be matched' : '') +\n            '. Use the top-level id from get_services - not a pricingVariants id and not an add-on groupId.';\n    } else {\n        reason = 'Could not identify the service. Pass serviceName exactly as get_services returned it.';\n    }\n    return [{ json: Object.assign({}, prev, { args, _valid: false,\n        _validationError: reason,\n        _serviceResolution: { resolved: null, how, idValid, availableServices: names } }) }];\n}\n\nargs.serviceId = finalId;\nargs.serviceName = (resolved || idEntry).name;\n\nreturn [{ json: Object.assign({}, prev, { args, _serviceResolution: {\n    serviceId: finalId, serviceName: args.serviceName, source: source, how: how,\n    sentServiceId: sentId, sentServiceIdValid: idValid, mismatch: mismatch } }) }];"
+      },
+      "id": "95bb978c-196a-4179-9c2c-54c45a8482a8",
+      "name": "Resolve: Service (Slots)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        6064
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.wixapis.com/_api/service-availability/v2/time-slots",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wixApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"serviceId\": \"{{ $json.args.serviceId }}\",\n  \"fromLocalDate\": \"{{ $json.args.startDate }}\",\n  \"toLocalDate\": \"{{ $json.args.endDate }}\",\n  \"timeZone\": \"America/Los_Angeles\",\n  \"includeResourceTypeIds\": [\"1cd44cf8-756f-41c3-bd90-3e2ffcaf1155\"],\n  \"customerChoices\": { \"durationInMinutes\": {{ Math.round((new Date($json.args.endDate) - new Date($json.args.startDate)) / 60000) }} }\n}",
+        "options": {}
+      },
+      "id": "0cca48d5-7789-4f18-b81b-d214192d42a6",
+      "name": "Wix: Availability (Booking)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -160,
+        6640
+      ],
+      "credentials": {
+        "wixApi": {
+          "id": "wLpWbblaihcY4xnw",
+          "name": "Test: Wix Sage Site"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auto-assign a therapist when the caller did not pick one.\n//\n// Wix's ANY_RESOURCE selection does NOT populate slot.resource on create: a\n// booking made without a staffId lands with staffName/staffId null, so nobody\n// on the team actually owns the appointment. Verified 2026-08-17 - test booking\n// 101a10c9-a737-4b50-bf50-db8bed7ddba2 was created with no staffId and came\n// back from get-booking with staffName null.\n//\n// So the therapist is resolved HERE, server-side, from live availability for\n// the exact slot being booked. That keeps it deterministic and out of the LLM's\n// hands - it cannot reintroduce the \"model copies a stale staffId off an old\n// slot\" failure that made us strip staffId in the first place.\n//\n// Fail-open: if availability is unreadable, or nobody is free, the booking\n// proceeds unassigned rather than failing. An unassigned booking is a staffing\n// problem; a failed booking is a lost customer.\n\nconst prev = $('Resolve: Service (Booking)').first().json;\nconst args = Object.assign({}, prev.args || {});\n\nif (prev._valid === false) {\n    return [{ json: prev }];\n}\n\n// The caller asked for someone specific - never override that.\nif (args.staffId) {\n    return [{ json: Object.assign({}, prev, {\n        args,\n        _therapistResolution: { source: 'caller-requested', staffId: args.staffId }\n    }) }];\n}\n\nconst raw = $input.first().json;\nconst entries = (raw && raw.timeSlots) || [];\n\nfunction resourcesFor(slot) {\n    const out = [];\n    const seen = new Set();\n    for (const block of (slot.availableResources || [])) {\n        for (const r of (block.resources || [])) {\n            if (!r || !r.id || seen.has(r.id)) continue;\n            seen.add(r.id);\n            out.push({ id: r.id, name: r.name || 'Therapist' });\n        }\n    }\n    return out;\n}\n\nconst match = entries.find(e => e.bookable === true && e.localStartDate === args.startDate);\nconst candidates = match ? resourcesFor(match) : [];\n\nif (candidates.length === 0) {\n    return [{ json: Object.assign({}, prev, {\n        args,\n        _therapistResolution: {\n            source: 'none-available',\n            autoAssigned: false,\n            slotMatched: !!match,\n            note: 'Booking proceeds unassigned rather than failing.'\n        }\n    }) }];\n}\n\n// Spread across whoever is free instead of always handing it to the first name\n// in the list. Hashing the slot start keeps it stateless and repeatable - the\n// same slot always resolves to the same therapist.\nlet h = 0;\nfor (const ch of String(args.startDate)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;\nconst pick = candidates[h % candidates.length];\n\nargs.staffId = pick.id;\n\nreturn [{ json: Object.assign({}, prev, {\n    args,\n    _therapistResolution: {\n        source: 'auto-assigned',\n        staffId: pick.id,\n        staffName: pick.name,\n        candidates: candidates.map(c => c.name)\n    }\n}) }];\n"
+      },
+      "id": "49acd761-d6c6-4d3f-84c7-6e324e5ed0bc",
+      "name": "Resolve: Therapist (Booking)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        6640
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook — Retell Tool Call": {
+      "main": [
+        [
+          {
+            "node": "Parse Retell Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Retell Payload": {
+      "main": [
+        [
+          {
+            "node": "Route by Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Slots Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Query Time Slots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Slots Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Query Time Slots": {
+      "main": [
+        [
+          {
+            "node": "Format: Time Slots Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Time Slots Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Query Staff Members": {
+      "main": [
+        [
+          {
+            "node": "Format: Staff Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Staff Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Booking Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Search Contact1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Booking Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Create Booking": {
+      "main": [
+        [
+          {
+            "node": "IF: Booking Created OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Booking Created OK": {
+      "main": [
+        [
+          {
+            "node": "Wix: Confirm Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Confirm Booking": {
+      "main": [
+        [
+          {
+            "node": "Format: Booking Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Booking Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Respond: Book Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Cancel Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Cancel Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Cancel Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Cancel Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Cancel Booking": {
+      "main": [
+        [
+          {
+            "node": "Format: Cancel Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Cancel Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Reschedule Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Reschedule Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Reschedule Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Reschedule Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Reschedule Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Reschedule Booking": {
+      "main": [
+        [
+          {
+            "node": "Format: Reschedule Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Rescheduling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Reschedule Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Reschedule Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Flag Callback Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Flag Callback Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Flag Callback Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Send Email: Flag Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Flag Callback Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email: Flag Callback": {
+      "main": [
+        [
+          {
+            "node": "Format: Flag Callback Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Flag Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Flag Callback Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Flag Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Get Contact": {
+      "main": [
+        [
+          {
+            "node": "IF: Contact Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Contact Args Valid": {
+      "main": [
+        [
+          {
+            "node": "Wix: Search Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Contact Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Search Contact": {
+      "main": [
+        [
+          {
+            "node": "Format: Contact Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Contact Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Contact Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Format: Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Wix: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Search Contact1": {
+      "main": [
+        [
+          {
+            "node": "Format: Contact Response1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wix: Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Contact Response1": {
+      "main": [
+        [
+          {
+            "node": "If: Contact Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Contact Found": {
+      "main": [
+        [
+          {
+            "node": "Wix: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wix: Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Query Services": {
+      "main": [
+        [
+          {
+            "node": "Extract Pricing IDs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Pricing IDs": {
+      "main": [
+        [
+          {
+            "node": "IF: Has Varied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has Varied": {
+      "main": [
+        [
+          {
+            "node": "Wix: Get Pricing Variants",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Add-on IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Get Pricing Variants": {
+      "main": [
+        [
+          {
+            "node": "Extract Add-on IDs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Get Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Add-on IDs": {
+      "main": [
+        [
+          {
+            "node": "IF: Has Add-ons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has Add-ons": {
+      "main": [
+        [
+          {
+            "node": "Wix: Get Add-ons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format: Services Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Get Add-ons": {
+      "main": [
+        [
+          {
+            "node": "Format: Services Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Services Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tool": {
+      "main": [
+        [
+          {
+            "node": "Wix: Query Services",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Slots Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wix: Query Staff Members",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Booking Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Cancel Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Reschedule Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Get Booking Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Flag Callback Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate: Get Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Unknown Tool Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Get Booking Args": {
+      "main": [
+        [
+          {
+            "node": "IF: Get Booking Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Get Booking Args Valid": {
+      "main": [
+        [
+          {
+            "node": "IF: Lookup by ID?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Getting Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Lookup by ID?": {
+      "main": [
+        [
+          {
+            "node": "Wix: Get Booking (by ID)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Get Booking (by ID)": {
+      "main": [
+        [
+          {
+            "node": "Format: Get Booking Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Getting Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Contact Found": {
+      "main": [
+        [
+          {
+            "node": "Wix: Get Booking (by Contact)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mock Empty Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Empty Bookings": {
+      "main": [
+        [
+          {
+            "node": "Format: Get Booking Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Get Booking (by Contact)": {
+      "main": [
+        [
+          {
+            "node": "Format: Get Booking Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Getting Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format: Get Booking Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Get Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Contact": {
+      "main": [
+        [
+          {
+            "node": "IF: Contact Found",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Getting Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Booking Args": {
+      "main": [
+        [
+          {
+            "node": "Wix: Services (Booking)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Services (Booking)": {
+      "main": [
+        [
+          {
+            "node": "Resolve: Service (Booking)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Slots Args": {
+      "main": [
+        [
+          {
+            "node": "Wix: Services (Slots)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Services (Slots)": {
+      "main": [
+        [
+          {
+            "node": "Resolve: Service (Slots)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve: Service (Slots)": {
+      "main": [
+        [
+          {
+            "node": "IF: Slots Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve: Service (Booking)": {
+      "main": [
+        [
+          {
+            "node": "Wix: Availability (Booking)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wix: Availability (Booking)": {
+      "main": [
+        [
+          {
+            "node": "Resolve: Therapist (Booking)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve: Therapist (Booking)": {
+      "main": [
+        [
+          {
+            "node": "IF: Booking Args Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Los_Angeles",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  }
+}

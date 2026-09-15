@@ -1,0 +1,188 @@
+{
+  "language": [
+    "en-US",
+    "es-ES",
+    "es-419",
+    "en-AU",
+    "zh-CN"
+  ],
+  "voice_id": "custom_voice_a0f1f657e6d342829e3312104b",
+  "fallback_voice_ids": [],
+  "voice_temperature": 0.7,
+  "voice_speed": 1.06,
+  "volume": 1,
+  "enable_expressive_mode": true,
+  "expressive_emotion_tags": [
+    "empathetic",
+    "excited",
+    "sigh",
+    "clear throat",
+    "emphasis"
+  ],
+  "enable_backchannel": false,
+  "reminder_trigger_ms": 20000,
+  "reminder_max_count": 2,
+  "max_call_duration_ms": 600000,
+  "interruption_sensitivity": 0.8,
+  "responsiveness": 0.8,
+  "enable_dynamic_responsiveness": false,
+  "ring_duration_ms": 30000,
+  "stt_mode": "accurate",
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "denoising_mode": "noise-cancellation",
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
+  "end_call_after_silence_ms": 89000,
+  "post_call_analysis_model": "gpt-4.1-mini",
+  "pii_config": {
+    "mode": "post_call",
+    "categories": []
+  },
+  "handbook_config": {
+    "ai_disclosure": true,
+    "default_personality": false,
+    "conversational_personality": true,
+    "smart_matching": false,
+    "high_empathy": false,
+    "echo_verification": false,
+    "speech_normalization": false,
+    "scope_boundaries": false,
+    "nato_phonetic_alphabet": false,
+    "natural_filler_words": true
+  },
+  "agent_name": "Aria - Sage & Willow Spa (Outbound) V07",
+  "response_engine": {
+    "type": "conversation-flow",
+    "conversation_flow_id": "conversation_flow_599a68571a81",
+    "version": 0
+  },
+  "begin_message_delay_ms": 1000,
+  "voicemail_option": {
+    "action": {
+      "type": "static_text",
+      "text": "Hi {{lead_first_name}}, this is Aria from Sage and Willow Spa getting back to you. Give us a call at six two eight, two eight six, two two eight one and we'll get you scheduled. Thanks!"
+    }
+  },
+  "post_call_analysis_data": [
+    {
+      "choices": [
+        "new_booking",
+        "cancel",
+        "reschedule",
+        "status_check",
+        "faq_general",
+        "faq_pricing",
+        "callback_request",
+        "spam",
+        "inappropriate",
+        "off_topic",
+        "emergency",
+        "crisis",
+        "other"
+      ],
+      "description": "Primary purpose of the call.",
+      "name": "caller_intent",
+      "type": "enum"
+    },
+    {
+      "description": "What actually happened on the call.",
+      "choices": [
+        "booking_created",
+        "booking_canceled",
+        "booking_rescheduled",
+        "info_provided",
+        "callback_flagged",
+        "spam_declined",
+        "inappropriate_deflected",
+        "abandoned",
+        "other"
+      ],
+      "type": "enum",
+      "name": "resolution_status"
+    },
+    {
+      "description": "True if a callback was flagged for the team.",
+      "name": "callback_required",
+      "type": "boolean"
+    },
+    {
+      "name": "callback_reason",
+      "type": "string",
+      "description": "Short reason for the callback if one was flagged."
+    },
+    {
+      "description": "Overall caller sentiment by end of call.",
+      "name": "caller_sentiment",
+      "choices": [
+        "positive",
+        "neutral",
+        "frustrated",
+        "angry"
+      ],
+      "type": "enum"
+    },
+    {
+      "choices": [
+        "english",
+        "spanish",
+        "mixed"
+      ],
+      "name": "language_used",
+      "description": "Primary language of the conversation.",
+      "type": "enum"
+    },
+    {
+      "type": "boolean",
+      "description": "Was this call spam, marketing or solicitation?",
+      "name": "spam_call"
+    },
+    {
+      "description": "Did the caller request sexual services?",
+      "type": "boolean",
+      "name": "inappropriate_request"
+    },
+    {
+      "type": "boolean",
+      "description": "Did any Wix tool call fail?",
+      "name": "tool_failure"
+    },
+    {
+      "name": "reached_lead",
+      "type": "enum",
+      "choices": [
+        "lead",
+        "wrong_person",
+        "voicemail",
+        "no_answer",
+        "unclear"
+      ],
+      "description": "Who or what actually picked up the phone."
+    },
+    {
+      "name": "outbound_outcome",
+      "type": "enum",
+      "choices": [
+        "booked",
+        "callback_scheduled",
+        "not_interested",
+        "wrong_number",
+        "voicemail_left",
+        "do_not_call",
+        "transferred",
+        "other"
+      ],
+      "description": "How the outbound attempt ended."
+    },
+    {
+      "name": "do_not_call",
+      "type": "boolean",
+      "description": "True only if the lead explicitly asked not to be contacted again."
+    },
+    {
+      "name": "callback_window",
+      "type": "string",
+      "description": "When the lead asked to be called back, in their own words. Empty if they did not ask."
+    }
+  ]
+}

@@ -1,0 +1,485 @@
+{
+  "name": "Sage & Willow | Inbound Post-Call -> Missed-Call Callback (DEV)",
+  "nodes": [
+    {
+      "id": "wh-postcall",
+      "name": "Webhook - Retell call_analyzed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1100,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sage-willow-post-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "sage-willow-post-call-v1"
+    },
+    {
+      "id": "prepare",
+      "name": "Prepare Call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst INBOUND_AGENT_ID = 'agent_eceb7448aa1f37e8f436a63a43';\nconst SPA_NUMBER = '+16282862281';\n\nconst env = $input.first().json;\nconst body = (env && typeof env.body === 'object' && env.body !== null) ? env.body : env;\nconst event = body.event;\nconst call = body.call || {};\nconst dryRun = body.dryRun === true || body.dryRun === 'true';\n\nconst durationMs = Number(call.duration_ms ?? ((call.end_timestamp || 0) - (call.start_timestamp || 0)));\nconst dr = String(call.disconnection_reason || '');\n\n// route: 'skip' (leave alone), 'callback' (nothing to read, ring back), 'classify' (ask the model)\nconst out = (route, why, extra) => [{ json: {\n  route,\n  route_reason: why,\n  call_id: call.call_id || null,\n  from_number: call.from_number || null,\n  dryRun,\n  started_at: call.start_timestamp ? new Date(call.start_timestamp).toISOString() : new Date().toISOString(),\n  ended_at_ms: Number(call.end_timestamp || call.start_timestamp || Date.now()),\n  duration_ms: durationMs,\n  disconnection_reason: dr,\n  llm_input: '',\n  ...(extra || {}),\n}}];\n\nif (event !== 'call_analyzed') return out('skip', `event ${event || 'missing'}`);\nif (call.agent_id && call.agent_id !== INBOUND_AGENT_ID) return out('skip', 'not the inbound agent');\nif (call.direction !== 'inbound') return out('skip', `direction ${call.direction || 'missing'}`);\nif (call.call_type && call.call_type !== 'phone_call') return out('skip', `call_type ${call.call_type}`);\n\nconst from = String(call.from_number || '');\nif (!/^\\+1\\d{10}$/.test(from)) return out('skip', 'no usable caller number');\nif (from === SPA_NUMBER) return out('skip', 'caller is the spa line');\n\n// Hard facts about how the call ended.\nif (dr === 'call_transfer') return out('skip', 'transferred to the team');\nif (['scam_detected', 'machine_detected', 'voicemail_reached'].includes(dr)) return out('skip', dr);\nif (dr.startsWith('error')) return out('callback', `platform error (${dr})`);\n\n// Rebuild the conversation. Prefer the structured transcript; fall back to the text one.\nconst turns = [];\nif (Array.isArray(call.transcript_object) && call.transcript_object.length) {\n  for (const t of call.transcript_object) {\n    if (!t || typeof t.content !== 'string' || !t.content.trim()) continue;\n    turns.push(`${t.role === 'agent' ? 'Aria' : 'Caller'}: ${t.content.trim()}`);\n  }\n} else if (typeof call.transcript === 'string' && call.transcript.trim()) {\n  for (const line of call.transcript.split('\\n')) {\n    const s = line.trim();\n    if (s) turns.push(s.replace(/^Agent:/, 'Aria:').replace(/^User:/, 'Caller:'));\n  }\n}\n\n// What the inbound agent actually did - the model must not trust Aria's words alone.\nconst tools = [];\nif (Array.isArray(call.transcript_with_tool_calls)) {\n  // Results only carry tool_call_id; map it back to the invocation's name.\n  const nameById = {};\n  for (const t of call.transcript_with_tool_calls) {\n    if (t && t.role === 'tool_call_invocation' && t.tool_call_id) nameById[t.tool_call_id] = t.name;\n  }\n  for (const t of call.transcript_with_tool_calls) {\n    if (!t) continue;\n    if (t.role === 'tool_call_invocation') tools.push(`invoked ${t.name}(${String(t.arguments || '').slice(0, 200)})`);\n    if (t.role === 'tool_call_result') tools.push(`result of ${t.name || nameById[t.tool_call_id] || 'tool'}: ${String(t.content || '').slice(0, 300)}`);\n  }\n}\n\nif (call.call_status === 'not_connected' || durationMs < 5000 || !turns.length) {\n  return out('callback', 'never connected / nothing said');\n}\n\nconst callerTurns = turns.filter(t => t.startsWith('Caller:')).length;\n// Only Aria's greeting on the tape: they reached out and never got a word in. Nothing to judge.\nif (!callerTurns) return out('callback', 'caller never spoke');\n\nconst llmInput = [\n  `Call length: ${Math.round(durationMs / 1000)} seconds. Ended by: ${dr || 'unknown'}. Caller turns: ${callerTurns}.`,\n  '',\n  'Tools the receptionist actually invoked during the call:',\n  tools.length ? tools.map(t => '- ' + t).join('\\n') : '- none',\n  '',\n  'Transcript:',\n  turns.join('\\n'),\n].join('\\n');\n\nreturn out('classify', 'has transcript', { llm_input: llmInput, caller_turns: callerTurns, tools_invoked: tools.length });\n"
+      }
+    },
+    {
+      "id": "if-classify",
+      "name": "IF: Classify With AI?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-if-classify",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "classify"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "classify",
+      "name": "Classify Call Outcome",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -420,
+        160
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.llm_input }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You review transcripts of inbound phone calls to Sage & Willow Spa, a massage spa. The receptionist on the call is an AI named Aria. Your job: decide whether the caller got what they rang for, or whether the call ended incomplete and the spa should ring them back.\n\nReturn ONLY a JSON object matching the schema you are given. No prose.\n\nDefinitions of \"outcome\":\n- booking_made: a new appointment was actually created.\n- booking_changed: an existing appointment was actually rescheduled.\n- booking_cancelled: an existing appointment was actually cancelled.\n- question_answered: the caller asked something (hours, prices, services, directions, availability) and got a real answer. Counts even if they hung up abruptly afterwards.\n- message_taken: Aria took a message or callback request for the team, or confirmed the team would ring them. The team handles it - no callback from you.\n- transferred: the caller was handed to a person.\n- leave_alone: spam, sales pitch, robocall, wrong number or misdial, inappropriate or sexual request, medical emergency or crisis, an obvious test call, off-topic, or the caller said not to call them.\n- incomplete: the caller wanted something (to book, change, cancel, check, ask, or reach someone) and did NOT get it. Includes: hung up or was cut off mid-flow, silence or noise then a hang-up, Aria looped, misunderstood, or failed, a tool error, the caller gave up.\n\nHard rules:\n1. needs_callback is true ONLY when outcome is \"incomplete\". For every other outcome it is false.\n2. Never take Aria's word for a booking, change, or cancellation. \"You're all set\", \"I've booked that\", \"it's confirmed\" are only true if the tools list shows the matching tool (book_appointment, reschedule_booking, cancel_booking) returning a successful result. A claimed booking with no successful tool result is \"incomplete\" and needs a callback - the caller believes they are booked and they are not.\n3. get_slots, get_services, get_staff, get_booking are lookups, not outcomes. flag_callback with a successful result means message_taken.\n4. A call where the caller barely spoke (hello, silence, noise) and then the line dropped is \"incomplete\" - they reached out and got nothing.\n5. caller_first_name: only a name the CALLER gave for themselves, exactly as said. Never \"Aria\". Empty string if none.\n6. caller_wanted: a short phrase in plain English describing what they were after, e.g. \"booking a deep tissue massage\", \"moving Saturday's appointment\", \"asking about prices\". Empty if unclear.\n7. reason: one short sentence a spa employee would understand."
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -460,
+        380
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4.1-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "TQ8G7IyCTNGZ2HQ3",
+          "name": "AIEmply - Veltro"
+        }
+      }
+    },
+    {
+      "id": "parser",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -260,
+        380
+      ],
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"outcome\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"booking_made\",\n        \"booking_changed\",\n        \"booking_cancelled\",\n        \"question_answered\",\n        \"message_taken\",\n        \"transferred\",\n        \"leave_alone\",\n        \"incomplete\"\n      ]\n    },\n    \"needs_callback\": {\n      \"type\": \"boolean\"\n    },\n    \"reason\": {\n      \"type\": \"string\"\n    },\n    \"caller_first_name\": {\n      \"type\": \"string\"\n    },\n    \"caller_wanted\": {\n      \"type\": \"string\"\n    },\n    \"confidence\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"high\",\n        \"medium\",\n        \"low\"\n      ]\n    }\n  },\n  \"required\": [\n    \"outcome\",\n    \"needs_callback\",\n    \"reason\",\n    \"caller_first_name\",\n    \"caller_wanted\",\n    \"confidence\"\n  ],\n  \"additionalProperties\": false\n}",
+        "autoFix": false
+      }
+    },
+    {
+      "id": "verdict",
+      "name": "Apply Verdict",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst prep = $('Prepare Call').first().json;\nconst item = $input.first().json;\n\n// The AI Agent wraps the parsed JSON in `output`; on the no-model path the item IS prep.\nconst llm = item && typeof item.output === 'object' && item.output !== null ? item.output : null;\n\nconst base = {\n  call_id: prep.call_id,\n  from_number: prep.from_number,\n  dryRun: prep.dryRun,\n  started_at: prep.started_at,\n  ended_at_ms: prep.ended_at_ms,\n  duration_ms: prep.duration_ms,\n  disconnection_reason: prep.disconnection_reason,\n  route: prep.route,\n  first_name: '',\n  inbound_intent: '',\n  outcome: '',\n  confidence: '',\n};\n\nconst done = (needsCallback, why) => [{ json: {\n  ...base, needsCallback, reason: needsCallback ? why : '', skipReason: needsCallback ? '' : why,\n}}];\n\nif (prep.route === 'skip') return done(false, prep.route_reason);\nif (prep.route === 'callback') return done(true, prep.route_reason);\n\n// route === 'classify'\nif (!llm) {\n  const err = item && item.error ? (item.error.message || JSON.stringify(item.error)) : 'no model output';\n  return done(false, `classifier failed: ${String(err).slice(0, 200)}`);\n}\n\nlet firstName = String(llm.caller_first_name || '').trim();\nif (!/^[A-Za-z][A-Za-z'\\-]{0,29}$/.test(firstName) || /^(unknown|none|n\\/a|caller|aria)$/i.test(firstName)) firstName = '';\n\nbase.first_name = firstName;\nbase.inbound_intent = String(llm.caller_wanted || '').trim().slice(0, 80);\nbase.outcome = String(llm.outcome || '');\nbase.confidence = String(llm.confidence || '');\n\nconst needs = llm.needs_callback === true && llm.outcome === 'incomplete';\nreturn done(needs, `${llm.outcome}: ${String(llm.reason || '').trim()}`);\n"
+      }
+    },
+    {
+      "id": "if-needs",
+      "name": "IF: Needs Callback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        180,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-if-needs",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.needsCallback }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "redial",
+      "name": "Retell: Did They Call Back?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        620,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.retellai.com/v2/list-calls",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  filter_criteria: {\n    from_number: [$('Apply Verdict').first().json.from_number],\n    direction: ['inbound'],\n    start_timestamp: { lower_threshold: $('Apply Verdict').first().json.ended_at_ms + 1 }\n  },\n  limit: 5, sort_order: 'descending'\n}) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "PCD0SY42490CXB82",
+          "name": "Retell - Sage & Willow workspace"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "dedup",
+      "name": "Retell: Already Called Back?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.retellai.com/v2/list-calls",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  filter_criteria: {\n    agent_id: ['agent_4ef8160dc71826818c6fd8122b'],\n    to_number: [$('Apply Verdict').first().json.from_number],\n    start_timestamp: { lower_threshold: Date.now() - 300000 }\n  },\n  limit: 5, sort_order: 'descending'\n}) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "PCD0SY42490CXB82",
+          "name": "Retell - Sage & Willow workspace"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "decide",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        200
+      ],
+      "parameters": {
+        "jsCode": "\nconst OUTBOUND_AGENT_ID = 'agent_4ef8160dc71826818c6fd8122b';\nconst DEDUP_MS = 300000;\n\nconst ev = $('Apply Verdict').first().json;\nconst asList = (name) => {\n  const items = $(name).all().map(i => i.json);\n  // The HTTP node returns one item per call, or a single item wrapping the array.\n  if (items.length === 1 && Array.isArray(items[0])) return items[0];\n  if (items.length === 1 && items[0] && Array.isArray(items[0].data)) return items[0].data;\n  return items.filter(c => c && c.call_id);\n};\n\n// Did they ring us back themselves after that call ended?\nconst redials = asList('Retell: Did They Call Back?')\n  .filter(c => c.call_id !== ev.call_id && c.from_number === ev.from_number\n            && Number(c.start_timestamp || 0) > ev.ended_at_ms);\n\n// Has Aria already rung this number back recently?\nconst since = Date.now() - DEDUP_MS;\nconst priorCallbacks = asList('Retell: Already Called Back?')\n  .filter(c => c.to_number === ev.from_number && c.agent_id === OUTBOUND_AGENT_ID\n            && Number(c.start_timestamp || 0) > since);\n\nlet skipReason = '';\nif (redials.length) skipReason = `caller rang back themselves (${redials[0].call_id})`;\nelse if (priorCallbacks.length) skipReason = `already called back within window (${priorCallbacks[0].call_id})`;\n\nreturn [{ json: {\n  ...ev,\n  stillNeeded: !skipReason,\n  skipReason,\n  redials: redials.length,\n  priorCallbacks: priorCallbacks.length,\n}}];\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "if-still",
+      "name": "IF: Still Needed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-if-still",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.stillNeeded }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "trigger",
+      "name": "Trigger Outbound Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://automation.aiemply.com/webhook/sage-willow-lead-callout",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  source: 'missed_call',\n  first_name: $json.first_name,\n  phone: $json.from_number,\n  submitted_at: $json.started_at,\n  inbound_intent: $json.inbound_intent,\n  inbound_call_id: $json.call_id,\n  dryRun: $json.dryRun\n}) }}",
+        "options": {}
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "skip-1",
+      "name": "Skip: Nothing To Do",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        400,
+        420
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "skip-2",
+      "name": "Skip: Resolved Itself",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        320
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Webhook - Retell call_analyzed": {
+      "main": [
+        [
+          {
+            "node": "Prepare Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Call": {
+      "main": [
+        [
+          {
+            "node": "IF: Classify With AI?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Classify With AI?": {
+      "main": [
+        [
+          {
+            "node": "Classify Call Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply Verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Call Outcome": {
+      "main": [
+        [
+          {
+            "node": "Apply Verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Verdict": {
+      "main": [
+        [
+          {
+            "node": "IF: Needs Callback?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Needs Callback?": {
+      "main": [
+        [
+          {
+            "node": "Retell: Did They Call Back?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip: Nothing To Do",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retell: Did They Call Back?": {
+      "main": [
+        [
+          {
+            "node": "Retell: Already Called Back?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retell: Already Called Back?": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "IF: Still Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Still Needed?": {
+      "main": [
+        [
+          {
+            "node": "Trigger Outbound Call",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip: Resolved Itself",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify Call Outcome",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Classify Call Outcome",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Los_Angeles"
+  }
+}

@@ -1,0 +1,818 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "last_modification_timestamp": 1789058511745,
+  "agent_name": "Sample Agent (Dental Practice Template) V01",
+  "response_engine": {
+    "type": "retell-llm",
+    "llm_id": "",
+    "version": 0
+  },
+  "webhook_url": "https://example.com/webhook/retell-dental-events",
+  "language": [
+    "en-US",
+    "es-ES",
+    "en-IN",
+    "es-419",
+    "en-GB",
+    "en-AU",
+    "en-NZ"
+  ],
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": true,
+  "version": 0,
+  "assigned_tags": [],
+  "is_published": false,
+  "post_call_analysis_model": "gpt-4.1-mini",
+  "pii_config": {
+    "mode": "post_call",
+    "categories": [
+      "person_name",
+      "phone_number",
+      "address",
+      "email",
+      "date_of_birth",
+      "ssn",
+      "medical_id",
+      "customer_account_number",
+      "credit_card"
+    ]
+  },
+  "handbook_config": {
+    "default_personality": false,
+    "conversational_personality": true,
+    "natural_filler_words": true,
+    "high_empathy": true,
+    "echo_verification": true,
+    "nato_phonetic_alphabet": true,
+    "speech_normalization": true,
+    "smart_matching": true,
+    "ai_disclosure": true,
+    "scope_boundaries": true
+  },
+  "timezone": "America/Los_Angeles",
+  "voice_id": "11labs-Brynne",
+  "voice_model": "eleven_flash_v2_5",
+  "voice_temperature": 0.7,
+  "voice_speed": 0.9,
+  "volume": 1,
+  "max_call_duration_ms": 1800000,
+  "interruption_sensitivity": 0.9,
+  "ambient_sound": "call-center",
+  "ambient_sound_volume": 0.29,
+  "responsiveness": 1,
+  "begin_message_delay_ms": 400,
+  "ring_duration_ms": 30000,
+  "voicemail_option": {
+    "action": {
+      "type": "static_text",
+      "text": "Hi, this is [AGENT NAME] calling from [PRACTICE NAME]. Sorry we could not reach you. Please give us a call back whenever you get a chance. Thank you."
+    },
+    "detection_prompt": "Treat it as voicemail if you hear a recorded greeting, an automated carrier message, or a beep prompting you to leave a message."
+  },
+  "ivr_option": {
+    "action": {
+      "type": "hangup"
+    },
+    "detection_prompt": null
+  },
+  "stt_mode": "fast",
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {
+    "digit_limit": 10,
+    "termination_key": "#",
+    "timeout_ms": 5000
+  },
+  "denoising_mode": "noise-cancellation",
+  "webhook_events": [
+    "call_started",
+    "call_ended",
+    "call_analyzed",
+    "transcript_updated",
+    "transfer_started",
+    "transfer_bridged",
+    "transfer_cancelled",
+    "transfer_ended"
+  ],
+  "retellLlmData": {
+    "llm_id": "",
+    "version": 0,
+    "model": "gpt-4.1",
+    "model_high_priority": true,
+    "general_prompt": "# Identity\n\nYou are [AGENT NAME], the front desk coordinator at [PRACTICE NAME], a dental practice in [CITY], [STATE]. This is a live, recorded phone call.\n\nYou book and change appointments, triage dental emergencies, answer questions about the practice, and route anything clinical or financial to a human. The clinical team is chairside most of the day, so callers reach you when nobody can pick up.\n\nIf asked whether you are a person: you are [AGENT NAME], the virtual coordinator at [PRACTICE NAME]. Say it once and carry on.\n\n# Practice Facts\n\nReplace every square bracket value before go live.\n\n- Practice: [PRACTICE NAME], [PRACTICE ADDRESS], [CITY], [STATE] [ZIP]\n- Website: [PRACTICE WEBSITE], spoken as \"[PRACTICE WEBSITE SPOKEN]\"\n- Parking: [PARKING DETAIL]\n- Providers: [PROVIDER 1], [PROVIDER 2]. Hygienists: [HYGIENIST 1], [HYGIENIST 2]\n- Hours: [OPENING TIME] to [CLOSING TIME], [OPEN DAYS]. Closed [CLOSED DAYS] and [HOLIDAY CLOSURES]\n- After hours and emergencies: [AFTER HOURS INSTRUCTION]\n- New patient forms: [NEW PATIENT FORM INSTRUCTION]\n- Cancellation notice we ask for: [CANCELLATION NOTICE WINDOW]\n\nNever state a practice fact that is not here, in the knowledge base, or returned by a tool. If you do not have it, say so and offer a callback.\n\n# Caller Context\n\n- Caller phone: {{user_number}}\n- Direction: {{direction}}\n- Local time: {{current_time_[TIMEZONE]}}. Source of truth for \"today,\" \"tomorrow,\" \"next Monday.\"\n- Calendar: {{current_calendar_[TIMEZONE]}}\n\nDefault every phone number to {{user_number}} and confirm it. Only collect a different one if the caller asks. If a variable renders with curly braces visible, treat it as unset and never read it aloud. Never offer a slot outside practice hours, and flag any date that is in the past.\n\n# Brand Voice\n\nCalm, competent, unhurried. Dental calls often carry pain or anxiety, so steadiness beats cheerfulness. Mirror the caller's energy.\n\nMatch the caller's primary language. Switch to [SECOND LANGUAGE] only when their first turn or a full sentence is in it. Single foreign words do not trigger a switch.\n\n# Core Rules\n\n- Read key details back and get an explicit yes before any booking, cancel or reschedule.\n- Never deliver the same confirmation twice. Refer back briefly: \"As I mentioned, you are set for Tuesday at two.\"\n- Appointment types, durations, providers, times and IDs come from tools only. The knowledge base holds descriptions and policies.\n- Do not narrate what you are doing or echo the caller's words back as a preamble. Answer, then ask the next thing.\n- Do not describe a procedure unless asked.\n- Say durations in minutes: \"sixty minutes,\" not \"an hour.\"\n- Never say something is done unless the tool returned success.\n\n# Clinical Boundaries\n\nHard rule. Overrides everything else here.\n\nYou are not a clinician. Never name a condition (\"that sounds like an abscess\"), never recommend or dose any medication including over the counter painkillers, never say a symptom is nothing to worry about, never estimate how long something can wait, and never quote a healing time or success rate.\n\nWhen asked, say once: \"I am not able to advise on that, but I can get you in to be seen, or have a clinical team member call you back.\" If they press, use flag_callback with department clinical, or transfer. Do not soften it and do not guess.\n\nTriage is the only exception, and it judges urgency only, never diagnosis.\n\n# Patient Privacy\n\nAppointment details are protected health information.\n\n- Before reading back, changing or cancelling any appointment, verify full name plus date of birth or the phone on file.\n- Asking about someone else's appointment: do not confirm or deny it exists. \"I am not able to discuss another patient's appointment, but I can take a message.\" Then flag_callback. A parent or guardian giving a minor's full name and date of birth is fine.\n- Never read a full date of birth, member ID or card number aloud. Last four only.\n- Records, x ray or history requests from another office, an attorney or an insurer: \"Our team handles those in writing.\" Take name, organization and callback number, then flag_callback with department records. Never confirm whether someone is a patient.\n- If verification fails, do not keep retrying. Offer a callback.\n\n# Practice Vocabulary\n\nAssume the closest match and confirm it rather than saying we do not offer it:\n\n- Provider names: map close phonetic matches to [PROVIDER 1], [PROVIDER 2], [HYGIENIST 1], [HYGIENIST 2] and confirm.\n- \"Route canal\" is root canal. \"Wisdom teef\" is wisdom teeth. \"Invizalign,\" \"invisible line\" is Invisalign. \"Crown\" and \"cap\" are the same. \"Deep cleaning,\" \"scaling,\" \"perio cleaning\" all mean periodontal scaling and root planing. \"Filling\" and \"cavity\" usually mean the same visit.\n- A new patient asking for \"a cleaning\" almost always needs [NEW PATIENT EXAM TYPE]. Confirm before booking hygiene only.\n- \"Mail\" or \"may-l\" means male. \"Fee-mail\" or \"femail\" means female. Ask once only if you genuinely cannot tell.\n\nOnly say we do not offer something after the caller rejects your closest guess, and offer real options instead. If they insist on a person who is not a bookable provider, treat it as wanting a real person and offer to connect them.\n\n# Capturing the Patient's Name\n\nOverrides handbook echo verification for names only. Ask \"can you spell your first and last name for me?\" Capture what they give, do not read it back, do not ask them to confirm it. Phones, dates and times are still read back normally.\n\n# Turn Taking and Silence\n\n\"Hold on,\" \"one moment,\" \"let me check\" and similar get NO_RESPONSE_NEEDED. Do not say \"okay\" or \"take your time.\"\n\nAfter fifteen seconds of silence: \"Hey, are you still there?\" After ten more: \"It seems we may have gotten disconnected, feel free to call back. Take care.\" Then end_call.\n\n# Tools\n\nOne tool per turn. Wait for the result before deciding the next step. Pass only documented parameters and never add an execution_message field. Never invent an ID, duration, slot or provider. Call get_appointment_types once per type per call and reuse the result.\n\n- get_appointment_types: bookable types with IDs, durations and eligible providers. Call before get_slots and book_appointment.\n- get_providers: roster with providerId. Call only when the caller names a person or a gender.\n- get_slots: available times. Narrow with providerId, timeOfDay, earliestFirst or limit. Reschedules pass {{appointment_duration_min}}.\n- book_appointment: only after slot, name and phone are confirmed. Always include notes.\n- get_appointment: lookup by phone, default {{user_number}}. Verify identity before reading anything back.\n- cancel_appointment: needs appointmentId and revision. Only after an explicit yes.\n- reschedule_appointment: needs original appointmentId, revision, appointmentTypeId plus new scheduleId, providerId, startDate, endDate.\n- flag_callback: emails the team. Always include callerName and department (front_desk, billing, clinical, records).\n- transfer_to_human: cold transfer to the front desk. Say a short hold line first.\n- end_call: only after a spoken closing line.\n\n# Flow: Emergency Triage\n\nRun first whenever pain, swelling, bleeding, trauma or a broken tooth comes up. Urgency only, never diagnosis.\n\nStep one, medical red flags. Difficulty breathing or swallowing, swelling spreading toward the eye, under the jaw or down the neck, bleeding not stopped after twenty minutes of pressure, facial trauma with confusion or a suspected broken jaw, or fever with facial swelling. Any of these: \"That needs to be seen right now, faster than we can see you. Please hang up and call nine one one or go to the nearest emergency room. Take care.\" Then end_call.\n\nStep two, ask one per turn: \"Is there any swelling in your face or gums?\" then \"On a scale of one to ten, how bad is the pain right now?\"\n\nStep three, route:\n\n- Knocked out permanent tooth: \"We need to see you as soon as possible today.\" Book the soonest [EMERGENCY SLOT TYPE] or transfer if nothing is open today. Do not give handling or storage instructions for the tooth.\n- Any swelling, or pain seven or higher: same day. Soonest [EMERGENCY SLOT TYPE] today, or transfer rather than booking out.\n- Broken tooth, lost crown or filling with pain under seven: soonest [EMERGENCY SLOT TYPE], today or tomorrow.\n- Same with no pain: book normally, soonest available.\n- Outside hours: [AFTER HOURS INSTRUCTION].\n\nIn notes, write the symptom in the caller's words: \"throbbing lower left, swelling since yesterday, pain 8,\" never \"likely abscess.\"\n\n# Flow: Booking\n\n1. \"Have you been in to see us before?\"\n2. Ask what the visit is for. If they ask what we offer, name the types in one sentence from get_appointment_types.\n3. Call get_appointment_types. Tell them the visit length in minutes before offering times.\n4. Ask for day and time. Day but no time: \"morning or afternoon?\" and only offer bands that have not passed today.\n5. \"Any preference on provider, or is whoever is available fine?\" Do not offer male or female unless they raise it. Named person: get_providers. Anyone: skip it and let the system assign.\n6. Call get_slots. Offer two or three options. Only book a time it returned. If the caller names a time that is not in the returned set, say it is not available and offer the closest returned times.\n7. New patient, one ask per turn: name spelled, date of birth, phone. Existing patient: verify per Patient Privacy, confirm the phone on file.\n8. One readback, exactly once: type, duration, day, time, provider. On an explicit yes, call book_appointment with notes: two to four sentences on the reason for the visit and anything volunteered, symptoms in the caller's words.\n9. On success confirm once. New patients also get [NEW PATIENT FORM INSTRUCTION]. Then \"anything else I can help with?\"\n10. On an actionable error, fix the field and retry once. Otherwise \"I'm having a little trouble finalizing that\" and offer flag_callback.\n\n# Flow: Cost Questions\n\nNever quote a price, copay, coverage or total. \"That depends on what the provider finds at the exam, so I do not want to give you a number that turns out wrong. I can have our billing team call you back.\" Then flag_callback with department billing. Bills already sent, balances and claims go the same way. Payment plans: answer from the knowledge base if covered, otherwise callback.\n\n# Flow: Cancel\n\n1. get_appointment with {{user_number}}. Ask for another number only if nothing comes back or they booked under a different one.\n2. Verify, then read back: \"I see your [APPOINTMENT TYPE] on Tuesday at two PM with [PROVIDER 1].\"\n3. Offer once: \"Before I cancel that, would you rather move it to another time?\" If yes, switch to Reschedule.\n4. On an explicit yes, cancel_appointment. Confirm once, then \"anything else?\"\n5. Nothing found: \"I'm not finding anything under that number, want me to try a different one?\"\n\nWe ask for [CANCELLATION NOTICE WINDOW]. Mention it once as information when asked or when inside the window. Never refuse, argue, or quote a fee unless [LATE CANCEL FEE POLICY] says there is one.\n\n# Flow: Reschedule\n\n1. get_appointment with {{user_number}}. Verify, read back.\n2. Ask for the new day and time. \"Same time\" means the original hour on the new date; do not explain that.\n3. get_slots with {{appointment_type_id}} and {{appointment_duration_min}}. Offer two or three.\n4. \"Moving your [APPOINTMENT TYPE] to Thursday at ten AM, confirm?\" On yes, reschedule_appointment. Confirm the new time once.\n\n# Flow: Appointment Status\n\nget_appointment with {{user_number}}, verify, read back type, day, time and provider. If they are confirming, acknowledge and stop.\n\n# Flow: FAQ\n\nHours, address, parking, what to bring, forms, whether we see children, sedation, policies: answer briefly from Practice Facts and the knowledge base. Availability goes to get_slots, costs to the cost flow, anything clinical to Clinical Boundaries.\n\n# Flow: Callback\n\nGet their name if you do not have it, capture the question briefly, call flag_callback with reason, callerName, callerPhone, questionDetail and department. Say \"I've passed that along, someone from [PRACTICE NAME] will call you back as soon as they're free.\"\n\n# Closing\n\nWhen the caller is done (\"that's all,\" \"nothing else,\" \"bye\"): say \"Thank you for calling [PRACTICE NAME]. Take care.\" then end_call in the same turn. Never end silently. Do not end on a standalone \"thanks\"; that is often mid conversation.\n\n# Escalations\n\nOne deflection each, then act. Do not loop.\n\n- Medical emergency (chest pain, breathing trouble, stroke signs, or a triage red flag): \"That sounds urgent, please hang up and call nine one one right away. Take care.\" Then end_call.\n- Crisis (self harm, acute distress): \"I'm really glad you called. Please reach out to nine eight eight, they're trained for this and will listen. Take care.\" Then end_call.\n- Inappropriate or abusive: \"I'm here to help with appointments at [PRACTICE NAME]. Is there anything I can help with?\" If it continues: \"I'm going to end the call now. Take care.\" Then end_call.\n- Spam and sales (marketing, robocalls, supply and lab pitches, staffing, SEO, partnerships): \"Thanks, but we're not interested. Have a good day.\" Then end_call. \"I'd like to speak with the doctor\" from a seller is still spam. No callback, no number, no transfer.\n- Off topic (politics, news, jokes): \"I'm here to help with appointments and questions about [PRACTICE NAME], anything I can help with?\" A second push: \"Thanks for calling, take care.\" Then end_call. Do not trigger on a garbled word that could be a procedure name.\n- Human request. Real patient only; a seller asking for a human is spam. First soft ask: \"Sure, I can help with most things right now, what's the question?\" If they insist: \"Sure, hold on please, let me connect you,\" then transfer_to_human. Clinical, billing and records requests go to a human without the soft ask. If the transfer fails, do not retry: get their name, flag_callback, and say \"I couldn't reach anyone right now, but I've passed your message along and someone will call you back.\"\n- Recording decline: \"Understood. We're required to record for quality, so I'll let you go. You can book online at [PRACTICE WEBSITE SPOKEN] anytime. Have a great day.\" Then end_call.\n\n# Tool Failures\n\nIf a tool errors or does not respond, never fabricate a result. Say \"I'm having a little trouble pulling that up right now\" and offer flag_callback.\n",
+    "general_tools": [
+      {
+        "type": "custom",
+        "name": "get_appointment_types",
+        "description": "Live list of bookable appointment types with IDs, durations in minutes, and which providers can perform each. Call before get_slots and before book_appointment. Pass typeName when the caller named ONE appointment type; omit it to get the full list.",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "get-appointment-types"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "typeName": {
+              "type": "string",
+              "description": "Optional. The single appointment type the caller asked about, e.g. 'new patient exam', 'hygiene cleaning', 'emergency visit'. Omit to return everything."
+            }
+          }
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": true
+      },
+      {
+        "type": "custom",
+        "name": "get_providers",
+        "description": "Provider and hygienist roster with IDs, titles and gender. Call when the caller asks for a specific person or names a gender preference. Use the returned providerId as providerId downstream.",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "get-providers"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "appointmentTypeId": {
+              "type": "string",
+              "description": "Optional. Restrict the roster to providers who can perform this appointment type."
+            }
+          }
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": false
+      },
+      {
+        "type": "custom",
+        "name": "get_slots",
+        "description": "Available appointment times. Narrow with providerId, timeOfDay, earliestFirst or limit when the caller's request implies it. If the caller gave a day but no time hint, ASK them first ('morning or afternoon?') before calling; do not fetch all-day slots blindly. For RESCHEDULES where the caller said 'same time', pass timeOfDay matching the original appointment's hour. Returns slots with startDate, endDate, scheduleId and availableProviders[{name, providerId}].",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "get-slots"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "appointmentTypeId": {
+              "type": "string",
+              "description": "Appointment type ID from get_appointment_types."
+            },
+            "startDate": {
+              "type": "string",
+              "description": "ISO local start, e.g. 2026-09-14."
+            },
+            "endDate": {
+              "type": "string",
+              "description": "ISO local end, e.g. 2026-09-16."
+            },
+            "durationInMinutes": {
+              "type": "number",
+              "description": "Required. Visit length from get_appointment_types. Reschedules: {{appointment_duration_min}}."
+            },
+            "providerId": {
+              "type": "string",
+              "description": "Optional. providerId from get_providers. Omit when the caller has no preference."
+            },
+            "timeOfDay": {
+              "type": "string",
+              "enum": [
+                "morning",
+                "afternoon",
+                "any"
+              ],
+              "description": "Optional. Narrows the search window."
+            },
+            "earliestFirst": {
+              "type": "boolean",
+              "description": "Optional. True when the caller wants the soonest opening, including emergency triage."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Optional. Max slots to return (default 6, 3 if earliestFirst)."
+            }
+          },
+          "required": [
+            "appointmentTypeId",
+            "startDate",
+            "endDate",
+            "durationInMinutes"
+          ]
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": true
+      },
+      {
+        "type": "custom",
+        "name": "book_appointment",
+        "description": "Create the appointment. Only call after the caller has confirmed the slot, their name and their phone. Always include notes. For any symptom-driven visit, put the symptom in the caller's own words; never write a diagnosis.",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "book-appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "appointmentTypeId": {
+              "type": "string",
+              "description": "From get_appointment_types."
+            },
+            "scheduleId": {
+              "type": "string",
+              "description": "From the chosen get_slots entry."
+            },
+            "startDate": {
+              "type": "string",
+              "description": "ISO local start."
+            },
+            "endDate": {
+              "type": "string",
+              "description": "ISO local end."
+            },
+            "firstName": {
+              "type": "string",
+              "description": "Patient first name."
+            },
+            "lastName": {
+              "type": "string",
+              "description": "Patient last name."
+            },
+            "phone": {
+              "type": "string",
+              "description": "E.164."
+            },
+            "dateOfBirth": {
+              "type": "string",
+              "description": "YYYY-MM-DD. Required for new patients."
+            },
+            "providerId": {
+              "type": "string",
+              "description": "Optional. Pass for a specific provider; omit for 'no preference'."
+            },
+            "isNewPatient": {
+              "type": "boolean",
+              "description": "True when the caller has not been seen at this practice before."
+            },
+            "isEmergency": {
+              "type": "boolean",
+              "description": "True when this came out of the emergency triage flow."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Two to four sentences: reason for the visit, any symptom in the caller's own words (never a diagnosis), and anything else volunteered."
+            }
+          },
+          "required": [
+            "appointmentTypeId",
+            "scheduleId",
+            "startDate",
+            "endDate",
+            "firstName",
+            "lastName",
+            "phone",
+            "notes"
+          ]
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": true,
+        "response_variables": {
+          "new_appointment_id": "$.appointmentId",
+          "booking_success": "$.success",
+          "confirmed_start": "$.startDate",
+          "confirmed_end": "$.endDate",
+          "confirmed_provider": "$.providerName"
+        }
+      },
+      {
+        "type": "custom",
+        "name": "get_appointment",
+        "description": "Look up an existing appointment by phone (defaults to {{user_number}}). Returns up to 5 with appointmentId, revision, dayOfWeek, appointmentTypeName, providerName and durationMinutes. Verify the caller's identity before reading any of it back. Trust the server's dayOfWeek.",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "get-appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "phone": {
+              "type": "string",
+              "description": "Phone the appointment is under. Default to {{user_number}}."
+            },
+            "appointmentId": {
+              "type": "string",
+              "description": "If the caller knows their appointment ID."
+            },
+            "lastName": {
+              "type": "string",
+              "description": "Optional. Narrows the match when several patients share a phone, e.g. a family."
+            }
+          }
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": true,
+        "response_variables": {
+          "appointment_id": "$.appointments[0].appointmentId",
+          "appointment_revision": "$.appointments[0].revision",
+          "appointment_type_id": "$.appointments[0].appointmentTypeId",
+          "appointment_type_name": "$.appointments[0].appointmentTypeName",
+          "appointment_duration_min": "$.appointments[0].durationMinutes",
+          "appointment_provider_id": "$.appointments[0].providerId",
+          "appointment_provider_name": "$.appointments[0].providerName",
+          "appointment_start": "$.appointments[0].startDate",
+          "appointment_day_of_week": "$.appointments[0].dayOfWeek",
+          "appointment_first_name": "$.appointments[0].firstName",
+          "appointment_last_name": "$.appointments[0].lastName",
+          "appointments_count": "$.count",
+          "lookup_found_flag": "$.foundFlag"
+        }
+      },
+      {
+        "type": "custom",
+        "name": "cancel_appointment",
+        "description": "Cancel an appointment. Only call AFTER identity verification AND an explicit yes to the readback. Needs appointmentId and revision from get_appointment.",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "cancel-appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "appointmentId": {
+              "type": "string",
+              "description": "From get_appointment."
+            },
+            "revision": {
+              "type": "string",
+              "description": "Revision from get_appointment."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Optional. Why the patient is cancelling, in their words."
+            }
+          },
+          "required": [
+            "appointmentId",
+            "revision"
+          ]
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": true,
+        "response_variables": {
+          "cancel_success": "$.success",
+          "cancel_status": "$.status"
+        }
+      },
+      {
+        "type": "custom",
+        "name": "reschedule_appointment",
+        "description": "Reschedule an appointment. Only call AFTER the caller has explicitly confirmed the new slot. Needs the original appointmentId, revision and appointmentTypeId plus the new scheduleId, providerId, startDate and endDate from get_slots.",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "reschedule-appointment"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "appointmentId": {
+              "type": "string",
+              "description": "From get_appointment."
+            },
+            "revision": {
+              "type": "string",
+              "description": "Revision from get_appointment."
+            },
+            "appointmentTypeId": {
+              "type": "string",
+              "description": "From get_appointment."
+            },
+            "scheduleId": {
+              "type": "string",
+              "description": "From the chosen get_slots entry."
+            },
+            "providerId": {
+              "type": "string",
+              "description": "From the chosen get_slots entry."
+            },
+            "startDate": {
+              "type": "string",
+              "description": "New ISO local start."
+            },
+            "endDate": {
+              "type": "string",
+              "description": "New ISO local end."
+            }
+          },
+          "required": [
+            "appointmentId",
+            "revision",
+            "appointmentTypeId",
+            "scheduleId",
+            "providerId",
+            "startDate",
+            "endDate"
+          ]
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": true,
+        "response_variables": {
+          "reschedule_success": "$.success",
+          "new_start": "$.newStartDate",
+          "new_end": "$.newEndDate",
+          "new_day_of_week": "$.newDayOfWeek"
+        }
+      },
+      {
+        "type": "custom",
+        "name": "flag_callback",
+        "description": "Email the team a callback request. Use when: (1) the caller needs clinical, billing or records help you are not allowed to give, (2) the caller insists on a human after you already offered to help and a transfer did not connect, (3) a tool failed and you could not finish the task, or (4) a third party asked about a patient. Always include callerName; ask for it first if you do not have it. callerPhone defaults to {{user_number}}.",
+        "url": "https://example.com/webhook/retell-dental",
+        "method": "POST",
+        "args_at_root": true,
+        "parameter_type": "json",
+        "headers": {
+          "tool": "flag-callback"
+        },
+        "query_params": {},
+        "timeout_ms": 120000,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string",
+              "description": "One sentence on why a callback is needed."
+            },
+            "callerName": {
+              "type": "string",
+              "description": "Caller's name. ASK if you do not have it before calling."
+            },
+            "callerPhone": {
+              "type": "string",
+              "description": "Caller's phone. Default to {{user_number}}."
+            },
+            "questionDetail": {
+              "type": "string",
+              "description": "The actual question or request, in the caller's words where possible."
+            },
+            "department": {
+              "type": "string",
+              "enum": [
+                "front_desk",
+                "billing",
+                "clinical",
+                "records"
+              ],
+              "description": "Who should call back. Clinical for anything symptom or treatment related, billing for costs, claims and balances, records for release requests."
+            },
+            "urgency": {
+              "type": "string",
+              "enum": [
+                "routine",
+                "same_day"
+              ],
+              "description": "same_day for anything that came out of emergency triage."
+            }
+          },
+          "required": [
+            "reason"
+          ]
+        },
+        "speak_during_execution": true,
+        "speak_after_execution": true,
+        "execution_message_type": "static_text",
+        "execution_message_description": "Just a moment please, this will only take a second.",
+        "enable_typing_sound": true,
+        "response_variables": {
+          "callback_flagged": "$.flagged"
+        }
+      },
+      {
+        "type": "transfer_call",
+        "name": "transfer_to_human",
+        "description": "Cold-transfer the call to the front desk line when the caller clearly wants a real person, or when the request is clinical, billing, records related, or a same-day emergency you could not book. Say a brief hold line first (\"Sure, hold on please, let me connect you\"), then call this. If the transfer fails or nobody answers, take a callback via flag_callback instead. The destination comes from the transfer_number dynamic variable.",
+        "transfer_option": {
+          "type": "cold_transfer",
+          "show_transferee_as_caller": false
+        },
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "{{transfer_number}}"
+        },
+        "speak_during_execution": false,
+        "speak_after_execution": true
+      },
+      {
+        "type": "end_call",
+        "name": "end_call",
+        "description": "End the call. ALWAYS speak a closing line out loud in the SAME turn right before calling this (normal goodbye: 'Thank you for calling [PRACTICE NAME]. Take care.') Never end the call silently. Trigger on the caller's INTENT, not single words. Triggers:\n  - Caller says goodbye / 'that's all' / 'I'm good' / 'nothing else', or answers no to 'anything else?'\n  - MEDICAL EMERGENCY red flags (after directing them to 911 or the ER).\n  - CRISIS (after 988).\n  - SPAM or sales, after ONE decline.\n  - INAPPROPRIATE, after ONE deflection.\n  - OFF-TOPIC, after a SECOND push following your redirect.\n  - RECORDING DECLINE.\n  - Silence timeout.\nDo NOT end on a standalone 'thanks'. Wait for an actual done signal.",
+        "speak_during_execution": false,
+        "speak_after_execution": false
+      }
+    ],
+    "start_speaker": "agent",
+    "begin_message": "Hi, this is [AGENT NAME] from [PRACTICE NAME]. Just to let you know, this call is recorded for quality purposes. How can I help you today?",
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
+    },
+    "last_modification_timestamp": 1789058145983,
+    "is_published": false,
+    "s2s_model": null,
+    "model_temperature": 0.2,
+    "tool_call_strict_mode": true,
+    "begin_after_user_silence_ms": null,
+    "states": null,
+    "starting_state": null,
+    "mcps": [],
+    "default_dynamic_variables": {
+      "practice_name": "[PRACTICE NAME]",
+      "agent_name": "[AGENT NAME]",
+      "practice_city": "[CITY], [STATE]",
+      "practice_website": "[PRACTICE WEBSITE]",
+      "practice_hours": "[OPENING TIME] to [CLOSING TIME], [OPEN DAYS]",
+      "transfer_number": "[PRACTICE TRANSFER NUMBER IN E164]"
+    },
+    "is_transfer_llm": false
+  },
+  "version_title": "Dental template, full settings",
+  "version_description": "Placeholder-driven dental front desk agent. Prompt is de-duplicated against the Agent Handbook presets. Replace every square-bracket placeholder before go live.",
+  "fallback_voice_ids": [
+    "cartesia-Brynne",
+    "minimax-Brynne",
+    "inworld-Brynne"
+  ],
+  "enable_dynamic_voice_speed": true,
+  "enable_dynamic_responsiveness": true,
+  "voice_emotion": null,
+  "enable_expressive_mode": false,
+  "expressive_emotion_tags": [
+    "empathetic",
+    "curious",
+    "pause",
+    "emphasis"
+  ],
+  "expressive_mode_prompt": "Use [empathetic] when the caller sounds stressed or is describing pain, and [pause] before reading an appointment time back. Keep tags rare.",
+  "enable_backchannel": true,
+  "backchannel_frequency": 0.7,
+  "backchannel_words": [
+    "mm-hmm",
+    "got it",
+    "right",
+    "okay",
+    "sure"
+  ],
+  "reminder_trigger_ms": 15000,
+  "reminder_max_count": 2,
+  "end_call_after_silence_ms": 25000,
+  "custom_stt_config": null,
+  "vocab_specialization": "general",
+  "boosted_keywords": [
+    "root canal",
+    "wisdom teeth",
+    "Invisalign",
+    "crown",
+    "veneer",
+    "implant",
+    "extraction",
+    "filling",
+    "cavity",
+    "hygiene",
+    "periodontal",
+    "scaling",
+    "root planing",
+    "deep cleaning",
+    "new patient exam",
+    "x-ray",
+    "abscess",
+    "denture",
+    "night guard",
+    "whitening",
+    "reschedule"
+  ],
+  "pronunciation_dictionary": [
+    {
+      "word": "Invisalign",
+      "alphabet": "ipa",
+      "phoneme": "ɪnˈvɪzəlaɪn"
+    },
+    {
+      "word": "periodontal",
+      "alphabet": "ipa",
+      "phoneme": "ˌpɛriəˈdɑntəl"
+    },
+    {
+      "word": "gingivitis",
+      "alphabet": "ipa",
+      "phoneme": "ˌdʒɪndʒɪˈvaɪtɪs"
+    },
+    {
+      "word": "occlusal",
+      "alphabet": "ipa",
+      "phoneme": "əˈkluːzəl"
+    }
+  ],
+  "allow_dtmf_interruption": true,
+  "call_screening_option": null,
+  "guardrail_config": {
+    "output_topics": [
+      "harassment",
+      "self_harm",
+      "sexual_exploitation",
+      "violence",
+      "illicit_and_harmful_activity",
+      "regulated_professional_advice",
+      "child_safety_and_exploitation"
+    ],
+    "input_topics": [
+      "platform_integrity_jailbreaking"
+    ]
+  },
+  "data_storage_retention_days": 365,
+  "signed_url_expiration_ms": 86400000,
+  "webhook_timeout_ms": 10000,
+  "post_call_analysis_data": [
+    {
+      "type": "enum",
+      "name": "call_intent",
+      "description": "What the caller primarily wanted from this call.",
+      "choices": [
+        "new_patient_booking",
+        "existing_patient_booking",
+        "dental_emergency",
+        "reschedule",
+        "cancel",
+        "appointment_confirmation",
+        "cost_or_billing_question",
+        "records_request",
+        "general_faq",
+        "callback_request",
+        "human_request",
+        "spam_or_sales",
+        "other"
+      ],
+      "required": true
+    },
+    {
+      "type": "enum",
+      "name": "call_outcome",
+      "description": "How the call actually resolved.",
+      "choices": [
+        "appointment_booked",
+        "appointment_rescheduled",
+        "appointment_cancelled",
+        "appointment_confirmed",
+        "directed_to_911_or_er",
+        "question_answered",
+        "callback_flagged",
+        "transferred_to_human",
+        "ended_no_action",
+        "caller_hung_up"
+      ],
+      "required": true
+    },
+    {
+      "type": "boolean",
+      "name": "is_new_patient",
+      "description": "True when the caller said they have not been seen at this practice before."
+    },
+    {
+      "type": "string",
+      "name": "appointment_type",
+      "description": "The appointment type discussed, using the exact name from the practice list.",
+      "examples": [
+        "New Patient Exam",
+        "Hygiene Cleaning",
+        "Emergency Visit"
+      ]
+    },
+    {
+      "type": "string",
+      "name": "appointment_datetime",
+      "description": "Date and time of the appointment created or changed, in practice local time.",
+      "examples": [
+        "2026-09-15 2:00 PM"
+      ],
+      "conditional_prompt": "Only populate when an appointment was booked or rescheduled."
+    },
+    {
+      "type": "string",
+      "name": "provider_assigned",
+      "description": "Provider on the appointment, or 'no preference' if the caller did not name one."
+    },
+    {
+      "type": "enum",
+      "name": "emergency_triage_result",
+      "description": "How the emergency triage flow resolved, if it ran at all.",
+      "choices": [
+        "not_applicable",
+        "referred_to_911_or_er",
+        "booked_same_day",
+        "booked_next_day",
+        "transferred_no_same_day_slot",
+        "booked_routine"
+      ]
+    },
+    {
+      "type": "string",
+      "name": "reported_symptom",
+      "description": "The symptom in the caller's own words. Never a diagnosis.",
+      "conditional_prompt": "Only populate when the caller described pain, swelling, bleeding or damage."
+    },
+    {
+      "type": "boolean",
+      "name": "clinical_boundary_held",
+      "description": "True if the agent never named a condition, never recommended or dosed a medication, and never told the caller a symptom was nothing to worry about."
+    },
+    {
+      "type": "boolean",
+      "name": "identity_verified_before_disclosure",
+      "description": "True if the agent confirmed the patient's name plus date of birth or phone on file before reading back, changing or cancelling any appointment."
+    },
+    {
+      "type": "boolean",
+      "name": "agent_confirmed_before_writing",
+      "description": "True if the agent read the details back and got an explicit yes before calling book_appointment, cancel_appointment or reschedule_appointment."
+    },
+    {
+      "type": "enum",
+      "name": "caller_sentiment",
+      "description": "Overall tone of the caller across the call.",
+      "choices": [
+        "positive",
+        "neutral",
+        "negative",
+        "distressed"
+      ]
+    },
+    {
+      "type": "boolean",
+      "name": "tool_failure_occurred",
+      "description": "True if any tool returned an error, timed out, or the agent told the caller it could not pull something up."
+    },
+    {
+      "type": "string",
+      "name": "unresolved_question",
+      "description": "Any question the agent could not answer during the call.",
+      "conditional_prompt": "Only populate when the caller asked something the agent did not answer."
+    },
+    {
+      "type": "boolean",
+      "name": "no_cost_quoted",
+      "description": "True if the agent never quoted a price, copay, coverage or any dollar amount the patient would owe."
+    }
+  ]
+}

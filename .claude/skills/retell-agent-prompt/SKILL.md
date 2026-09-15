@@ -174,7 +174,7 @@ Read on demand; they hold the depth that doesn't belong in this overview.
 
 - [`references/prompt-sections.md`](references/prompt-sections.md) — Deep guide to all 9 sections, with rules, examples, and the **verbatim pronunciation library** (phone/email/URL/time/date/currency). Read when writing the prompt.
 - [`references/tool-catalog.md`](references/tool-catalog.md) — Every Retell tool (End Call, Transfer, Press Digit, Check Availability, Book Calendar, Send SMS, Extract Dynamic Variables, Code Tool, Custom Function, Agent Transfer, MCP) with exact trigger-prompt patterns and speak-during/after guidance. Read when wiring tools.
-- [`references/platform-features.md`](references/platform-features.md) — Agent Handbook presets (full table + token costs), speech settings (backchanneling, responsiveness, interruption, boosted keywords), and LLM config (model, temperature, structured output, fast tier). Read in Step 2 and Step 4.
+- [`references/platform-features.md`](references/platform-features.md) — Agent Handbook presets (full table + token costs), speech settings (responsiveness, interruption, boosted keywords), and LLM config (model, temperature, structured output, fast tier). Read in Step 2 and Step 4.
 - [`references/variables-and-knowledge.md`](references/variables-and-knowledge.md) — System + custom dynamic variables, defensive handling, nested variables, and the Knowledge Base (when to use, retrieval defaults, anti-hallucination guard). Read for Steps 4–5.
 - [`references/industry-patterns.md`](references/industry-patterns.md) — Per-vertical conversation flows, objection scripts, and compliance notes (real estate, healthcare, insurance, home services, financial, SaaS, debt collection, retail).
 
