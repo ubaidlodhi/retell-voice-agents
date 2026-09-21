@@ -53,7 +53,7 @@ RETELL_BASE = "https://api.retellai.com"
 
 # Source of truth: the live inbound agent's flow.
 SOURCE_FLOW_ID = "conversation_flow_bdb1968b28ed"
-SOURCE_FLOW_VERSION = 16  # PUBLISHED 2026-09-21: V38-V57
+SOURCE_FLOW_VERSION = 18  # PUBLISHED 2026-09-22: V38-V58 (spelled names), 30 s silence
 SOURCE_AGENT_ID = "agent_eceb7448aa1f37e8f436a63a43"
 
 # Dev backend built by _build_outbound_backend_workflow.py (n8n yfbpUaEzZQghelh3).
@@ -101,7 +101,13 @@ LOOKUP_NODES = ("node-status-assistant", "node-cancel-assistant", "node-resched-
 CALLBACK_NUMBER_SPOKEN = "six two eight, two eight six, two two eight one"
 
 # Bump on every meaningful build so the client knows which revision they tested.
-AGENT_VERSION = "V17"
+AGENT_VERSION = "V19"
+
+# A silent line ends after this long (Ubaid, 2026-09-22, after Nicky's "no need
+# to wait almost 3 mins"): 89 s let call_b004eecd sit for 149 s. First 50 s,
+# then 30 s the same day. Set here on purpose rather than inherited, so a
+# dashboard edit on inbound cannot drift it.
+END_CALL_AFTER_SILENCE_MS = 30000
 # Ubaid renamed the agent in the dashboard on 2026-09-19; keep his name and
 # carry the build version on the flow name instead.
 AGENT_NAME = "Aria - Sage & Willow Spa - Outbound Agent"
@@ -239,9 +245,19 @@ def patch_global_prompt(prompt: str) -> str:
 # placed without dynamic variables and the old single opener left it to the
 # model to notice. It did not. A branch node now decides; the model never sees
 # an opener it is not allowed to say.
+# A machine answered. Nicky (2026-09-22): "give waiting time, let answering
+# finish speaking". On both real voicemail calls (call_1b82ff9f, call_8f22bdb3)
+# the greeting's first "Hi," was taken as the callee and Aria opened over the
+# recording, restarting two or three times, before Retell's voicemail
+# detection left the message. The opener is judged on what was heard, so the
+# rule lives in both opener nodes: a recording gets silence, not an opener.
+RECORDING_RULE = """A RECORDING IS NOT A PERSON. If what you hear sounds like a machine - a phone number read out, "you've reached", "not available", "can't take your call", "leave a message", "at the tone", a beep - do NOT open. Reply NO_RESPONSE_NEEDED and stay quiet, and keep doing so while the recording runs; the voicemail step takes over on its own. A recording is not echo either: if one cut you off, stay quiet rather than starting the opener again. Only a live person gets the opener."""
+
 OPENING_NAMED = """The reason for this call is lead_source = "{{lead_source}}" (see Call Context). A missed_call lead never filled out a form, and a website_form lead never rang us - never mix those up.
 
 THEY SPEAK FIRST - "Hello?", a name, a grunt, anything. Whatever it is, your FIRST turn is the opener below. A first "Hello?" is them answering the phone, not asking if you can hear them.
+
+""" + RECORDING_RULE + """
 
 FIRST TURN ONLY - open with exactly: "Hi, is this {{lead_first_name}}?" then STOP. No second sentence, no stacked question. You are checking you have the right person before you say anything else.
 
@@ -274,6 +290,8 @@ OPENING_UNNAMED = """The reason for this call is lead_source = "{{lead_source}}"
 You do NOT have this person's name. Never guess one, never ask for one here, and never say the words "lead" or "first name".
 
 THEY SPEAK FIRST - "Hello?", a name, a grunt, anything. Whatever it is, your FIRST turn is the opener below. A first "Hello?" is them answering the phone, not asking if you can hear them.
+
+""" + RECORDING_RULE + """
 
 FIRST TURN ONLY - open with exactly ONE of these, then STOP. No second sentence, no stacked question.
 - website_form: "Hi, this is Aria from Sage and Willow Spa - am I speaking with the person who filled out our booking form?"
@@ -338,17 +356,15 @@ Do not wait for a reply. Do not ask a question. Do not say anything after that m
 
 If {{{{lead_first_name}}}} is empty or renders with literal curly braces, open with "Hi, this is Aria from Sage and Willow Spa" instead."""
 
-# Two plain questions, no spelling, no read-back (Ubaid, 2026-09-20): the goal
-# is the booking, a slightly wrong name is acceptable and the spa fixes it. The
-# inbound node (V53) says the same; this override only adds the first line.
-BOOK_NAME_OUTBOUND = """You do not have this lead's name yet.
-
-Ask: "Can I get your first name?" Then WAIT.
-When they answer, ask: "And your last name?" Then WAIT.
-
-Take whatever they give for each. If they spell it, join the letters into the word (J-O-H-N is John); if they just say it, write it the way it sounds. Do NOT ask them to spell it, do NOT read it back, do NOT ask them to confirm it. A name that is slightly off is fine - the spa tidies those up. A caller asked about their name three times hangs up.
-
-If they give both names in one breath, take both and move on. Two questions at most, then on to the next step."""
+# Name: the inbound node's text is inherited as-is (V58: spell the first name,
+# then spell the last name, no read-back - Ubaid, 2026-09-22, after
+# call_d1fc46c0 booked "Book Kaul" for a caller who said first Kaul, last
+# Book). Outbound only prepends this line; build_flow refuses a source node
+# that does not ask for the spelling.
+BOOK_NAME_OUTBOUND_HEAD = "You do not have this lead's name yet.\n\n"
+BOOK_NAME_MUST_HAVE = ("Can you spell your first name for me?",
+                       "could you spell that as well?",
+                       "Do NOT read either name back")
 
 BOOK_NAME_GATE_NAME = "Booking - Name Known?"
 
@@ -363,7 +379,6 @@ Then nothing. You rang them, so there is nothing to negotiate here - do not expl
 
 INSTRUCTION_REWRITES = {
     "node-greeting": OPENING_NAMED,
-    "node-book-name": BOOK_NAME_OUTBOUND,
     "node-close": CLOSE_OUTBOUND,
     "node-global-recording-decline": RECORDING_DECLINE_OUTBOUND,
 }
@@ -677,6 +692,18 @@ def build_flow(source: dict, target_webhook: str) -> dict:
         for k in ("skip_response_edge", "always_edge", "else_edge"):
             if n.get(k) and n[k]["destination_node_id"] == "node-book-phone":
                 n[k]["destination_node_id"] = "node-book-readback"
+        # V58 gave the name node transition examples that name their target.
+        for ex in n.get("finetune_transition_examples", []):
+            if ex.get("destination_node_id") == "node-book-phone":
+                ex["destination_node_id"] = "node-book-readback"
+
+    # Name node: inbound's V58 wording plus the outbound first line.
+    name_text = nodes["node-book-name"]["instruction"]["text"]
+    for must in BOOK_NAME_MUST_HAVE:
+        if must not in name_text:
+            raise SystemExit(f"node-book-name does not ask for the spelling ({must!r} missing) - "
+                             f"inbound V58 not in the source flow?")
+    nodes["node-book-name"]["instruction"]["text"] = BOOK_NAME_OUTBOUND_HEAD + name_text
 
     # Name: known on a website_form lead, usually unknown on a missed_call lead.
     # The trigger workflow sends lead_name_known = "yes" | "no"; a branch keys off
@@ -777,6 +804,20 @@ def build_flow(source: dict, target_webhook: str) -> dict:
     # is." as a dead end; the add-ons node says the time back instead.
     if "Never choose for them" not in nodes["node-book-discovery"]["instruction"]["text"]             or "[Time] it is - would you like to add any enhancements?" not in nodes["node-book-addons"]["instruction"]["text"]:
         raise SystemExit("V57 hand-off wording missing from the source flow")
+    # V58: both openers refuse to talk over a recording, the name node asks for
+    # both spellings, and nothing still points at the removed phone node.
+    for gid in ("node-greeting", "node-greeting-unnamed"):
+        if RECORDING_RULE not in nodes[gid]["instruction"]["text"]:
+            raise SystemExit(f"{gid} lost the recording rule")
+    if not nodes["node-book-name"]["instruction"]["text"].startswith(BOOK_NAME_OUTBOUND_HEAD):
+        raise SystemExit("name node lost its outbound first line")
+    if "Do NOT ask them to spell it" in nodes["node-book-name"]["instruction"]["text"]:
+        raise SystemExit("name node still carries the V53 no-spelling wording")
+    dangling = [(n["id"], ex.get("id")) for n in flow["nodes"]
+                for ex in n.get("finetune_transition_examples", [])
+                if ex.get("destination_node_id") and ex["destination_node_id"] not in nodes]
+    if dangling:
+        raise SystemExit(f"transition examples point at nodes that do not exist: {dangling}")
     direct = [e["id"] for n in flow["nodes"] for e in n.get("edges", [])
               if e["destination_node_id"] == "node-book-discovery" and e["id"] not in ("e-service-chosen", "e-bookfail-retry")]
     if direct:
@@ -864,6 +905,7 @@ def build_agent(source_agent: dict, flow_id: str, flow_version: int) -> dict:
     # numbers are no longer spelled back, so the accuracy mode's extra ~200ms
     # per turn buys little. Inbound stays on its own setting until he says so.
     agent["stt_mode"] = "fast"
+    agent["end_call_after_silence_ms"] = END_CALL_AFTER_SILENCE_MS
     # Aria's post-call recap e-mail (2026-09-21). call_analyzed is the one event
     # that carries the summary and the analysis fields the e-mail is built from.
     agent["webhook_url"] = POST_CALL_WEBHOOK

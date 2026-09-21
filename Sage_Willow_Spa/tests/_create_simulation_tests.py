@@ -29,9 +29,9 @@ from pathlib import Path
 
 RETELL_BASE = "https://api.retellai.com"
 INBOUND_FLOW = "conversation_flow_bdb1968b28ed"
-INBOUND_VERSION = 16          # published 2026-09-21
+INBOUND_VERSION = 18          # published 2026-09-22 (V58: spelled names, 30 s silence)
 OUTBOUND_FLOW = "conversation_flow_599a68571a81"
-OUTBOUND_VERSION = 5          # published 2026-09-21
+OUTBOUND_VERSION = 8          # published 2026-09-22 (V19 build of inbound v18)
 SIM_MODEL = "gpt-4.1"
 STATE = Path(__file__).parent / "simulation_test_ids.json"
 
@@ -84,7 +84,7 @@ How the call goes:
 - When she offers times, pick the FIRST time she offers. If she says nothing is open that morning, take the first time she offers in the afternoon instead.
 - If she asks about enhancements or add-ons: "no thanks."
 - If she asks whether you have a therapist preference: "no preference."
-- When asked for your first name: "Test."  When asked for your last name: "John."  If she asks for your name as one question, say "Test John."  Do NOT spell it unless she explicitly asks you to spell it.
+- When asked to spell your first name: "T-E-S-T."  When asked to spell your last name: "J-O-H-N."  If she asks for a name without asking for the spelling, say it ("Test" / "John") and spell it only if she then asks.
 - If she reads a phone number back and asks if it works: "yes."  If she asks for your phone number: say {IN_PHONE_SPOKEN}.
 - When she reads the whole booking back and asks if it sounds good: "yes, that's right."
 - When she confirms the appointment is booked and asks if there is anything else: "no, that's all, thank you," and let the call end.
@@ -190,7 +190,7 @@ INBOUND_BOOK_METRICS = [
     "The agent asked which massage the caller wanted before looking up any availability, and never picked a service on the caller's behalf.",
     "After the caller said Swedish, the agent gave the durations and prices returned by get_services (sixty minutes at eighty-five dollars) and asked which one, before asking for a day.",
     "The agent asked for the day and then for morning, afternoon or evening as separate questions, and only offered times that get_slots returned for October 7th.",
-    "The agent asked for the first name and the last name as two separate questions and did not ask the caller to spell or re-confirm the name.",
+    "The agent asked the caller to spell the first name, then asked for the last name spelling as a separate question, and did not read the name back or ask the caller to confirm it.",
     "The agent read the full booking back once (service, duration, date, time, total in words) and waited for a yes before calling book_appointment.",
     "book_appointment was called with firstName TEST, lastName JOHN, serviceName Swedish Massage and a start on 2026-10-07 at the time the caller agreed to, and it returned success.",
     CLAIM_ONLY_AFTER_TOOL,
