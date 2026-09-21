@@ -1,5 +1,5 @@
 {
-  "name": "Sage & Willow | Inbound Post-Call -> Missed-Call Callback (DEV)",
+  "name": "Sage & Willow | Post-Call -> Callback + Aria Email (DEV)",
   "nodes": [
     {
       "id": "wh-postcall",
@@ -220,7 +220,7 @@
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  filter_criteria: {\n    agent_id: ['agent_4ef8160dc71826818c6fd8122b'],\n    to_number: [$('Apply Verdict').first().json.from_number],\n    start_timestamp: { lower_threshold: Date.now() - 300000 }\n  },\n  limit: 5, sort_order: 'descending'\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  filter_criteria: {\n    agent_id: ['agent_4ef8160dc71826818c6fd8122b'],\n    to_number: [$('Apply Verdict').first().json.from_number],\n    start_timestamp: { lower_threshold: Date.now() - 900000 }\n  },\n  limit: 5, sort_order: 'descending'\n}) }}",
         "options": {}
       },
       "credentials": {
@@ -243,7 +243,7 @@
         200
       ],
       "parameters": {
-        "jsCode": "\nconst OUTBOUND_AGENT_ID = 'agent_4ef8160dc71826818c6fd8122b';\nconst DEDUP_MS = 300000;\n\nconst ev = $('Apply Verdict').first().json;\nconst asList = (name) => {\n  const items = $(name).all().map(i => i.json);\n  // The HTTP node returns one item per call, or a single item wrapping the array.\n  if (items.length === 1 && Array.isArray(items[0])) return items[0];\n  if (items.length === 1 && items[0] && Array.isArray(items[0].data)) return items[0].data;\n  return items.filter(c => c && c.call_id);\n};\n\n// Did they ring us back themselves after that call ended?\nconst redials = asList('Retell: Did They Call Back?')\n  .filter(c => c.call_id !== ev.call_id && c.from_number === ev.from_number\n            && Number(c.start_timestamp || 0) > ev.ended_at_ms);\n\n// Has Aria already rung this number back recently?\nconst since = Date.now() - DEDUP_MS;\nconst priorCallbacks = asList('Retell: Already Called Back?')\n  .filter(c => c.to_number === ev.from_number && c.agent_id === OUTBOUND_AGENT_ID\n            && Number(c.start_timestamp || 0) > since);\n\nlet skipReason = '';\nif (redials.length) skipReason = `caller rang back themselves (${redials[0].call_id})`;\nelse if (priorCallbacks.length) skipReason = `already called back within window (${priorCallbacks[0].call_id})`;\n\nreturn [{ json: {\n  ...ev,\n  stillNeeded: !skipReason,\n  skipReason,\n  redials: redials.length,\n  priorCallbacks: priorCallbacks.length,\n}}];\n"
+        "jsCode": "\nconst OUTBOUND_AGENT_ID = 'agent_4ef8160dc71826818c6fd8122b';\nconst DEDUP_MS = 900000;\n\nconst ev = $('Apply Verdict').first().json;\nconst asList = (name) => {\n  const items = $(name).all().map(i => i.json);\n  // The HTTP node returns one item per call, or a single item wrapping the array.\n  if (items.length === 1 && Array.isArray(items[0])) return items[0];\n  if (items.length === 1 && items[0] && Array.isArray(items[0].data)) return items[0].data;\n  return items.filter(c => c && c.call_id);\n};\n\n// Did they ring us back themselves after that call ended?\nconst redials = asList('Retell: Did They Call Back?')\n  .filter(c => c.call_id !== ev.call_id && c.from_number === ev.from_number\n            && Number(c.start_timestamp || 0) > ev.ended_at_ms);\n\n// Has Aria already rung this number back recently?\nconst since = Date.now() - DEDUP_MS;\nconst priorCallbacks = asList('Retell: Already Called Back?')\n  .filter(c => c.to_number === ev.from_number && c.agent_id === OUTBOUND_AGENT_ID\n            && Number(c.start_timestamp || 0) > since);\n\nlet skipReason = '';\nif (redials.length) skipReason = `caller rang back themselves (${redials[0].call_id})`;\nelse if (priorCallbacks.length) skipReason = `already called back within window (${priorCallbacks[0].call_id})`;\n\nreturn [{ json: {\n  ...ev,\n  stillNeeded: !skipReason,\n  skipReason,\n  redials: redials.length,\n  priorCallbacks: priorCallbacks.length,\n}}];\n"
       },
       "executeOnce": true
     },
@@ -321,6 +321,94 @@
         320
       ],
       "parameters": {}
+    },
+    {
+      "id": "email-compose",
+      "name": "Compose: Post-Call Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        620
+      ],
+      "parameters": {
+        "jsCode": "// \"Compose: Post-Call Email\" - n8n Code node body (embedded by\n// _build_post_call_callback_workflow.py, exercised by test_post_call_email.js).\n//\n// One recap e-mail per real conversation, from Aria, for both agents. Machine\n// outcomes are skipped on purpose - no answer, busy, voicemail, a line that\n// dropped before anyone spoke - so the reader only hears from Aria about calls\n// that actually happened (Ubaid, 2026-09-21).\n//\n// The e-mail is deliberately plain: a recap in Aria's voice, the outcome, the\n// booking if one changed hands, the contact, two links. Brand colours from the\n// AIEmply palette, inline styles only, no images, no dashes of the long kind,\n// nothing that reads like a promotion.\n\nconst INBOUND_AGENT_ID = 'agent_eceb7448aa1f37e8f436a63a43';\nconst OUTBOUND_AGENT_ID = 'agent_4ef8160dc71826818c6fd8122b';\nconst TO = 'sagewillowspa@gmail.com';          // the spa (Nicky)\nconst CC = 'engineering@aiemply.com';          // AIEmply engineering, copy only\n// Ubaid's own test line: calls to or from it never produce a recap, for anyone.\nconst TEST_NUMBERS = new Set(['+12532681856']);\nconst GREETING = 'Hi Nicky,';\nconst SPA = 'Sage & Willow Spa';\n// Client-facing call log (Ubaid, 2026-09-21), not the Retell dashboard.\nconst DASHBOARD = 'https://app.aiemply.com/dashboard/logs?call=';\nconst TZ = 'America/Los_Angeles';\n\nconst env = $input.first().json;\nconst body = (env && typeof env.body === 'object' && env.body !== null) ? env.body : env;\nconst event = body.event;\nconst call = body.call || {};\nconst dryRun = body.dryRun === true || body.dryRun === 'true';\n\nconst skip = (why) => [{ json: { send: false, skip_reason: why, call_id: call.call_id || null, dryRun } }];\nconst last10 = (p) => String(p || '').replace(/\\D/g, '').slice(-10);\nconst isTestNumber = (p) => [...TEST_NUMBERS].some(t => last10(t) === last10(p) && last10(p));\n\n// ---- was this a real conversation? -----------------------------------------\nif (event !== 'call_analyzed') return skip(`event ${event || 'missing'}`);\nconst isInbound = call.agent_id === INBOUND_AGENT_ID;\nconst isOutbound = call.agent_id === OUTBOUND_AGENT_ID;\nif (!isInbound && !isOutbound) return skip('not an Aria agent');\nif (call.call_type && call.call_type !== 'phone_call') return skip(`call_type ${call.call_type}`);\nif (call.call_status && call.call_status !== 'ended') return skip(`call_status ${call.call_status}`);\nif (isTestNumber(call.from_number) || isTestNumber(call.to_number)) return skip('test line');\n\nconst dr = String(call.disconnection_reason || '');\nconst analysis = call.call_analysis || {};\nconst custom = analysis.custom_analysis_data || {};\nconst NEVER_A_CONVERSATION = new Set([\n  'voicemail_reached', 'machine_detected', 'registered_call_timeout', 'invalid_destination',\n  'telephony_provider_permission_denied', 'telephony_provider_unavailable', 'sip_routing_error',\n  'concurrency_limit_reached', 'no_valid_payment', 'user_declined',\n  'error_user_not_joined', 'error_no_audio_received',\n]);\nif (dr.startsWith('dial_') || NEVER_A_CONVERSATION.has(dr)) return skip(dr);\nif (analysis.in_voicemail === true) return skip('voicemail');\nif (isOutbound && ['voicemail', 'no_answer'].includes(String(custom.reached_lead || ''))) return skip(`reached_lead ${custom.reached_lead}`);\n\nconst turns = Array.isArray(call.transcript_object) ? call.transcript_object : [];\nconst callerTurns = turns.filter(t => t && t.role === 'user' && typeof t.content === 'string' && t.content.trim()).length;\nif (callerTurns === 0) return skip('nobody spoke');\n\n// ---- what happened, from the tools rather than from the model ------------------\nconst clean = (s) => String(s == null ? '' : s).trim();\nconst invocations = {};\nconst results = [];\nfor (const t of (Array.isArray(call.transcript_with_tool_calls) ? call.transcript_with_tool_calls : [])) {\n  if (!t) continue;\n  if (t.role === 'tool_call_invocation') {\n    let args = {};\n    try { args = JSON.parse(t.arguments || '{}'); } catch (e) { args = {}; }\n    invocations[t.tool_call_id] = { name: t.name, args };\n  } else if (t.role === 'tool_call_result') {\n    let out = null;\n    try { out = JSON.parse(t.content); } catch (e) { out = { raw: String(t.content || '') }; }\n    const inv = invocations[t.tool_call_id] || {};\n    results.push({ name: inv.name || t.name || '', args: inv.args || {}, out });\n  }\n}\nconst lastOk = (name) => [...results].reverse().find(r => r.name === name && r.out && r.out.success === true) || null;\nconst booked = lastOk('book_appointment');\nconst moved = lastOk('reschedule_booking');\nconst cancelled = lastOk('cancel_booking');\nconst flagged = lastOk('flag_callback');\n\n// ---- who ---------------------------------------------------------------------------\nconst dyn = call.retell_llm_dynamic_variables || {};\nconst noBraces = (s) => (s.includes('{{') ? '' : s);\nlet first = noBraces(clean(dyn.lead_first_name));\nlet last = noBraces(clean(dyn.lead_last_name));\nif (booked) { first = clean(booked.args.firstName) || first; last = clean(booked.args.lastName) || last; }\nif (!first && flagged && clean(flagged.args.callerName)) { first = clean(flagged.args.callerName); last = ''; }\nconst name = [first, last].filter(Boolean).join(' ');\nconst phoneRaw = clean(isInbound ? call.from_number : call.to_number);\nconst prettyPhone = (p) => {\n  const m = /^\\+1(\\d{3})(\\d{3})(\\d{4})$/.exec(p);\n  return m ? `+1 (${m[1]}) ${m[2]}-${m[3]}` : p;\n};\nconst phone = prettyPhone(phoneRaw);\n// \"Test John at +1 (415) 555-0100\", or just the number when no name came through.\nconst who = name ? `${name}${phone ? ` at ${phone}` : ''}` : (phone || 'the caller');\n\n// ---- dates, durations ----------------------------------------------------------------\nconst MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];\nconst DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n// Local wall-clock strings from the booking tools (\"2026-10-07T10:00:00\"): no time zone maths.\nconst localWhen = (s) => {\n  const m = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/.exec(String(s || ''));\n  if (!m) return '';\n  const [Y, M, D, h, mi] = m.slice(1).map(Number);\n  const d = new Date(Date.UTC(Y, M - 1, D));\n  const hour12 = h % 12 === 0 ? 12 : h % 12;\n  return `${DAYS[d.getUTCDay()]}, ${MONTHS[M - 1]} ${D} at ${hour12}:${String(mi).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;\n};\nconst minutesBetween = (a, b) => {\n  const pa = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/.exec(String(a || ''));\n  const pb = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/.exec(String(b || ''));\n  if (!pa || !pb) return null;\n  const toMin = (p) => Date.UTC(+p[1], +p[2] - 1, +p[3], +p[4], +p[5]) / 60000;\n  return Math.round(toMin(pb) - toMin(pa));\n};\nconst durationWords = (n) => ({ 30: 'thirty minutes', 45: 'forty-five minutes', 60: 'one hour', 90: 'ninety minutes', 120: 'two hours' }[n] || (n ? `${n} minutes` : ''));\nconst callWhen = call.start_timestamp\n  ? new Date(call.start_timestamp).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' Pacific'\n  : '';\nconst durMs = Number(call.duration_ms || 0);\nconst callLength = durMs ? `${Math.floor(durMs / 60000)} min ${String(Math.round((durMs % 60000) / 1000)).padStart(2, '0')} sec` : '';\n\n// ---- outcome -------------------------------------------------------------------------\nconst RESOLUTION = {\n  booking_created: 'appointment booked', booking_canceled: 'appointment cancelled', booking_rescheduled: 'appointment moved',\n  info_provided: 'question answered', callback_flagged: 'callback requested', spam_declined: 'sales call declined',\n  inappropriate_deflected: 'request declined', abandoned: 'call ended early', other: 'call completed',\n};\nconst OUTBOUND_OUTCOME = {\n  booked: 'appointment booked', callback_scheduled: 'callback requested', not_interested: 'not interested',\n  wrong_number: 'wrong number', voicemail_left: 'voicemail left', do_not_call: 'asked not to be called again',\n  transferred: 'transferred to the team', other: 'call completed',\n};\nconst INTENT = {\n  new_booking: 'book a massage', cancel: 'cancel an appointment', reschedule: 'move an appointment',\n  status_check: 'check on an appointment', faq_general: 'ask a question', faq_pricing: 'ask about pricing',\n  callback_request: 'ask for a callback', spam: 'sell something', inappropriate: 'an inappropriate request',\n  off_topic: 'something unrelated', emergency: 'an emergency', crisis: 'a crisis',\n};\nlet outcome = booked ? 'appointment booked' : cancelled ? 'appointment cancelled' : moved ? 'appointment moved'\n  : (isOutbound ? OUTBOUND_OUTCOME[custom.outbound_outcome] : RESOLUTION[custom.resolution_status]) || 'call completed';\nif (dr === 'call_transfer') outcome = 'transferred to the team';\nif (isOutbound && custom.reached_lead === 'wrong_person') outcome = 'wrong person answered';\n\nlet booking = '';\nif (booked) {\n  const mins = minutesBetween(booked.args.startDate, booked.args.endDate);\n  booking = [clean(booked.args.serviceName), durationWords(mins), localWhen(booked.args.startDate)].filter(Boolean).join(', ');\n} else if (moved) {\n  booking = ['Moved to', localWhen(moved.args.startDate)].filter(Boolean).join(' ');\n} else if (cancelled) {\n  booking = 'Cancelled';\n}\n\nconst sentimentRaw = clean(custom.caller_sentiment || analysis.user_sentiment).toLowerCase();\nconst sentiment = sentimentRaw && sentimentRaw !== 'unknown' ? sentimentRaw : '';\nconst intent = isInbound ? (INTENT[custom.caller_intent] || '') : '';\nconst callbackWanted = custom.callback_required === true;\nconst callbackReason = clean(custom.callback_reason);\nconst language = clean(custom.language_used).toLowerCase();\nconst source = isOutbound ? clean(dyn.lead_source) : '';\n\n// ---- the recap, in Aria's voice --------------------------------------------------------\nconst noDashes = (s) => s.replace(/\\s*[—–]\\s*/g, ', ');\nconst firstPerson = (s) => s\n  .replace(/\\b(asked|told|thanked|gave|informed|answered|called|reached)\\s+the\\s+agent\\b/gi, '$1 me')\n  .replace(/\\b(with|to|from|by|for)\\s+the\\s+agent\\b/gi, '$1 me')\n  .replace(/\\bThe agent's\\b/g, 'My').replace(/\\bthe agent's\\b/g, 'my')\n  .replace(/\\bThe agent\\b/g, 'I').replace(/\\bthe agent\\b/g, 'I')\n  .replace(/\\bThe (?:AI|assistant|virtual assistant)\\b/g, 'I').replace(/\\bthe (?:AI|assistant|virtual assistant)\\b/g, 'I')\n  .replace(/\\bAria's\\b/g, 'my').replace(/\\bAria\\b/g, 'I')\n  .replace(/\\bThe (?:user|customer|client)\\b/g, 'The caller').replace(/\\bthe (?:user|customer|client)\\b/g, 'the caller')\n  .replace(/\\bI (was|were) (able|unable)\\b/g, 'I was $2');\nlet summary = noDashes(clean(analysis.call_summary));\nsummary = firstPerson(summary);\nif (summary) summary = summary.charAt(0).toUpperCase() + summary.slice(1);\nif (!summary) summary = `We spoke for ${callLength || 'a short while'}.`;\n\nlet intro;\nif (isInbound) intro = `I just took a call from ${who}. Here is a quick recap.`;\nelse if (source === 'website_form') intro = `I just called ${who} about the booking form they sent in. Here is a quick recap.`;\nelse intro = `I just called ${who} back after they rang the spa earlier. Here is a quick recap.`;\n\nconst notes = [];\nif (callbackWanted) notes.push(`They would like someone from the spa to call them back${callbackReason ? `: ${callbackReason}` : '.'}`);\nif (language === 'spanish' || language === 'mixed') notes.push(`We spoke ${language === 'mixed' ? 'partly' : ''} in Spanish.`.replace('  ', ' '));\nif (custom.tool_failure === true) notes.push('One of my tools returned an error during this call, so it is worth a look.');\nif (custom.do_not_call === true) notes.push('They asked not to be called again.');\n\n// ---- subject ------------------------------------------------------------------------------\nconst subject = `Call recap: ${name || phone || 'caller'}, ${outcome}`;\n\n// ---- HTML ----------------------------------------------------------------------------------\nconst esc = (s) => String(s).replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);\nconst FONT = \"-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif\";\nconst rows = [];\nrows.push(['Outcome', cap(outcome)]);\nif (intent) rows.push(['They wanted to', intent]);\nif (booking) rows.push(['Appointment', booking]);\nif (sentiment) rows.push(['Mood', cap(sentiment)]);\nif (callWhen) rows.push(['When', callWhen]);\nif (callLength) rows.push(['Length', callLength]);\nconst contactRows = [];\nif (name) contactRows.push(['Name', name]);\nif (phone) contactRows.push(['Phone', phone]);\nif (source) contactRows.push(['Came from', source === 'website_form' ? 'the website booking form' : 'a missed call to the spa']);\n\nconst rowHtml = (r) =>\n  `<tr><td style=\"padding:6px 0;font:13px/1.5 ${FONT};color:#4E5E73;width:120px;vertical-align:top;\">${esc(r[0])}</td>` +\n  `<td style=\"padding:6px 0;font:14px/1.5 ${FONT};color:#0F1729;vertical-align:top;\">${esc(r[1])}</td></tr>`;\nconst card = (title, list) =>\n  `<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#F8FAFC;border:1px solid #E1E7EF;border-radius:10px;margin:0 0 16px;\">` +\n  `<tr><td style=\"padding:14px 18px 10px;\">` +\n  `<div style=\"font:600 11px/1.4 ${FONT};letter-spacing:.08em;text-transform:uppercase;color:#4E5E73;margin:0 0 4px;\">${esc(title)}</div>` +\n  `<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">${list.map(rowHtml).join('')}</table>` +\n  `</td></tr></table>`;\n// One link only: the AIEmply call log, which has the recording and the\n// transcript. No raw recording URL (Ubaid, 2026-09-21).\nconst links = [];\nif (call.call_id) links.push(`<a href=\"${esc(DASHBOARD + call.call_id)}\" style=\"color:#144EB8;text-decoration:none;font:600 13px ${FONT};\">Open the call</a>`);\n\nlet html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>${esc(subject)}</title></head>` +\n  `<body style=\"margin:0;padding:0;background:#F3F6F9;\">` +\n  `<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#F3F6F9;\"><tr><td align=\"center\" style=\"padding:28px 16px;\">` +\n  `<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:560px;background:#FFFFFF;border:1px solid #E1E7EF;border-radius:12px;\">` +\n  // header\n  `<tr><td style=\"padding:18px 28px;border-bottom:1px solid #EBF1F7;\">` +\n  `<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>` +\n  `<td style=\"font:700 16px/1 ${FONT};color:#1563E0;letter-spacing:-.01em;\">AIEmply</td>` +\n  `<td align=\"right\" style=\"font:12px/1 ${FONT};color:#4E5E73;\">Aria for ${esc(SPA)}</td>` +\n  `</tr></table></td></tr>` +\n  // body\n  `<tr><td style=\"padding:26px 28px 8px;\">` +\n  `<p style=\"margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;\">${esc(GREETING)}</p>` +\n  `<p style=\"margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;\">${esc(intro)}</p>` +\n  `<p style=\"margin:0 0 22px;font:15px/1.6 ${FONT};color:#1C2740;\">${esc(summary)}</p>` +\n  notes.map(n => `<p style=\"margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;\">${esc(n)}</p>`).join('') +\n  card('Call details', rows) +\n  (contactRows.length ? card('Contact', contactRows) : '') +\n  (links.length ? `<p style=\"margin:4px 0 20px;\">${links.join(`<span style=\"color:#D1DAE5;padding:0 10px;\">|</span>`)}</p>` : '') +\n  `<p style=\"margin:0 0 4px;font:15px/1.6 ${FONT};color:#0F1729;\">Aria</p>` +\n  `<p style=\"margin:0 0 22px;font:13px/1.5 ${FONT};color:#4E5E73;\">Virtual receptionist, ${esc(SPA)}</p>` +\n  `</td></tr>` +\n  // footer\n  `<tr><td style=\"padding:14px 28px 18px;border-top:1px solid #EBF1F7;\">` +\n  `<p style=\"margin:0;font:11px/1.6 ${FONT};color:#A0ABBA;\">Sent by AIEmply for ${esc(SPA)}.${call.call_id ? ` Call ID ${esc(call.call_id)}.` : ''}</p>` +\n  `</td></tr>` +\n  `</table></td></tr></table></body></html>`;\n\nconst textLines = [GREETING, '', intro, '', summary, ''];\nfor (const n of notes) textLines.push(n, '');\ntextLines.push('Call details');\nfor (const r of rows) textLines.push(`  ${r[0]}: ${r[1]}`);\nif (contactRows.length) { textLines.push('', 'Contact'); for (const r of contactRows) textLines.push(`  ${r[0]}: ${r[1]}`); }\nif (call.call_id) textLines.push('', `Open the call: ${DASHBOARD}${call.call_id}`);\ntextLines.push('', 'Aria', `Virtual receptionist, ${SPA}`, '', `Sent by AIEmply for ${SPA}.`);\nlet text = textLines.join('\\n');\n\n// Belt and braces: nothing long-dashed leaves this node.\nhtml = html.replace(/[—–]/g, ', ');\ntext = text.replace(/[—–]/g, ', ');\n\nreturn [{ json: {\n  send: !dryRun,\n  dryRun,\n  skip_reason: dryRun ? 'dry run (composed, not sent)' : '',\n  call_id: call.call_id || null,\n  direction: isInbound ? 'inbound' : 'outbound',\n  to: TO,\n  cc: CC,\n  subject: subject.replace(/[—–]/g, ', '),\n  html,\n  text,\n  outcome,\n  name,\n  phone: phoneRaw,\n} }];\n"
+      }
+    },
+    {
+      "id": "if-email",
+      "name": "IF: Send Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        620
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-if-email",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.send }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "email-send",
+      "name": "Send Email: Post-Call Recap",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -420,
+        560
+      ],
+      "parameters": {
+        "fromEmail": "Aria <engineering@aiemply.com>",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "both",
+        "html": "={{ $json.html }}",
+        "text": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "engineering@aiemply.com",
+          "ccEmail": "={{ $json.cc }}"
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "m0mbibKf6il36id5",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "skip-3",
+      "name": "Skip: No Email",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        720
+      ],
+      "parameters": {}
     }
   ],
   "connections": {
@@ -329,6 +417,40 @@
         [
           {
             "node": "Prepare Call",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Compose: Post-Call Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose: Post-Call Email": {
+      "main": [
+        [
+          {
+            "node": "IF: Send Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Send Email?": {
+      "main": [
+        [
+          {
+            "node": "Send Email: Post-Call Recap",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip: No Email",
             "type": "main",
             "index": 0
           }

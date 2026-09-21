@@ -2,7 +2,7 @@
 
 ## Signature Massage
 
-The Signature Massage is a **customized treatment** that blends different massage techniques based on what your body needs that day. The therapist may mix Swedish, deep tissue, and other modalities depending on whether you want to focus on relaxation, tension relief, or both.
+The Signature Massage is a **customized treatment** that blends different massage techniques based on what your body needs that day. The therapist mixes Swedish, deep tissue, and **Ashiatsu (walk-on-back)** techniques depending on whether you want to focus on relaxation, tension relief, or both.
 
 **Best for:** clients who aren't sure which style they want, or who want the therapist to adapt to how they're feeling that day.
 
@@ -32,6 +32,16 @@ A deeply relaxing massage that uses **heated stones** combined with massage tech
 
 ---
 
+## Eastern Therapeutic Ritual
+
+An indulgent therapeutic experience inspired by traditional Eastern wellness. **Warm herbal medicated oil** is paired with **heated stones** and focused techniques to help release muscle tension and create a deeply soothing, restorative experience. Pressure is adjusted to your comfort, with special attention to areas of tension and tenderness.
+
+**Please note:** the herbal oil contains camphor, menthol, and methyl salicylate. It is **not recommended for sensitive, irritated, broken, or damaged skin**, and is for external use only.
+
+**Best for:** clients who want a deeper, warming treatment for tension and soreness, or who enjoy heat and herbal oils.
+
+---
+
 ## Prenatal Massage
 
 A gentle, soothing massage **designed specifically for expecting mothers** to help relieve muscle tension, reduce stress, and improve overall comfort during pregnancy. **Available from the second trimester onward (after 12 weeks).** Consulting a doctor before booking is recommended.
@@ -48,9 +58,9 @@ A **gentle, light-pressure** massage that stimulates the lymphatic system to hel
 
 ---
 
-## 30-Minute Focus Massage
+## 30 Minute Focus Massage
 
-A **thirty-minute** massage that can be focused on your preferred areas (like back, shoulders, neck, legs, or feet) or used as a quick full-body relaxation session.
+A **thirty-minute** massage that can be focused on your preferred areas (like the neck, shoulders, back, or feet) or used as a quick full-body relaxation session.
 
 **Best for:** people on a tight schedule, lunch breaks, or clients who want spot treatment for a specific tight area.
 
@@ -66,7 +76,13 @@ A couples massage is two massages booked for the same time slot in our dedicated
 
 ## Add-On Enhancements
 
-Small extras that can be added to any massage to deepen the experience.
+Small extras that can be added to a massage to deepen the experience.
+
+**Available on:** Signature, Swedish, Deep Tissue, Hot Stone, and 30 Minute Focus massages. **Not available on** the Eastern Therapeutic Ritual, Prenatal, Lymphatic Drainage, or Couples massages.
+
+### Herbal Therapy Enhancement
+
+A warm herbal therapy treatment added to your massage.
 
 ### Hot Stone Enhancement
 

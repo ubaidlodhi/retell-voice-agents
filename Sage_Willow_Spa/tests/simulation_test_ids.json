@@ -1,0 +1,8 @@
+{
+  "Inbound 1 - Book New (TEST JOHN, Oct 7)": "test_case_d39b562f9a2b",
+  "Inbound 2 - Reschedule (TEST JOHN, Oct 7 -> Oct 9)": "test_case_f018fdb78e12",
+  "Inbound 3 - Cancel (TEST JOHN, Oct 9)": "test_case_a403184a4923",
+  "Outbound 1 - Book New (TEST JOHN, website form, Oct 14)": "test_case_a18dd11a8b4f",
+  "Outbound 2 - Reschedule (TEST JOHN, missed call, Oct 14 -> Oct 16)": "test_case_2eb7ebbb9adc",
+  "Outbound 3 - Cancel (TEST JOHN, missed call, Oct 16)": "test_case_8823b11152c6"
+}

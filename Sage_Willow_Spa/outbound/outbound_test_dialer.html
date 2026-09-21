@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aria Outbound Dialer</title>
+<meta name="description" content="Place a test call from the Sage &amp; Willow outbound agent to one of your own numbers, on the draft, the published version or a specific version.">
+<style>
+  :root {
+    --bg: #f4f1ec;
+    --surface: #ffffff;
+    --surface-2: #f8f6f2;
+    --text: #1d1a17;
+    --muted: #6d675f;
+    --line: #e3ded6;
+    --accent: #2f6b4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e4efe8;
+    --danger: #b3261e;
+    --danger-soft: #fbe9e7;
+    --ok: #2f6b4f;
+    --ok-soft: #e4efe8;
+    --warn: #8a5a00;
+    --warn-soft: #fff3d6;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px -12px rgba(0,0,0,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141311;
+      --surface: #1e1c19;
+      --surface-2: #26231f;
+      --text: #f1ede7;
+      --muted: #a39c92;
+      --line: #35312b;
+      --accent: #6fbf95;
+      --accent-ink: #0f1e16;
+      --accent-soft: #1f3529;
+      --danger: #ff8a80;
+      --danger-soft: #3a1f1c;
+      --ok: #6fbf95;
+      --ok-soft: #1f3529;
+      --warn: #f2c15c;
+      --warn-soft: #3a2f14;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141311; --surface: #1e1c19; --surface-2: #26231f; --text: #f1ede7; --muted: #a39c92;
+    --line: #35312b; --accent: #6fbf95; --accent-ink: #0f1e16; --accent-soft: #1f3529;
+    --danger: #ff8a80; --danger-soft: #3a1f1c; --ok: #6fbf95; --ok-soft: #1f3529;
+    --warn: #f2c15c; --warn-soft: #3a2f14;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 24px 16px 48px;
+  }
+  main { max-width: 540px; margin: 0 auto; }
+
+  header { margin-bottom: 20px; }
+  header h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .card h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin: 0 0 12px; font-weight: 600;
+  }
+
+  /* pills (numbers) */
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    border-radius: 999px; padding: 8px 12px 8px 14px; cursor: pointer;
+    font-size: 15px; line-height: 1.2; user-select: none;
+  }
+  .pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .pill.selected { border-color: var(--accent); background: var(--accent-soft); }
+  .pill .label { color: var(--muted); font-size: 13px; }
+  .pill .remove {
+    border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 50%;
+  }
+  .pill .remove:hover { color: var(--danger); background: var(--danger-soft); }
+  .pill.add { border-style: dashed; color: var(--muted); padding-right: 14px; }
+  .pill.add:hover { color: var(--text); }
+
+  .add-row { display: none; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .add-row.open { display: flex; }
+  .add-row input { flex: 1 1 140px; }
+
+  /* segmented controls */
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+  .seg label { flex: 1; text-align: center; padding: 10px 8px; cursor: pointer; font-size: 15px; position: relative; }
+  .seg label + label { border-left: 1px solid var(--line); }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 140px; }
+  .row.tight > * { flex: 0 0 auto; }
+
+  input[type="text"], input[type="tel"], input[type="number"] {
+    width: 100%; font: inherit; color: var(--text); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  input:disabled { opacity: .5; }
+  .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .hint.err { color: var(--danger); }
+
+  .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 15px; }
+  .toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  button.primary {
+    width: 100%; font: inherit; font-size: 18px; font-weight: 600;
+    background: var(--accent); color: var(--accent-ink);
+    border: 0; border-radius: 12px; padding: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: transform .06s ease, opacity .15s ease;
+  }
+  button.primary:active { transform: scale(.99); }
+  button.primary:disabled { opacity: .55; cursor: default; }
+  button.ghost {
+    font: inherit; font-size: 14px; background: transparent; color: var(--text);
+    border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; cursor: pointer;
+  }
+  button.ghost:hover { background: var(--surface-2); }
+  .spinner {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent;
+    animation: spin .7s linear infinite; display: none;
+  }
+  .busy .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .summary { font-size: 14px; color: var(--muted); margin: 12px 0 0; text-align: center; }
+  .summary b { color: var(--text); font-weight: 600; }
+
+  .result { display: none; border-radius: 12px; padding: 14px 16px; margin-top: 14px; font-size: 15px; }
+  .result.show { display: block; }
+  .result.ok { background: var(--ok-soft); color: var(--text); border: 1px solid var(--ok); }
+  .result.bad { background: var(--danger-soft); color: var(--text); border: 1px solid var(--danger); }
+  .result.warn { background: var(--warn-soft); color: var(--text); border: 1px solid var(--warn); }
+  .result .title { font-weight: 600; margin-bottom: 4px; }
+  .result a { color: inherit; }
+  .result pre {
+    margin: 10px 0 0; font-size: 12.5px; white-space: pre-wrap; word-break: break-word;
+    background: rgba(0,0,0,.06); padding: 10px; border-radius: 8px; max-height: 240px; overflow: auto;
+  }
+
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  details pre {
+    margin: 8px 0 0; font-size: 12.5px; white-space: pre-wrap; word-break: break-word;
+    background: var(--surface-2); border: 1px solid var(--line); padding: 10px; border-radius: 8px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12.5px; padding: 0 8px 8px 0; }
+  td { padding: 8px 8px 8px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  td a { color: var(--accent); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+  .empty { color: var(--muted); font-size: 14px; }
+  .tag {
+    display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+  }
+  .tag.draft { color: var(--warn); border-color: var(--warn); }
+  .tag.pub { color: var(--ok); border-color: var(--ok); }
+
+  footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 22px; word-break: break-all; }
+  footer code { font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Aria outbound &middot; test dialer</h1>
+    <p>Rings you from the spa line, +1 (628) 286-2281, with the outbound agent, on the version you pick.</p>
+  </header>
+
+  <section class="card">
+    <h2>Call me on</h2>
+    <div class="pills" id="numberPills" role="radiogroup" aria-label="Number to call"></div>
+    <div class="add-row" id="addRow">
+      <input type="tel" id="newNumber" placeholder="(253) 268-1856" autocomplete="off" aria-label="New number">
+      <input type="text" id="newLabel" placeholder="Label (optional)" autocomplete="off" aria-label="Label" style="flex:0 1 150px">
+      <button class="ghost" id="saveNumber" type="button">Save</button>
+    </div>
+    <p class="hint" id="numberHint">US numbers only - that is all this line can dial.</p>
+  </section>
+
+  <section class="card">
+    <h2>Agent version</h2>
+    <div class="seg" id="versionSeg" role="radiogroup" aria-label="Agent version">
+      <label class="on"><input type="radio" name="version" value="latest" checked>Latest draft</label>
+      <label><input type="radio" name="version" value="latest_published">Published</label>
+      <label><input type="radio" name="version" value="specific">Specific&hellip;</label>
+    </div>
+    <div class="row tight" id="specificRow" style="display:none">
+      <span style="color:var(--muted);font-size:14px">Version number</span>
+      <input type="number" id="versionNumber" min="0" step="1" inputmode="numeric" placeholder="e.g. 4" style="width:110px">
+    </div>
+    <p class="hint" id="versionHint">The draft is what is being edited right now (dev tools). Published is what real leads get.</p>
+  </section>
+
+  <section class="card">
+    <h2>Pretend the lead came from</h2>
+    <div class="seg" id="sourceSeg" role="radiogroup" aria-label="Lead source">
+      <label class="on"><input type="radio" name="source" value="missed_call" checked>A missed call</label>
+      <label><input type="radio" name="source" value="website_form">The website form</label>
+    </div>
+    <div class="row">
+      <input type="text" id="firstName" placeholder="First name (optional)" autocomplete="off">
+      <input type="text" id="lastName" placeholder="Last name (optional)" autocomplete="off">
+    </div>
+    <div class="row" id="intentRow">
+      <input type="text" id="intent" placeholder="What they seemed to want, e.g. booking a massage (optional)" autocomplete="off">
+    </div>
+    <p class="hint" id="sourceHint">With both names Aria opens with "Hi, is this &lt;first name&gt;?"; without them she uses the name-unknown opener.</p>
+  </section>
+
+  <section class="card">
+    <label class="toggle"><input type="checkbox" id="dryRun"> Dry run - don't dial, just show what n8n would send to Retell</label>
+    <div style="height:14px"></div>
+    <button class="primary" id="callBtn" type="button">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="callLabel">Call me</span>
+    </button>
+    <p class="summary" id="summary"></p>
+    <div class="result" id="result" role="status" aria-live="polite"></div>
+    <details>
+      <summary>Payload that will be sent</summary>
+      <pre id="payloadPreview"></pre>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Recent calls from this page</h2>
+    <div id="history"></div>
+  </section>
+
+  <footer>POSTs to <code id="webhookShown"></code> &middot; the trigger workflow decides the version (anything it does not recognise falls back to Published).</footer>
+</main>
+
+<!-- Pure logic, no DOM: the harness in test_dialer.js evaluates this block in Node. -->
+<script id="core">
+  const WEBHOOK_URL = 'https://automation.aiemply.com/webhook/sage-willow-lead-callout';
+  const RETELL_CALL_URL = 'https://dashboard.retellai.com/call-history?history=';
+  const DEFAULT_NUMBERS = [{ e164: '+12532681856', label: 'My line' }];
+
+  // "(253) 268-1856", "253.268.1856", "12532681856", "+1 253 268 1856" -> "+12532681856".
+  // Returns '' for anything that is not a US number - the spa's line only dials US.
+  function normalizePhone(value) {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (digits.length === 10) return '+1' + digits;
+    if (digits.length === 11 && digits[0] === '1') return '+' + digits;
+    return '';
+  }
+
+  function formatPhone(e164) {
+    const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164 || '');
+    return m ? `+1 (${m[1]}) ${m[2]}-${m[3]}` : (e164 || '');
+  }
+
+  // state: { number, version: 'latest'|'latest_published'|'specific', versionNumber,
+  //          source: 'missed_call'|'website_form', firstName, lastName, intent, dryRun }
+  // Returns { payload } or { error } - never both.
+  function buildPayload(state) {
+    const phone = normalizePhone(state.number);
+    if (!phone) return { error: 'Pick a US number to call.' };
+
+    let agent_version;
+    if (state.version === 'latest' || state.version === 'latest_published') {
+      agent_version = state.version;
+    } else if (state.version === 'specific') {
+      const n = String(state.versionNumber ?? '').trim();
+      if (!/^\d{1,4}$/.test(n)) return { error: 'Enter the version number (a whole number, e.g. 4).' };
+      agent_version = Number(n);
+    } else {
+      return { error: 'Pick an agent version.' };
+    }
+
+    const source = state.source === 'website_form' ? 'website_form' : 'missed_call';
+    const first = String(state.firstName || '').trim();
+    const last = String(state.lastName || '').trim();
+    // The trigger rejects a website-form lead with no name (a real form always has one).
+    if (source === 'website_form' && !first) return { error: 'A website-form lead needs at least a first name.' };
+
+    const payload = { phone, source, agent_version };
+    if (first) payload.first_name = first;
+    if (last) payload.last_name = last;
+    if (source === 'missed_call') {
+      const intent = String(state.intent || '').trim();
+      if (intent) payload.inbound_intent = intent;
+    }
+    if (state.dryRun) payload.dryRun = true;
+    return { payload };
+  }
+
+  function describeVersion(v) {
+    if (v === 'latest') return 'latest draft';
+    if (v === 'latest_published') return 'published';
+    if (typeof v === 'number') return 'v' + v;
+    return String(v ?? '');
+  }
+
+  // Turn the trigger's JSON answer into something to show. Shapes it returns:
+  //   {ok:true, call_id, to, agent_version?}         call placed
+  //   {ok:true, dryRun:true, wouldCall:{...}}        dry run
+  //   {ok:false, errors:[...]}                       lead rejected
+  //   {ok:false, skipped:'test_mode_allowlist', ...} number not on the allowlist
+  //   {ok:false, error:'retell_create_call_failed', detail}
+  function describeResponse(res, requested) {
+    if (!res || typeof res !== 'object') return { kind: 'bad', title: 'Unexpected answer from n8n', body: String(res) };
+    if (res.ok && res.dryRun) {
+      const w = res.wouldCall || {};
+      return {
+        kind: 'warn',
+        title: 'Dry run - nothing was dialled',
+        body: `n8n would call ${formatPhone(w.to_number)} on the ${describeVersion(w.agent_version)} version as a ${w.lead_source} lead` +
+              (w.lead_name_known === 'yes' ? ` named ${w.lead_first_name} ${w.lead_last_name}.` : ' with no name.'),
+        detail: w,
+      };
+    }
+    if (res.ok && res.call_id) {
+      const actual = res.agent_version;
+      const mismatch = typeof requested === 'number' && typeof actual === 'number' && actual !== requested;
+      return {
+        kind: mismatch ? 'warn' : 'ok',
+        title: `Calling ${formatPhone(res.to)} now`,
+        body: typeof actual === 'number'
+          ? (mismatch ? `You asked for v${requested} but Retell is dialling v${actual}. Does that version exist?` : `Agent version ${actual}.`)
+          : 'Pick up! The version shows on the call in the Retell dashboard.',
+        callId: res.call_id,
+        agentVersion: actual,
+      };
+    }
+    if (res.skipped) return { kind: 'bad', title: 'Blocked by the trigger', body: `The number is not on the test allowlist (${res.skipped}).`, detail: res };
+    if (Array.isArray(res.errors)) return { kind: 'bad', title: 'n8n rejected the lead', body: res.errors.join('; '), detail: res };
+    if (res.error) return { kind: 'bad', title: 'Retell would not place the call', body: String(res.error), detail: res.detail ?? res };
+    return { kind: 'bad', title: 'Unexpected answer from n8n', body: '', detail: res };
+  }
+
+  if (typeof module !== 'undefined') {
+    module.exports = { WEBHOOK_URL, DEFAULT_NUMBERS, normalizePhone, formatPhone, buildPayload, describeVersion, describeResponse };
+  }
+</script>
+
+<script>
+  // ---- tiny persistence layer (per-browser conveniences only) --------------
+  const store = {
+    get(key, fallback) { try { const v = localStorage.getItem('swd.' + key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
+    set(key, value) { try { localStorage.setItem('swd.' + key, JSON.stringify(value)); } catch {} },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    pills: $('numberPills'), addRow: $('addRow'), newNumber: $('newNumber'), newLabel: $('newLabel'), saveNumber: $('saveNumber'),
+    numberHint: $('numberHint'), versionSeg: $('versionSeg'), specificRow: $('specificRow'), versionNumber: $('versionNumber'),
+    sourceSeg: $('sourceSeg'), firstName: $('firstName'), lastName: $('lastName'), intent: $('intent'), intentRow: $('intentRow'),
+    dryRun: $('dryRun'), callBtn: $('callBtn'), callLabel: $('callLabel'), summary: $('summary'), result: $('result'),
+    payloadPreview: $('payloadPreview'), history: $('history'), webhookShown: $('webhookShown'),
+  };
+  els.webhookShown.textContent = WEBHOOK_URL;
+
+  let numbers = store.get('numbers', DEFAULT_NUMBERS);
+  if (!Array.isArray(numbers) || !numbers.length) numbers = DEFAULT_NUMBERS.slice();
+  let selectedNumber = store.get('lastNumber', numbers[0].e164);
+  if (!numbers.some(n => n.e164 === selectedNumber)) selectedNumber = numbers[0].e164;
+  let callLog = store.get('history', []);
+
+  // ---- numbers ---------------------------------------------------------------
+  function renderNumbers() {
+    els.pills.innerHTML = '';
+    for (const n of numbers) {
+      const pill = document.createElement('label');
+      pill.className = 'pill' + (n.e164 === selectedNumber ? ' selected' : '');
+      const radio = document.createElement('input');
+      radio.type = 'radio'; radio.name = 'number'; radio.value = n.e164; radio.checked = n.e164 === selectedNumber;
+      radio.addEventListener('change', () => { selectedNumber = n.e164; store.set('lastNumber', selectedNumber); renderNumbers(); refresh(); });
+      pill.appendChild(radio);
+      pill.appendChild(document.createTextNode(formatPhone(n.e164)));
+      if (n.label) { const l = document.createElement('span'); l.className = 'label'; l.textContent = n.label; pill.appendChild(l); }
+      if (numbers.length > 1) {
+        const x = document.createElement('button');
+        x.type = 'button'; x.className = 'remove'; x.title = 'Remove this number'; x.setAttribute('aria-label', 'Remove ' + formatPhone(n.e164)); x.textContent = '×';
+        x.addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          numbers = numbers.filter(m => m.e164 !== n.e164);
+          if (selectedNumber === n.e164) selectedNumber = numbers[0].e164;
+          store.set('numbers', numbers); store.set('lastNumber', selectedNumber);
+          renderNumbers(); refresh();
+        });
+        pill.appendChild(x);
+      }
+      els.pills.appendChild(pill);
+    }
+    const add = document.createElement('button');
+    add.type = 'button'; add.className = 'pill add'; add.textContent = '+ Add a number';
+    add.addEventListener('click', () => { els.addRow.classList.toggle('open'); if (els.addRow.classList.contains('open')) els.newNumber.focus(); });
+    els.pills.appendChild(add);
+  }
+
+  function saveNewNumber() {
+    const e164 = normalizePhone(els.newNumber.value);
+    if (!e164) { els.numberHint.textContent = 'That is not a US number I can dial - ten digits, or eleven starting with 1.'; els.numberHint.classList.add('err'); return; }
+    els.numberHint.textContent = 'US numbers only - that is all this line can dial.'; els.numberHint.classList.remove('err');
+    const label = els.newLabel.value.trim();
+    const existing = numbers.find(n => n.e164 === e164);
+    if (existing) { if (label) existing.label = label; } else numbers.push({ e164, label });
+    selectedNumber = e164;
+    store.set('numbers', numbers); store.set('lastNumber', selectedNumber);
+    els.newNumber.value = ''; els.newLabel.value = ''; els.addRow.classList.remove('open');
+    renderNumbers(); refresh();
+  }
+  els.saveNumber.addEventListener('click', saveNewNumber);
+  els.newNumber.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveNewNumber(); } });
+  els.newLabel.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveNewNumber(); } });
+
+  // ---- segmented controls ---------------------------------------------------
+  function wireSeg(seg, key, onChange) {
+    const radios = [...seg.querySelectorAll('input[type=radio]')];
+    const saved = store.get(key, null);
+    if (saved && radios.some(r => r.value === saved)) radios.forEach(r => { r.checked = r.value === saved; });
+    const paint = () => radios.forEach(r => r.parentElement.classList.toggle('on', r.checked));
+    radios.forEach(r => r.addEventListener('change', () => { paint(); store.set(key, r.value); onChange(); }));
+    paint();
+    return () => radios.find(r => r.checked)?.value;
+  }
+  const getVersion = wireSeg(els.versionSeg, 'version', refresh);
+  const getSource = wireSeg(els.sourceSeg, 'source', refresh);
+
+  els.versionNumber.value = store.get('versionNumber', '');
+  els.firstName.value = store.get('firstName', '');
+  els.lastName.value = store.get('lastName', '');
+  els.intent.value = store.get('intent', '');
+  for (const [el, key] of [[els.versionNumber, 'versionNumber'], [els.firstName, 'firstName'], [els.lastName, 'lastName'], [els.intent, 'intent']]) {
+    el.addEventListener('input', () => { store.set(key, el.value); refresh(); });
+  }
+  els.dryRun.addEventListener('change', refresh);
+
+  // ---- state -> payload preview + button label ------------------------------
+  function currentState() {
+    return {
+      number: selectedNumber, version: getVersion(), versionNumber: els.versionNumber.value,
+      source: getSource(), firstName: els.firstName.value, lastName: els.lastName.value,
+      intent: els.intent.value, dryRun: els.dryRun.checked,
+    };
+  }
+
+  function refresh() {
+    const st = currentState();
+    els.specificRow.style.display = st.version === 'specific' ? 'flex' : 'none';
+    els.intentRow.style.display = st.source === 'missed_call' ? 'flex' : 'none';
+    const { payload, error } = buildPayload(st);
+    if (error) {
+      els.payloadPreview.textContent = '';
+      els.summary.innerHTML = `<span style="color:var(--danger)">${escapeHtml(error)}</span>`;
+      els.callBtn.disabled = true;
+      els.callLabel.textContent = st.dryRun ? 'Dry run' : 'Call me';
+      return;
+    }
+    els.payloadPreview.textContent = JSON.stringify(payload, null, 2);
+    const who = payload.first_name ? `as <b>${escapeHtml(payload.first_name)}${payload.last_name ? ' ' + escapeHtml(payload.last_name) : ''}</b>` : 'with <b>no name</b>';
+    els.summary.innerHTML = `${st.dryRun ? 'Would ring' : 'Rings'} <b>${formatPhone(payload.phone)}</b> on the <b>${escapeHtml(describeVersion(payload.agent_version))}</b> version, ${who}, ${payload.source === 'missed_call' ? 'returning a missed call' : 'following up a website form'}.`;
+    els.callBtn.disabled = busy;
+    els.callLabel.textContent = st.dryRun ? 'Dry run' : 'Call me';
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ---- the call ---------------------------------------------------------------
+  let busy = false;
+  function showResult(d) {
+    els.result.className = 'result show ' + d.kind;
+    let html = `<div class="title">${escapeHtml(d.title)}</div><div>${escapeHtml(d.body || '')}</div>`;
+    if (d.callId) html += `<div style="margin-top:6px"><a href="${RETELL_CALL_URL}${encodeURIComponent(d.callId)}" target="_blank" rel="noopener">Open this call in the Retell dashboard</a> <span style="color:var(--muted);font-size:13px">(${escapeHtml(d.callId)})</span></div>`;
+    if (d.detail) html += `<pre>${escapeHtml(JSON.stringify(d.detail, null, 2))}</pre>`;
+    els.result.innerHTML = html;
+  }
+
+  async function placeCall() {
+    if (busy) return;
+    const st = currentState();
+    const { payload, error } = buildPayload(st);
+    if (error) { showResult({ kind: 'bad', title: error, body: '' }); return; }
+
+    busy = true;
+    els.callBtn.classList.add('busy'); els.callBtn.disabled = true;
+    els.callLabel.textContent = payload.dryRun ? 'Asking n8n…' : 'Dialling…';
+    els.result.className = 'result';
+
+    let described;
+    try {
+      const resp = await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const text = await resp.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch {}
+      described = json ? describeResponse(json, payload.agent_version)
+                       : { kind: 'bad', title: `n8n answered ${resp.status} without JSON`, body: text.slice(0, 400) };
+    } catch (e) {
+      described = { kind: 'bad', title: 'Could not reach n8n', body: `${e.message}. Is the workflow active, or is the network blocking automation.aiemply.com?` };
+    }
+    showResult(described);
+
+    if (described.callId || (payload.dryRun && described.kind === 'warn')) {
+      callLog.unshift({
+        at: new Date().toISOString(), to: payload.phone, requested: payload.agent_version,
+        actual: described.agentVersion ?? null, callId: described.callId || null, dryRun: !!payload.dryRun,
+        source: payload.source,
+      });
+      callLog = callLog.slice(0, 12);
+      store.set('history', callLog);
+      renderHistory();
+    }
+
+    // A second click a moment later is almost always accidental - hold the button briefly.
+    setTimeout(() => { busy = false; els.callBtn.classList.remove('busy'); refresh(); }, payload.dryRun ? 400 : 3000);
+  }
+  els.callBtn.addEventListener('click', placeCall);
+
+  // ---- history ------------------------------------------------------------------
+  function renderHistory() {
+    if (!callLog.length) { els.history.innerHTML = '<p class="empty">Nothing yet.</p>'; return; }
+    const fmtTime = (iso) => { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+    const tagFor = (h) => {
+      if (h.dryRun) return '<span class="tag">dry run</span>';
+      if (typeof h.actual === 'number') return `<span class="tag ${h.requested === 'latest' ? 'draft' : h.requested === 'latest_published' ? 'pub' : ''}">v${h.actual}</span>`;
+      return `<span class="tag ${h.requested === 'latest' ? 'draft' : h.requested === 'latest_published' ? 'pub' : ''}">${escapeHtml(describeVersion(h.requested))}</span>`;
+    };
+    let rows = '';
+    for (const h of callLog) {
+      rows += `<tr><td>${escapeHtml(fmtTime(h.at))}</td><td>${escapeHtml(formatPhone(h.to))}</td><td>${tagFor(h)}</td>` +
+              `<td>${h.callId ? `<a href="${RETELL_CALL_URL}${encodeURIComponent(h.callId)}" target="_blank" rel="noopener">open</a>` : '<span class="empty">-</span>'}</td></tr>`;
+    }
+    els.history.innerHTML = `<table><thead><tr><th>When</th><th>Number</th><th>Version</th><th>Call</th></tr></thead><tbody>${rows}</tbody></table>` +
+      `<p class="hint"><button class="ghost" id="clearHistory" type="button" style="padding:6px 10px;font-size:13px">Clear</button></p>`;
+    $('clearHistory').addEventListener('click', () => { callLog = []; store.set('history', callLog); renderHistory(); });
+  }
+
+  renderNumbers();
+  renderHistory();
+  refresh();
+</script>
+</body>
+</html>

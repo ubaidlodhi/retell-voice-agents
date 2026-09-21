@@ -1,0 +1,2596 @@
+{
+  "name": "03. End Call - Log disposition",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://qa.greencheckhealth.com/api/v2/voice_agent/log_call_deposition",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization-token",
+              "value": "eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbiI6ImEyOWJlOTVhODZmYWIxZmJkYWU5OWFkZSJ9.Rx1twPgw8XWVjtQ0IHVOUdCw4C1EKa_IASkGThTDewA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"agent_type\": \"b2b_collections\",\n  \"call_timestamp\": \"{{ $json.call_timestamp }}\",\n  \"disposition\": \"{{ $json.disposition }}\",\n  \"metadata\": {\n    \"payment_method\": \"{{ $json.metadata.payment_method }}\",\n    \"promised_date\": \"{{ $json.metadata.promised_date }}\",\n    \"promised_amount\": \"{{ $json.metadata.promised_amount }}\",\n    \"customer_name\": \"{{ $json.metadata.customer_name }}\"\n  },\n  \"notes\": \"{{ $json.notes }}\"\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -400,
+        -416
+      ],
+      "id": "a4e9d5c1-55bb-43fd-8f77-81ae601ee883",
+      "name": "Log Call disposition",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Fzj6sYbg3hLCGDms",
+          "name": "Chartrequest basic auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "03062d7d-ad7d-48fc-8633-7c2930b3b8e8",
+              "leftValue": "={{ $json.body.call.call_analysis.custom_analysis_data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -848,
+        -416
+      ],
+      "id": "796db1d4-5d5f-4eba-9ff4-4a2331939582",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function Node: Calculate next follow-up date and increment follow_up_count\n\nconst MAX_FOLLOW_UP = 4;\nconst followUpDelays = [1, 2, 2, 3]; // delays in working days for follow_up_count 0-3\n\nfunction getNextFollowUpDate(lastCallDate, followUpCount) {\n    if (followUpCount >= MAX_FOLLOW_UP) return null;\n\n    let daysToAdd = followUpDelays[followUpCount];\n    let nextDate = new Date(lastCallDate);\n\n    while (daysToAdd > 0) {\n        nextDate.setDate(nextDate.getDate() + 1);\n        const day = nextDate.getDay();\n        if (day !== 0 && day !== 6) { // skip Sunday(0) and Saturday(6)\n            daysToAdd--;\n        }\n    }\n    return nextDate.toISOString().split('T')[0]; // YYYY-MM-DD\n}\n\n// Safely extract call data\nconst callData = $json.call || {};\nconst dynamicVars = callData.retell_llm_dynamic_variables || {};\n\n// Current follow-up count\nlet followUpCount =  $('Get Request').first().json.follow_up_count|| 0;\n\n// Increment follow-up count, but cap at MAX_FOLLOW_UP\nconst updatedFollowUpCount = Math.min(followUpCount + 1, MAX_FOLLOW_UP);\n\n// Determine last call date\nconst lastCallTimestamp = callData.end_timestamp ? new Date(callData.end_timestamp) : new Date();\n\n// Calculate next follow-up date\nconst nextFollowUp = getNextFollowUpDate(lastCallTimestamp, followUpCount);\n\nreturn [\n    {\n        json: {\n            last_call_date: lastCallTimestamp.toISOString().split('T')[0],\n            next_follow_up_date: nextFollowUp\n        }\n    }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        -672
+      ],
+      "id": "0bffbb02-97e5-4f44-8494-87774a50359c",
+      "name": "Calculate next follow-up date",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n\n  const start = $('Webhook').first().json.body.call.start_timestamp;\n  const end = $('Webhook').first().json.body.call.end_timestamp;\n\n  const startISO = start ? new Date(start).toISOString() : null;\n  const endISO = end ? new Date(end).toISOString() : null;\n\n  return {\n    json: {\n      ...data,\n      start_time_iso: startISO,\n      end_time_iso: endISO\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        -416
+      ],
+      "id": "184f3126-d188-4c72-a64e-7bc66df2a281",
+      "name": "Code to convert timestamp into iso format"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1c63ac3a-dfcd-4997-b33b-39723a1f4e54",
+              "leftValue": "={{ $('Parse webhook data').item.json.status }}",
+              "rightValue": "follow-up",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        -416
+      ],
+      "id": "fafe3a88-209b-4f19-94de-fb7fa7ba3535",
+      "name": "If status is follow-up"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "requestor_email",
+              "keyValue": "={{ $('Parse webhook data').item.json.requestor_email }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "next_follow_up_date": "={{ $json.next_follow_up_date }}",
+            "follow_up_required_flag": "={{ $('Parse webhook data').item.json.follow_up_required_flag }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone_number",
+              "displayName": "phone_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "last_call_outcome",
+              "displayName": "last_call_outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "recipent_name",
+              "displayName": "recipent_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "disposition",
+              "displayName": "disposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "organization_name",
+              "displayName": "organization_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "call_locked",
+              "displayName": "call_locked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "promised_amount",
+              "displayName": "promised_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "follow_up_required_flag",
+              "displayName": "follow_up_required_flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "next_follow_up_date",
+              "displayName": "next_follow_up_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "promised_date",
+              "displayName": "promised_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "requestor_email",
+              "displayName": "requestor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "provider_name",
+              "displayName": "provider_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "organization_service_level",
+              "displayName": "organization_service_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "follow_up_count",
+              "displayName": "follow_up_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "download_recording_url",
+              "displayName": "download_recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        -432
+      ],
+      "id": "f9fc1fa4-9dff-4ca8-aa14-42afac275ad6",
+      "name": "Update follow-up data",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "requestor_email",
+              "keyValue": "={{ $('Parse webhook data').item.json.requestor_email }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "last_call_outcome": "={{ $('Parse webhook data').item.json.last_call_outcome }}",
+            "timestamp": "={{ $('Parse webhook data').item.json.timestamp }}",
+            "recipent_name": "={{ $('Parse webhook data').item.json.recipient_name }}",
+            "disposition": "={{ $('Parse webhook data').item.json.disposition }}",
+            "organization_name": "={{ $('Parse webhook data').item.json.requestor_organization }}",
+            "status": "={{ $('Parse webhook data').item.json.status }}",
+            "payment_method": "={{ $('Parse webhook data').item.json.payment_method }}",
+            "promised_amount": "={{ $('Parse webhook data').item.json.promised_amount }}",
+            "next_follow_up_date": "={{ $('Parse webhook data').item.json.next_follow_up_date }}",
+            "promised_date": "={{ $('Parse webhook data').item.json.promised_date }}",
+            "requestor_email": "={{ $('Parse webhook data').item.json.requestor_email }}",
+            "follow_up_count": "={{ $json.follow_up_count + 1 }}",
+            "download_recording_url": "={{ $('Parse webhook data').item.json.recording_url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone_number",
+              "displayName": "phone_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "last_call_outcome",
+              "displayName": "last_call_outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "recipent_name",
+              "displayName": "recipent_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "disposition",
+              "displayName": "disposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "organization_name",
+              "displayName": "organization_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_locked",
+              "displayName": "call_locked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "promised_amount",
+              "displayName": "promised_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "follow_up_required_flag",
+              "displayName": "follow_up_required_flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "next_follow_up_date",
+              "displayName": "next_follow_up_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "promised_date",
+              "displayName": "promised_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "requestor_email",
+              "displayName": "requestor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "provider_name",
+              "displayName": "provider_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "organization_service_level",
+              "displayName": "organization_service_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "follow_up_count",
+              "displayName": "follow_up_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "download_recording_url",
+              "displayName": "download_recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        -416
+      ],
+      "id": "e8385779-63f0-4d9c-bf9b-43b15532cd58",
+      "name": "Update post call data",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EXusP2zkWdWV8iRI",
+          "mode": "list",
+          "cachedResultName": "call_attempts",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EXusP2zkWdWV8iRI"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "retell_call_id",
+              "keyValue": "={{ $('Webhook').item.json.body.call.call_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "call_started_at": "={{ $('Parse webhook data').item.json.call_started_at }}",
+            "call_completed_at": "={{ $('Parse webhook data').item.json.call_completed_at }}",
+            "voice_request_id": "={{ $('Parse webhook data').item.json.request_id }}",
+            "requestor_email": "={{ $('Parse webhook data').item.json.requestor_email }}",
+            "recipent_name": "={{ $('Parse webhook data').item.json.recipient_name }}",
+            "disposition": "={{ $('Parse webhook data').item.json.disposition }}",
+            "payment_method": "={{ $('Parse webhook data').item.json.payment_method }}",
+            "promised_amount": "={{ $('Parse webhook data').item.json.promised_amount }}",
+            "promised_date": "={{ $('Parse webhook data').item.json.promised_date }}",
+            "next_follow_up_date": "={{ $('Parse webhook data').item.json.next_follow_up_date }}",
+            "outcome": "={{ $('Parse webhook data').item.json.outcome }}",
+            "patient_name": "={{ $('Parse webhook data').item.json.patient_name }}",
+            "past_due_date": "={{ $('Parse webhook data').item.json.days_past_due }}",
+            "invoice_amount": "={{ $('Parse webhook data').item.json.invoice_amount }}",
+            "total_invoice_amount": "={{ $('Parse webhook data').item.json.total_invoice_amount }}",
+            "organization_name": "={{ $('Parse webhook data').item.json.requestor_organization }}",
+            "download_recording_url": "={{ $('Parse webhook data').item.json.recording_url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "retell_call_id",
+              "displayName": "retell_call_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "voice_request_id",
+              "displayName": "voice_request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "requestor_email",
+              "displayName": "requestor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "attempt_number",
+              "displayName": "attempt_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "recipent_name",
+              "displayName": "recipent_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "organization_name",
+              "displayName": "organization_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "patient_name",
+              "displayName": "patient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "past_due_date",
+              "displayName": "past_due_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_amount",
+              "displayName": "invoice_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "total_invoice_amount",
+              "displayName": "total_invoice_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "next_follow_up_date",
+              "displayName": "next_follow_up_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "promised_date",
+              "displayName": "promised_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "promised_amount",
+              "displayName": "promised_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "disposition",
+              "displayName": "disposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_started_at",
+              "displayName": "call_started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_completed_at",
+              "displayName": "call_completed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "download_recording_url",
+              "displayName": "download_recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "metadata_json",
+              "displayName": "metadata_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        -416
+      ],
+      "id": "2a6939e9-c173-4c51-9e12-235fd83b1119",
+      "name": "Update call attempts table",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "requestor_email",
+              "keyValue": "={{ $json.requestor_email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        -416
+      ],
+      "id": "3fc6deae-c93f-407e-8332-4fbc97c57cca",
+      "name": "Get Request"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0e28a15a-6d96-4579-95ca-2f30fe9faef4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1056,
+        -416
+      ],
+      "id": "bc403322-ca6e-4234-a4f4-d14f600a5d62",
+      "name": "Webhook",
+      "webhookId": "0e28a15a-6d96-4579-95ca-2f30fe9faef4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook').first().json;\nconst call = webhookData.body?.call || {};\nconst dv = call.retell_llm_dynamic_variables || {};\nconst metadata = call.metadata || {};\nconst analysis = call.call_analysis || {};\nconst customData = analysis.custom_analysis_data || {};\n\nconst cleanNull = (val) =>\n  (val === 'Null' || val === 'null' || val === '' || val === undefined) ? null : val;\n\nconst idsRaw = dv.request_ids || metadata.request_ids || '';\n\nconst startISO = call.start_timestamp ? new Date(call.start_timestamp).toISOString() : null;\nconst endISO = call.end_timestamp ? new Date(call.end_timestamp).toISOString() : null;\nconst startReadable = call.start_timestamp ? new Date(call.start_timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : null;\nconst endReadable = call.end_timestamp ? new Date(call.end_timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' }) : null;\n\nconst noAnswerReasons = ['dial_no_answer', 'voicemail', 'no_answer','invalid_destination','inactivity'];\nconst status = customData.status ||\n  (noAnswerReasons.includes(call.disconnection_reason) ? 'follow-up' : 'attempted');\n\nconst disposition = customData.disposition || call.disconnection_reason || null;\n\nreturn [{\n  json: {\n    // ───── Core IDs ─────\n    call_id:                    call.call_id,\n    retell_call_id:             call.call_id,\n    agent_id:                   call.agent_id,\n    agent_name:                 call.agent_name,\n    agent_version:              call.agent_version,\n\n    // ───── Request Info ─────\n    request_id:                 idsRaw,\n    request_count:              dv.request_count          || metadata.request_count          || null,\n    recipient_name:             dv.recipient_name         || metadata.recipient_name         || null,\n    requestor_email:            cleanNull(dv.requestor_email || metadata.requestor_email)    || null,\n    requestor_organization:     dv.requestor_organization || metadata.requestor_organization  || null,\n    invoice_amount:             dv.invoice_amount         || metadata.invoice_amount         || null,\n    total_invoice_amount:       dv.total_invoice_amount   || metadata.total_invoice_amount   || null,\n    days_past_due:              dv.days_past_due          || metadata.days_past_due          || null,\n    patient_name:               dv.patient_name           || metadata.patient_name           || null,\n\n    // ───── Call Outcome ─────\n    disposition:                disposition,\n    status:                     status,\n    outcome:                    disposition,\n    last_call_outcome:          cleanNull(analysis.call_summary) || call.disconnection_reason || null,\n    call_status:                call.call_status,\n    disconnection_reason:       call.disconnection_reason,\n    call_successful:            analysis.call_successful,\n    in_voicemail:               analysis.in_voicemail,\n    user_sentiment:             analysis.user_sentiment,\n    call_type:                  call.call_type,\n    direction:                  call.direction,\n\n    // ───── Timestamps ─────\n    timestamp:                  endISO,\n    call_started_at:            startISO,\n    call_completed_at:          endISO,\n    call_started_at_readable:   startReadable,\n    call_completed_at_readable: endReadable,\n    duration_ms:                call.duration_ms,\n    event_timestamp:            webhookData.body?.event_timestamp || null,\n\n    // ───── Phone Numbers ─────\n    to_number:                  call.to_number,\n    from_number:                call.from_number,\n\n    // ───── Payment Info ─────\n    payment_method:             cleanNull(customData.payment_method),\n    promised_amount:            cleanNull(customData.promised_amount),\n    promised_date:              cleanNull(customData.promised_date),\n    follow_up_count:            Number(customData.follow_up_count) || 0,\n    follow_up_required_flag:    customData.follow_up_required_flag ?? null,\n    next_follow_up_date:        cleanNull(customData.next_follow_up_date),\n\n    // ───── Recording ─────\n    recording_url:              call.recording_url || null,\n    twilio_call_sid:            call.telephony_identifier?.twilio_call_sid || null,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        -416
+      ],
+      "id": "8a050b20-a2f6-499d-9a4d-6531399ece9b",
+      "name": "Parse webhook data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $('Webhook').first().json.body || {};\nconst call = body.call || {};\nconst analysis = call.call_analysis || {};\nconst customData = analysis.custom_analysis_data || {};\nconst dv = call.retell_llm_dynamic_variables || {};\nconst metadata = call.metadata || {};\n\nconst cleanNull = (val) =>\n  (!val || val === 'Null' || val === 'null' || val === '') ? null : val;\n\nconst cleanAmount = (val) => {\n  if (!val || val === 'Null' || val === '') return null;\n  const cleaned = parseFloat(String(val).replace(/[$,]/g, ''));\n  return isNaN(cleaned) ? null : cleaned;\n};\n\nreturn [{\n  json: {\n    agent_type:     \"b2b_collections\",\n    call_timestamp: body.event_timestamp || null,\n    disposition:    cleanNull(customData.disposition) || call.disconnection_reason || null,\n    notes:          cleanNull(analysis.call_summary),\n    metadata: {\n      payment_method:  cleanNull(customData.payment_method),\n      promised_date:   cleanNull(customData.promised_date),\n      promised_amount: cleanAmount(customData.promised_amount),\n      customer_name:   cleanNull(customData.recipent_name) ||\n                       cleanNull(dv.recipient_name)        ||\n                       cleanNull(metadata.recipient_name)  || null,\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        -416
+      ],
+      "id": "12bdaa0f-6a04-4a8b-940a-5866a8ab9225",
+      "name": "parse data for disposition"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function Node: Calculate next follow-up date and increment follow_up_count\n\nconst MAX_FOLLOW_UP = 4;\n\n// Delays in working days for follow_up_count 0-3\n// First 2 follow-ups = same day\nconst followUpDelays = [0, 0, 2, 3];\n\nfunction getNextFollowUpDate(lastCallDate, followUpCount) {\n    if (followUpCount >= MAX_FOLLOW_UP) return null;\n\n    let daysToAdd = followUpDelays[followUpCount];\n    let nextDate = new Date(lastCallDate);\n\n    while (daysToAdd > 0) {\n        nextDate.setDate(nextDate.getDate() + 1);\n\n        const day = nextDate.getDay();\n\n        // Skip Saturday (6) and Sunday (0)\n        if (day !== 0 && day !== 6) {\n            daysToAdd--;\n        }\n    }\n\n    return nextDate.toISOString().split('T')[0]; // YYYY-MM-DD\n}\n\n// Safely extract call data\nconst callData = $json.call || {};\nconst dynamicVars = callData.retell_llm_dynamic_variables || {};\n\n// Current follow-up count\nlet followUpCount = $('Get Request').first().json.follow_up_count || 0;\n\n// Increment follow-up count, but cap at MAX_FOLLOW_UP\nconst updatedFollowUpCount = Math.min(\n    followUpCount + 1,\n    MAX_FOLLOW_UP\n);\n\n// Determine last call date\nconst lastCallTimestamp = callData.end_timestamp\n    ? new Date(callData.end_timestamp)\n    : new Date();\n\n// Calculate next follow-up date\nconst nextFollowUp = getNextFollowUpDate(\n    lastCallTimestamp,\n    followUpCount\n);\n\nreturn [\n    {\n        json: {\n            last_call_date: lastCallTimestamp.toISOString().split('T')[0],\n            next_follow_up_date: nextFollowUp,\n            follow_up_count: updatedFollowUpCount\n        }\n    }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        -432
+      ],
+      "id": "def51eac-2d83-45c6-bf8b-875f33593dbd",
+      "name": "Calculate next follow-up date Test Node",
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "chartrequest.app.n8n.cloud",
+            "user-agent": "axios/1.15.2",
+            "content-length": "20982",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, br",
+            "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=1fea791ce221487dbcc590c124766112,sentry-org_id=4511141371183104",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "100.20.5.228",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "a20282736b8cc12a-PDX",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "sentry-trace": "1fea791ce221487dbcc590c124766112-bb177105b43d3170",
+            "x-forwarded-for": "100.20.5.228, 104.23.160.143",
+            "x-forwarded-host": "chartrequest.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-102-67c649b6c4-jgp44",
+            "x-is-trusted": "yes",
+            "x-real-ip": "100.20.5.228",
+            "x-retell-signature": "v=1784891753341,d=2c7f86bccd3a571d094e4f2b032b1ffd67709ba937b72273cbca9aea8215e6e4"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event": "call_analyzed",
+            "call": {
+              "call_id": "call_639931cdbdd87aaa10e2f5977e3",
+              "call_type": "phone_call",
+              "agent_id": "agent_617a4705e7d92d9fc029eddfe5",
+              "agent_version": 64,
+              "agent_name": "ChartChase - Collection Agent (LIVE)",
+              "retell_llm_dynamic_variables": {
+                "request_ids": "14604439",
+                "recipient_name": "Emmanuel Custodian",
+                "user_name": "Emmanuel Custodian",
+                "invoice_amount": "[50]",
+                "total_invoice_amount": "50",
+                "days_past_due": "[51]",
+                "attempt": "1",
+                "requestor_email": "emmanuel.custodian@chartrequest.com",
+                "status": "new",
+                "phone_number": "+17433333036",
+                "patient_name": "Ticket1, Solo one",
+                "requestor_organization": "DP HealthCare Custodian Hospital [Self R.Share]",
+                "request_count": "1",
+                "follow_up_count": "0"
+              },
+              "contact_dynamic_variables": {},
+              "custom_sip_headers": {
+                "X-RetellAI-Direction": "Outbound",
+                "X-RetellAI-CallId": "call_639931cdbdd87aaa10e2f5977e3",
+                "X-RetellAI-SipTraceId": "call_639931cdbdd87aaa10e2f5977e3",
+                "X-RetellAI-OrgId": "org_7uacOsBA1apEapiE",
+                "Route": "<sip:18.98.16.122;lr>"
+              },
+              "call_status": "ended",
+              "start_timestamp": 1784891688868,
+              "end_timestamp": 1784891750710,
+              "duration_ms": 61842,
+              "transcript": "User: Please hold. \nAgent: All right, I'll stay on the line.\nUser: Hi. If \nAgent:  Let me know \nUser: you record your name and reason for calling, I'll see if this person is available. \nAgent: Hello, this is Hannah calling on behalf of ChartRequest regarding a medical records request. Am I speaking with Emmanuel Custodian?\nUser: I'm sorry. This person is not available. If you would like to leave an additional message, please reply after the tone. \nAgent: Hi Emmanuel Custodian, this is Hannah calling on behalf of ChartRequest. I wanted to reach out regarding a pending medical records request linked to your account. Please give us a call back at +18888958366  and we'll be happy to assist you. Have a wonderful day\n",
+              "transcript_object": [
+                {
+                  "role": "user",
+                  "content": "Please hold. ",
+                  "words": [
+                    {
+                      "word": "Please ",
+                      "start": 1.075,
+                      "end": 1.4749999
+                    },
+                    {
+                      "word": "hold. ",
+                      "start": 1.4749999,
+                      "end": 1.7149999999999999
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "All right, I'll stay on the line.",
+                  "words": [
+                    {
+                      "word": "All ",
+                      "start": 5.494,
+                      "end": 5.919531982421875
+                    },
+                    {
+                      "word": "right, ",
+                      "start": 5.919531982421875,
+                      "end": 6.345063720703125
+                    },
+                    {
+                      "word": "I'll ",
+                      "start": 6.345063720703125,
+                      "end": 6.770595703125
+                    },
+                    {
+                      "word": "stay ",
+                      "start": 6.770595703125,
+                      "end": 7.196127685546875
+                    },
+                    {
+                      "word": "on ",
+                      "start": 7.196127685546875,
+                      "end": 7.62165966796875
+                    },
+                    {
+                      "word": "the ",
+                      "start": 7.297593017578125,
+                      "end": 7.723125
+                    },
+                    {
+                      "word": "line.",
+                      "start": 7.297593017578125,
+                      "end": 7.723125
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 1
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Hi. If ",
+                  "words": [
+                    {
+                      "word": "Hi. ",
+                      "start": 8.145001,
+                      "end": 8.385
+                    },
+                    {
+                      "word": "If ",
+                      "start": 8.575,
+                      "end": 8.975
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": " Let me know ",
+                  "words": [
+                    {
+                      "word": " Let ",
+                      "start": 7.723125,
+                      "end": 8.148656982421874
+                    },
+                    {
+                      "word": "me ",
+                      "start": 8.148656982421874,
+                      "end": 8.574188720703125
+                    },
+                    {
+                      "word": "know ",
+                      "start": 8.574188720703125,
+                      "end": 8.999720703125
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 1
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "you record your name and reason for calling, I'll see if this person is available. ",
+                  "words": [
+                    {
+                      "word": "you ",
+                      "start": 8.975,
+                      "end": 9.135
+                    },
+                    {
+                      "word": "record ",
+                      "start": 9.135,
+                      "end": 9.455
+                    },
+                    {
+                      "word": "your ",
+                      "start": 9.455,
+                      "end": 9.695
+                    },
+                    {
+                      "word": "name ",
+                      "start": 9.695,
+                      "end": 9.935
+                    },
+                    {
+                      "word": "and ",
+                      "start": 9.935,
+                      "end": 10.255
+                    },
+                    {
+                      "word": "reason ",
+                      "start": 10.255,
+                      "end": 10.655
+                    },
+                    {
+                      "word": "for ",
+                      "start": 10.655,
+                      "end": 10.895
+                    },
+                    {
+                      "word": "calling, ",
+                      "start": 10.895,
+                      "end": 11.215
+                    },
+                    {
+                      "word": "I'll ",
+                      "start": 11.674999,
+                      "end": 11.994999
+                    },
+                    {
+                      "word": "see ",
+                      "start": 11.994999,
+                      "end": 12.155
+                    },
+                    {
+                      "word": "if ",
+                      "start": 12.155,
+                      "end": 12.315
+                    },
+                    {
+                      "word": "this ",
+                      "start": 12.315,
+                      "end": 12.554999500000001
+                    },
+                    {
+                      "word": "person ",
+                      "start": 12.554999500000001,
+                      "end": 12.794999
+                    },
+                    {
+                      "word": "is ",
+                      "start": 12.794999,
+                      "end": 12.954999
+                    },
+                    {
+                      "word": "available. ",
+                      "start": 12.954999,
+                      "end": 13.275
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Hello, this is Hannah calling on behalf of ChartRequest regarding a medical records request. Am I speaking with Emmanuel Custodian?",
+                  "words": [
+                    {
+                      "word": "Hello, ",
+                      "start": 15.194375,
+                      "end": 15.619906982421876
+                    },
+                    {
+                      "word": "this ",
+                      "start": 15.619906982421876,
+                      "end": 16.045438720703125
+                    },
+                    {
+                      "word": "is ",
+                      "start": 16.045438720703125,
+                      "end": 16.470970703125
+                    },
+                    {
+                      "word": "Hannah ",
+                      "start": 16.470970703125,
+                      "end": 16.896502685546874
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 16.896502685546874,
+                      "end": 17.32203466796875
+                    },
+                    {
+                      "word": "on ",
+                      "start": 17.32203466796875,
+                      "end": 17.74756640625
+                    },
+                    {
+                      "word": "behalf ",
+                      "start": 17.74756640625,
+                      "end": 18.173098388671875
+                    },
+                    {
+                      "word": "of ",
+                      "start": 18.173098388671875,
+                      "end": 18.59863037109375
+                    },
+                    {
+                      "word": "ChartRequest ",
+                      "start": 18.59863037109375,
+                      "end": 19.024162353515624
+                    },
+                    {
+                      "word": "regarding ",
+                      "start": 19.024162353515624,
+                      "end": 19.449694091796875
+                    },
+                    {
+                      "word": "a ",
+                      "start": 19.449694091796875,
+                      "end": 19.87522607421875
+                    },
+                    {
+                      "word": "medical ",
+                      "start": 19.87522607421875,
+                      "end": 20.300758056640625
+                    },
+                    {
+                      "word": "records ",
+                      "start": 20.202301513671873,
+                      "end": 20.627833251953124
+                    },
+                    {
+                      "word": "request. ",
+                      "start": 20.202301513671873,
+                      "end": 20.627833251953124
+                    },
+                    {
+                      "word": "Am ",
+                      "start": 20.627833251953124,
+                      "end": 21.053365234375
+                    },
+                    {
+                      "word": "I ",
+                      "start": 21.053365234375,
+                      "end": 21.478897216796874
+                    },
+                    {
+                      "word": "speaking ",
+                      "start": 21.478897216796874,
+                      "end": 21.90442919921875
+                    },
+                    {
+                      "word": "with ",
+                      "start": 21.90442919921875,
+                      "end": 22.3299609375
+                    },
+                    {
+                      "word": "Emmanuel ",
+                      "start": 22.3299609375,
+                      "end": 22.755492919921874
+                    },
+                    {
+                      "word": "Custodian?",
+                      "start": 22.755492919921874,
+                      "end": 23.18102490234375
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 2
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "I'm sorry. This person is not available. If you would like to leave an additional message, please reply after the tone. ",
+                  "words": [
+                    {
+                      "word": "I'm ",
+                      "start": 34.305,
+                      "end": 34.70500199999999
+                    },
+                    {
+                      "word": "sorry. ",
+                      "start": 34.70500199999999,
+                      "end": 35.184999999999995
+                    },
+                    {
+                      "word": "This ",
+                      "start": 35.184999999999995,
+                      "end": 35.345
+                    },
+                    {
+                      "word": "person ",
+                      "start": 35.345,
+                      "end": 35.665
+                    },
+                    {
+                      "word": "is ",
+                      "start": 35.665,
+                      "end": 35.905002999999994
+                    },
+                    {
+                      "word": "not ",
+                      "start": 35.905002999999994,
+                      "end": 36.065
+                    },
+                    {
+                      "word": "available. ",
+                      "start": 36.065,
+                      "end": 36.464999999999996
+                    },
+                    {
+                      "word": "If ",
+                      "start": 36.915,
+                      "end": 37.235
+                    },
+                    {
+                      "word": "you ",
+                      "start": 37.235,
+                      "end": 37.394999999999996
+                    },
+                    {
+                      "word": "would ",
+                      "start": 37.394999999999996,
+                      "end": 37.555
+                    },
+                    {
+                      "word": "like ",
+                      "start": 37.555,
+                      "end": 37.795002
+                    },
+                    {
+                      "word": "to ",
+                      "start": 37.795002,
+                      "end": 37.875
+                    },
+                    {
+                      "word": "leave ",
+                      "start": 37.875,
+                      "end": 38.114999999999995
+                    },
+                    {
+                      "word": "an ",
+                      "start": 38.114999999999995,
+                      "end": 38.355
+                    },
+                    {
+                      "word": "additional ",
+                      "start": 38.355,
+                      "end": 38.754999999999995
+                    },
+                    {
+                      "word": "message, ",
+                      "start": 38.754999999999995,
+                      "end": 39.074999999999996
+                    },
+                    {
+                      "word": "please ",
+                      "start": 39.425,
+                      "end": 39.824999999999996
+                    },
+                    {
+                      "word": "reply ",
+                      "start": 39.824999999999996,
+                      "end": 40.224999999999994
+                    },
+                    {
+                      "word": "after ",
+                      "start": 40.224999999999994,
+                      "end": 40.464999999999996
+                    },
+                    {
+                      "word": "the ",
+                      "start": 40.464999999999996,
+                      "end": 40.625
+                    },
+                    {
+                      "word": "tone. ",
+                      "start": 40.625,
+                      "end": 40.785
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Hi Emmanuel Custodian, this is Hannah calling on behalf of ChartRequest. I wanted to reach out regarding a pending medical records request linked to your account. Please give us a call back at +18888958366  and we'll be happy to assist you. Have a wonderful day",
+                  "words": [
+                    {
+                      "word": "Hi ",
+                      "start": 42.307,
+                      "end": 42.732531982421875
+                    },
+                    {
+                      "word": "Emmanuel ",
+                      "start": 42.732531982421875,
+                      "end": 43.158063720703126
+                    },
+                    {
+                      "word": "Custodian, ",
+                      "start": 43.158063720703126,
+                      "end": 43.583595703125
+                    },
+                    {
+                      "word": "this ",
+                      "start": 43.583595703125,
+                      "end": 44.00912768554687
+                    },
+                    {
+                      "word": "is ",
+                      "start": 44.00912768554687,
+                      "end": 44.43465966796875
+                    },
+                    {
+                      "word": "Hannah ",
+                      "start": 44.43465966796875,
+                      "end": 44.86019140625
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 44.86019140625,
+                      "end": 45.285723388671876
+                    },
+                    {
+                      "word": "on ",
+                      "start": 45.285723388671876,
+                      "end": 45.71125537109375
+                    },
+                    {
+                      "word": "behalf ",
+                      "start": 45.71125537109375,
+                      "end": 46.13678735351562
+                    },
+                    {
+                      "word": "of ",
+                      "start": 46.13678735351562,
+                      "end": 46.56231909179687
+                    },
+                    {
+                      "word": "ChartRequest. ",
+                      "start": 46.56231909179687,
+                      "end": 46.98785107421875
+                    },
+                    {
+                      "word": "I ",
+                      "start": 47.566333251953125,
+                      "end": 47.991865234375
+                    },
+                    {
+                      "word": "wanted ",
+                      "start": 47.991865234375,
+                      "end": 48.41739721679688
+                    },
+                    {
+                      "word": "to ",
+                      "start": 48.41739721679688,
+                      "end": 48.84292919921875
+                    },
+                    {
+                      "word": "reach ",
+                      "start": 48.84292919921875,
+                      "end": 49.2684609375
+                    },
+                    {
+                      "word": "out ",
+                      "start": 49.2684609375,
+                      "end": 49.693992919921875
+                    },
+                    {
+                      "word": "regarding ",
+                      "start": 49.693992919921875,
+                      "end": 50.11952490234375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 50.11952490234375,
+                      "end": 50.545056640625
+                    },
+                    {
+                      "word": "pending ",
+                      "start": 50.545056640625,
+                      "end": 50.97058862304687
+                    },
+                    {
+                      "word": "medical ",
+                      "start": 50.97058862304687,
+                      "end": 51.39612060546875
+                    },
+                    {
+                      "word": "records ",
+                      "start": 51.39612060546875,
+                      "end": 51.821652587890625
+                    },
+                    {
+                      "word": "request ",
+                      "start": 51.821652587890625,
+                      "end": 52.247184326171876
+                    },
+                    {
+                      "word": "linked ",
+                      "start": 52.247184326171876,
+                      "end": 52.67271630859375
+                    },
+                    {
+                      "word": "to ",
+                      "start": 52.67271630859375,
+                      "end": 53.09824829101562
+                    },
+                    {
+                      "word": "your ",
+                      "start": 53.09824829101562,
+                      "end": 53.52378002929687
+                    },
+                    {
+                      "word": "account. ",
+                      "start": 53.21284301757812,
+                      "end": 53.638375
+                    },
+                    {
+                      "word": "Please ",
+                      "start": 53.638375,
+                      "end": 54.06390698242188
+                    },
+                    {
+                      "word": "give ",
+                      "start": 54.06390698242188,
+                      "end": 54.48943872070313
+                    },
+                    {
+                      "word": "us ",
+                      "start": 54.48943872070313,
+                      "end": 54.914970703125
+                    },
+                    {
+                      "word": "a ",
+                      "start": 54.914970703125,
+                      "end": 55.34050268554687
+                    },
+                    {
+                      "word": "call ",
+                      "start": 55.34050268554687,
+                      "end": 55.76603466796875
+                    },
+                    {
+                      "word": "back ",
+                      "start": 55.76603466796875,
+                      "end": 56.19156640625
+                    },
+                    {
+                      "word": "at ",
+                      "start": 56.19156640625,
+                      "end": 56.61709838867188
+                    },
+                    {
+                      "word": "+18888958366 ",
+                      "start": 56.61709838867188,
+                      "end": 57.04263037109375
+                    },
+                    {
+                      "word": " and ",
+                      "start": 57.04263037109375,
+                      "end": 57.46816235351562
+                    },
+                    {
+                      "word": "we'll ",
+                      "start": 57.46816235351562,
+                      "end": 57.893694091796874
+                    },
+                    {
+                      "word": "be ",
+                      "start": 57.893694091796874,
+                      "end": 58.31922607421875
+                    },
+                    {
+                      "word": "happy ",
+                      "start": 58.31922607421875,
+                      "end": 58.74475805664063
+                    },
+                    {
+                      "word": "to ",
+                      "start": 58.74475805664063,
+                      "end": 59.17028979492188
+                    },
+                    {
+                      "word": "assist ",
+                      "start": 59.17028979492188,
+                      "end": 59.59582177734375
+                    },
+                    {
+                      "word": "you. ",
+                      "start": 59.59582177734375,
+                      "end": 60.021353759765624
+                    },
+                    {
+                      "word": "Have ",
+                      "start": 60.25608325195312,
+                      "end": 60.681615234375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 60.681615234375,
+                      "end": 61.107147216796875
+                    },
+                    {
+                      "word": "wonderful ",
+                      "start": 61.107147216796875,
+                      "end": 61.53267919921875
+                    },
+                    {
+                      "word": "day",
+                      "start": 61.397884765625,
+                      "end": 61.823416748046874
+                    }
+                  ]
+                }
+              ],
+              "transcript_with_tool_calls": [
+                {
+                  "role": "user",
+                  "content": "Please hold. ",
+                  "words": [
+                    {
+                      "word": "Please ",
+                      "start": 1.075,
+                      "end": 1.4749999
+                    },
+                    {
+                      "word": "hold. ",
+                      "start": 1.4749999,
+                      "end": 1.7149999999999999
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "All right, I'll stay on the line.",
+                  "words": [
+                    {
+                      "word": "All ",
+                      "start": 5.494,
+                      "end": 5.919531982421875
+                    },
+                    {
+                      "word": "right, ",
+                      "start": 5.919531982421875,
+                      "end": 6.345063720703125
+                    },
+                    {
+                      "word": "I'll ",
+                      "start": 6.345063720703125,
+                      "end": 6.770595703125
+                    },
+                    {
+                      "word": "stay ",
+                      "start": 6.770595703125,
+                      "end": 7.196127685546875
+                    },
+                    {
+                      "word": "on ",
+                      "start": 7.196127685546875,
+                      "end": 7.62165966796875
+                    },
+                    {
+                      "word": "the ",
+                      "start": 7.297593017578125,
+                      "end": 7.723125
+                    },
+                    {
+                      "word": "line.",
+                      "start": 7.297593017578125,
+                      "end": 7.723125
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 1
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Hi. If ",
+                  "words": [
+                    {
+                      "word": "Hi. ",
+                      "start": 8.145001,
+                      "end": 8.385
+                    },
+                    {
+                      "word": "If ",
+                      "start": 8.575,
+                      "end": 8.975
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": " Let me know ",
+                  "words": [
+                    {
+                      "word": " Let ",
+                      "start": 7.723125,
+                      "end": 8.148656982421874
+                    },
+                    {
+                      "word": "me ",
+                      "start": 8.148656982421874,
+                      "end": 8.574188720703125
+                    },
+                    {
+                      "word": "know ",
+                      "start": 8.574188720703125,
+                      "end": 8.999720703125
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 1
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "you record your name and reason for calling, I'll see if this person is available. ",
+                  "words": [
+                    {
+                      "word": "you ",
+                      "start": 8.975,
+                      "end": 9.135
+                    },
+                    {
+                      "word": "record ",
+                      "start": 9.135,
+                      "end": 9.455
+                    },
+                    {
+                      "word": "your ",
+                      "start": 9.455,
+                      "end": 9.695
+                    },
+                    {
+                      "word": "name ",
+                      "start": 9.695,
+                      "end": 9.935
+                    },
+                    {
+                      "word": "and ",
+                      "start": 9.935,
+                      "end": 10.255
+                    },
+                    {
+                      "word": "reason ",
+                      "start": 10.255,
+                      "end": 10.655
+                    },
+                    {
+                      "word": "for ",
+                      "start": 10.655,
+                      "end": 10.895
+                    },
+                    {
+                      "word": "calling, ",
+                      "start": 10.895,
+                      "end": 11.215
+                    },
+                    {
+                      "word": "I'll ",
+                      "start": 11.674999,
+                      "end": 11.994999
+                    },
+                    {
+                      "word": "see ",
+                      "start": 11.994999,
+                      "end": 12.155
+                    },
+                    {
+                      "word": "if ",
+                      "start": 12.155,
+                      "end": 12.315
+                    },
+                    {
+                      "word": "this ",
+                      "start": 12.315,
+                      "end": 12.554999500000001
+                    },
+                    {
+                      "word": "person ",
+                      "start": 12.554999500000001,
+                      "end": 12.794999
+                    },
+                    {
+                      "word": "is ",
+                      "start": 12.794999,
+                      "end": 12.954999
+                    },
+                    {
+                      "word": "available. ",
+                      "start": 12.954999,
+                      "end": 13.275
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Hello, this is Hannah calling on behalf of ChartRequest regarding a medical records request. Am I speaking with Emmanuel Custodian?",
+                  "words": [
+                    {
+                      "word": "Hello, ",
+                      "start": 15.194375,
+                      "end": 15.619906982421876
+                    },
+                    {
+                      "word": "this ",
+                      "start": 15.619906982421876,
+                      "end": 16.045438720703125
+                    },
+                    {
+                      "word": "is ",
+                      "start": 16.045438720703125,
+                      "end": 16.470970703125
+                    },
+                    {
+                      "word": "Hannah ",
+                      "start": 16.470970703125,
+                      "end": 16.896502685546874
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 16.896502685546874,
+                      "end": 17.32203466796875
+                    },
+                    {
+                      "word": "on ",
+                      "start": 17.32203466796875,
+                      "end": 17.74756640625
+                    },
+                    {
+                      "word": "behalf ",
+                      "start": 17.74756640625,
+                      "end": 18.173098388671875
+                    },
+                    {
+                      "word": "of ",
+                      "start": 18.173098388671875,
+                      "end": 18.59863037109375
+                    },
+                    {
+                      "word": "ChartRequest ",
+                      "start": 18.59863037109375,
+                      "end": 19.024162353515624
+                    },
+                    {
+                      "word": "regarding ",
+                      "start": 19.024162353515624,
+                      "end": 19.449694091796875
+                    },
+                    {
+                      "word": "a ",
+                      "start": 19.449694091796875,
+                      "end": 19.87522607421875
+                    },
+                    {
+                      "word": "medical ",
+                      "start": 19.87522607421875,
+                      "end": 20.300758056640625
+                    },
+                    {
+                      "word": "records ",
+                      "start": 20.202301513671873,
+                      "end": 20.627833251953124
+                    },
+                    {
+                      "word": "request. ",
+                      "start": 20.202301513671873,
+                      "end": 20.627833251953124
+                    },
+                    {
+                      "word": "Am ",
+                      "start": 20.627833251953124,
+                      "end": 21.053365234375
+                    },
+                    {
+                      "word": "I ",
+                      "start": 21.053365234375,
+                      "end": 21.478897216796874
+                    },
+                    {
+                      "word": "speaking ",
+                      "start": 21.478897216796874,
+                      "end": 21.90442919921875
+                    },
+                    {
+                      "word": "with ",
+                      "start": 21.90442919921875,
+                      "end": 22.3299609375
+                    },
+                    {
+                      "word": "Emmanuel ",
+                      "start": 22.3299609375,
+                      "end": 22.755492919921874
+                    },
+                    {
+                      "word": "Custodian?",
+                      "start": 22.755492919921874,
+                      "end": 23.18102490234375
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 2
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "I'm sorry. This person is not available. If you would like to leave an additional message, please reply after the tone. ",
+                  "words": [
+                    {
+                      "word": "I'm ",
+                      "start": 34.305,
+                      "end": 34.70500199999999
+                    },
+                    {
+                      "word": "sorry. ",
+                      "start": 34.70500199999999,
+                      "end": 35.184999999999995
+                    },
+                    {
+                      "word": "This ",
+                      "start": 35.184999999999995,
+                      "end": 35.345
+                    },
+                    {
+                      "word": "person ",
+                      "start": 35.345,
+                      "end": 35.665
+                    },
+                    {
+                      "word": "is ",
+                      "start": 35.665,
+                      "end": 35.905002999999994
+                    },
+                    {
+                      "word": "not ",
+                      "start": 35.905002999999994,
+                      "end": 36.065
+                    },
+                    {
+                      "word": "available. ",
+                      "start": 36.065,
+                      "end": 36.464999999999996
+                    },
+                    {
+                      "word": "If ",
+                      "start": 36.915,
+                      "end": 37.235
+                    },
+                    {
+                      "word": "you ",
+                      "start": 37.235,
+                      "end": 37.394999999999996
+                    },
+                    {
+                      "word": "would ",
+                      "start": 37.394999999999996,
+                      "end": 37.555
+                    },
+                    {
+                      "word": "like ",
+                      "start": 37.555,
+                      "end": 37.795002
+                    },
+                    {
+                      "word": "to ",
+                      "start": 37.795002,
+                      "end": 37.875
+                    },
+                    {
+                      "word": "leave ",
+                      "start": 37.875,
+                      "end": 38.114999999999995
+                    },
+                    {
+                      "word": "an ",
+                      "start": 38.114999999999995,
+                      "end": 38.355
+                    },
+                    {
+                      "word": "additional ",
+                      "start": 38.355,
+                      "end": 38.754999999999995
+                    },
+                    {
+                      "word": "message, ",
+                      "start": 38.754999999999995,
+                      "end": 39.074999999999996
+                    },
+                    {
+                      "word": "please ",
+                      "start": 39.425,
+                      "end": 39.824999999999996
+                    },
+                    {
+                      "word": "reply ",
+                      "start": 39.824999999999996,
+                      "end": 40.224999999999994
+                    },
+                    {
+                      "word": "after ",
+                      "start": 40.224999999999994,
+                      "end": 40.464999999999996
+                    },
+                    {
+                      "word": "the ",
+                      "start": 40.464999999999996,
+                      "end": 40.625
+                    },
+                    {
+                      "word": "tone. ",
+                      "start": 40.625,
+                      "end": 40.785
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Hi Emmanuel Custodian, this is Hannah calling on behalf of ChartRequest. I wanted to reach out regarding a pending medical records request linked to your account. Please give us a call back at +18888958366  and we'll be happy to assist you. Have a wonderful day",
+                  "words": [
+                    {
+                      "word": "Hi ",
+                      "start": 42.307,
+                      "end": 42.732531982421875
+                    },
+                    {
+                      "word": "Emmanuel ",
+                      "start": 42.732531982421875,
+                      "end": 43.158063720703126
+                    },
+                    {
+                      "word": "Custodian, ",
+                      "start": 43.158063720703126,
+                      "end": 43.583595703125
+                    },
+                    {
+                      "word": "this ",
+                      "start": 43.583595703125,
+                      "end": 44.00912768554687
+                    },
+                    {
+                      "word": "is ",
+                      "start": 44.00912768554687,
+                      "end": 44.43465966796875
+                    },
+                    {
+                      "word": "Hannah ",
+                      "start": 44.43465966796875,
+                      "end": 44.86019140625
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 44.86019140625,
+                      "end": 45.285723388671876
+                    },
+                    {
+                      "word": "on ",
+                      "start": 45.285723388671876,
+                      "end": 45.71125537109375
+                    },
+                    {
+                      "word": "behalf ",
+                      "start": 45.71125537109375,
+                      "end": 46.13678735351562
+                    },
+                    {
+                      "word": "of ",
+                      "start": 46.13678735351562,
+                      "end": 46.56231909179687
+                    },
+                    {
+                      "word": "ChartRequest. ",
+                      "start": 46.56231909179687,
+                      "end": 46.98785107421875
+                    },
+                    {
+                      "word": "I ",
+                      "start": 47.566333251953125,
+                      "end": 47.991865234375
+                    },
+                    {
+                      "word": "wanted ",
+                      "start": 47.991865234375,
+                      "end": 48.41739721679688
+                    },
+                    {
+                      "word": "to ",
+                      "start": 48.41739721679688,
+                      "end": 48.84292919921875
+                    },
+                    {
+                      "word": "reach ",
+                      "start": 48.84292919921875,
+                      "end": 49.2684609375
+                    },
+                    {
+                      "word": "out ",
+                      "start": 49.2684609375,
+                      "end": 49.693992919921875
+                    },
+                    {
+                      "word": "regarding ",
+                      "start": 49.693992919921875,
+                      "end": 50.11952490234375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 50.11952490234375,
+                      "end": 50.545056640625
+                    },
+                    {
+                      "word": "pending ",
+                      "start": 50.545056640625,
+                      "end": 50.97058862304687
+                    },
+                    {
+                      "word": "medical ",
+                      "start": 50.97058862304687,
+                      "end": 51.39612060546875
+                    },
+                    {
+                      "word": "records ",
+                      "start": 51.39612060546875,
+                      "end": 51.821652587890625
+                    },
+                    {
+                      "word": "request ",
+                      "start": 51.821652587890625,
+                      "end": 52.247184326171876
+                    },
+                    {
+                      "word": "linked ",
+                      "start": 52.247184326171876,
+                      "end": 52.67271630859375
+                    },
+                    {
+                      "word": "to ",
+                      "start": 52.67271630859375,
+                      "end": 53.09824829101562
+                    },
+                    {
+                      "word": "your ",
+                      "start": 53.09824829101562,
+                      "end": 53.52378002929687
+                    },
+                    {
+                      "word": "account. ",
+                      "start": 53.21284301757812,
+                      "end": 53.638375
+                    },
+                    {
+                      "word": "Please ",
+                      "start": 53.638375,
+                      "end": 54.06390698242188
+                    },
+                    {
+                      "word": "give ",
+                      "start": 54.06390698242188,
+                      "end": 54.48943872070313
+                    },
+                    {
+                      "word": "us ",
+                      "start": 54.48943872070313,
+                      "end": 54.914970703125
+                    },
+                    {
+                      "word": "a ",
+                      "start": 54.914970703125,
+                      "end": 55.34050268554687
+                    },
+                    {
+                      "word": "call ",
+                      "start": 55.34050268554687,
+                      "end": 55.76603466796875
+                    },
+                    {
+                      "word": "back ",
+                      "start": 55.76603466796875,
+                      "end": 56.19156640625
+                    },
+                    {
+                      "word": "at ",
+                      "start": 56.19156640625,
+                      "end": 56.61709838867188
+                    },
+                    {
+                      "word": "+18888958366 ",
+                      "start": 56.61709838867188,
+                      "end": 57.04263037109375
+                    },
+                    {
+                      "word": " and ",
+                      "start": 57.04263037109375,
+                      "end": 57.46816235351562
+                    },
+                    {
+                      "word": "we'll ",
+                      "start": 57.46816235351562,
+                      "end": 57.893694091796874
+                    },
+                    {
+                      "word": "be ",
+                      "start": 57.893694091796874,
+                      "end": 58.31922607421875
+                    },
+                    {
+                      "word": "happy ",
+                      "start": 58.31922607421875,
+                      "end": 58.74475805664063
+                    },
+                    {
+                      "word": "to ",
+                      "start": 58.74475805664063,
+                      "end": 59.17028979492188
+                    },
+                    {
+                      "word": "assist ",
+                      "start": 59.17028979492188,
+                      "end": 59.59582177734375
+                    },
+                    {
+                      "word": "you. ",
+                      "start": 59.59582177734375,
+                      "end": 60.021353759765624
+                    },
+                    {
+                      "word": "Have ",
+                      "start": 60.25608325195312,
+                      "end": 60.681615234375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 60.681615234375,
+                      "end": 61.107147216796875
+                    },
+                    {
+                      "word": "wonderful ",
+                      "start": 61.107147216796875,
+                      "end": 61.53267919921875
+                    },
+                    {
+                      "word": "day",
+                      "start": 61.397884765625,
+                      "end": 61.823416748046874
+                    }
+                  ]
+                }
+              ],
+              "recording_url": "https://dxc03zgurdly9.cloudfront.net/2bb379cb72cd2f4622a94d47af896f27d8ad4f8713194ef3b7b3a2297239160a/recording.wav",
+              "recording_multi_channel_url": "https://dxc03zgurdly9.cloudfront.net/2bb379cb72cd2f4622a94d47af896f27d8ad4f8713194ef3b7b3a2297239160a/recording_multichannel.wav",
+              "public_log_url": "https://dxc03zgurdly9.cloudfront.net/2bb379cb72cd2f4622a94d47af896f27d8ad4f8713194ef3b7b3a2297239160a/public.log",
+              "disconnection_reason": "voicemail_reached",
+              "latency": {
+                "llm": {
+                  "p50": 988,
+                  "p90": 1138,
+                  "p95": 1187,
+                  "p99": 1226.2,
+                  "min": 667,
+                  "max": 1236,
+                  "num": 5,
+                  "sum": 4709,
+                  "values": [
+                    1236,
+                    667,
+                    988,
+                    991,
+                    827
+                  ]
+                },
+                "e2e": {
+                  "p50": 1825,
+                  "p90": 3388.2,
+                  "p95": 3583.6,
+                  "p99": 3739.92,
+                  "min": 1522,
+                  "max": 3779,
+                  "num": 3,
+                  "sum": 7126,
+                  "values": [
+                    3779,
+                    1825,
+                    1522
+                  ]
+                },
+                "tts": {
+                  "p50": 487,
+                  "p90": 567.8000000000001,
+                  "p95": 584.9,
+                  "p99": 598.5799999999999,
+                  "min": 424,
+                  "max": 602,
+                  "num": 4,
+                  "sum": 2000,
+                  "values": [
+                    424,
+                    602,
+                    486,
+                    488
+                  ]
+                },
+                "asr": {
+                  "p50": 257,
+                  "p90": 268.2,
+                  "p95": 269.6,
+                  "p99": 270.72,
+                  "min": 186,
+                  "max": 271,
+                  "num": 3,
+                  "sum": 714,
+                  "values": [
+                    271,
+                    186,
+                    257
+                  ]
+                }
+              },
+              "metadata": {
+                "request_ids": "14604439",
+                "recipient_name": "Emmanuel Custodian",
+                "amount_owed": "Ticket1, Solo one",
+                "invoice_amount": "[50]",
+                "total_invoice_amount": "50",
+                "days_past_due": "[51]",
+                "attempt": "1",
+                "requestor_email": "emmanuel.custodian@chartrequest.com",
+                "status": "new",
+                "phone_number": "+17433333036",
+                "patient_name": "Ticket1, Solo one",
+                "request_count": "1",
+                "follow_up_count": "0"
+              },
+              "call_cost": {
+                "product_costs": [
+                  {
+                    "product": "retell_voice_engine",
+                    "unit_price": 0.0916667,
+                    "cost": 5.6833354
+                  },
+                  {
+                    "product": "minimax_tts_new",
+                    "unit_price": 0.025,
+                    "cost": 1.55
+                  },
+                  {
+                    "product": "gpt_4_1_high_priority",
+                    "unit_price": 0.1125,
+                    "cost": 6.975
+                  },
+                  {
+                    "product": "llm_token_surcharge",
+                    "unit_price": 0.1,
+                    "cost": 12.4
+                  },
+                  {
+                    "product": "us_twilio_telephony",
+                    "unit_price": 0.025,
+                    "cost": 1.55
+                  }
+                ],
+                "total_duration_seconds": 62,
+                "total_duration_unit_price": 0.4541667,
+                "combined_cost": 28.1583354
+              },
+              "call_analysis": {
+                "call_summary": "The agent called Emmanuel Custodian regarding a pending medical records request but reached voicemail. The agent left a message requesting a callback for assistance.",
+                "in_voicemail": true,
+                "user_sentiment": "Neutral",
+                "call_successful": false,
+                "custom_analysis_data": {
+                  "call_outcome": "Reached voicemail",
+                  "timestamp": "Jul 24, 2026, 4:15 AM PDT",
+                  "disposition": "no_answer_voicemail_left",
+                  "status": "follow-up",
+                  "next_follow_up_date": "Sunday, July 26 2026",
+                  "payment_method": "",
+                  "promised_date": "Null",
+                  "promised_amount": "",
+                  "follow_up_required_flag": true,
+                  "follow_up_count": 1
+                }
+              },
+              "data_storage_setting": "everything",
+              "opt_in_signed_url": false,
+              "llm_token_usage": {
+                "values": [
+                  11112,
+                  11103,
+                  11145,
+                  11092,
+                  11188
+                ],
+                "average": 11128,
+                "num_requests": 5
+              },
+              "tool_calls": [],
+              "from_number": "+14707905839",
+              "to_number": "+17433333036",
+              "direction": "outbound",
+              "telephony_identifier": {
+                "twilio_call_sid": "CA19cc3c7fd4f75e8b67aa7ca3f0260e78"
+              }
+            },
+            "event_timestamp": 1784891753341
+          },
+          "webhookUrl": "https://chartrequest.app.n8n.cloud/webhook/0e28a15a-6d96-4579-95ca-2f30fe9faef4",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "parse data for disposition",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Log Call disposition": {
+      "main": [
+        [
+          {
+            "node": "Code to convert timestamp into iso format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate next follow-up date": {
+      "main": [
+        []
+      ]
+    },
+    "Code to convert timestamp into iso format": {
+      "main": [
+        [
+          {
+            "node": "Parse webhook data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If status is follow-up": {
+      "main": [
+        [
+          {
+            "node": "Calculate next follow-up date Test Node",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Update follow-up data": {
+      "main": [
+        []
+      ]
+    },
+    "Update post call data": {
+      "main": [
+        [
+          {
+            "node": "Update call attempts table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update call attempts table": {
+      "main": [
+        [
+          {
+            "node": "If status is follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Request": {
+      "main": [
+        [
+          {
+            "node": "Update post call data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse webhook data": {
+      "main": [
+        [
+          {
+            "node": "Get Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse data for disposition": {
+      "main": [
+        [
+          {
+            "node": "Log Call disposition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate next follow-up date Test Node": {
+      "main": [
+        [
+          {
+            "node": "Update follow-up data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "3Lef1SFasDFsypJs",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "80f5b80d-5f44-4fa4-8e09-bcb6af9e19aa",
+  "meta": {
+    "instanceId": "0abb16ec12a94ebb412535e26e364cbcc2c642f81dbc2853ba257d14e7b06ae1"
+  },
+  "nodeGroups": [],
+  "id": "0CDX8F22HwZqBy2S",
+  "tags": []
+}

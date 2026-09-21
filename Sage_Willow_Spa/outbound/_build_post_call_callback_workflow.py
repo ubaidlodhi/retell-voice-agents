@@ -1,11 +1,20 @@
 """
-Build the "inbound call went nowhere -> Aria rings them back" workflow in n8n.
+Build the post-call workflow in n8n: "inbound call went nowhere -> Aria rings
+them back", plus Aria's recap e-mail for every real conversation on EITHER agent.
 
 Run:  py -X utf8 outbound/_build_post_call_callback_workflow.py [--update <id>] [--dry-run]
+
+Both agents point their webhook_url at this one webhook (call_analyzed only).
+The callback branch ignores outbound calls by itself; the e-mail branch handles
+both directions.
 
 Flow
 ----
     Webhook (POST /webhook/sage-willow-post-call)      <- Retell agent webhook, call_analyzed
+        -> Compose: Post-Call Email   (outbound/post_call_email.js: real conversation? -> HTML)
+             -> IF Send Email? -> Send Email: Post-Call Recap  (SMTP, Aria <engineering@aiemply.com>,
+                                                     to the spa, engineering on CC; test line skipped)
+                               -> Skip: No Email
         -> Prepare Call               (hard facts only: right agent? real caller? transcript?)
         -> IF Classify With AI?
              yes -> Classify Call Outcome   (AI Agent: OpenAI gpt-4.1-mini + structured output)
@@ -55,7 +64,7 @@ from pathlib import Path
 
 N8N_BASE = "https://automation.aiemply.com"
 WEBHOOK_PATH = "sage-willow-post-call"
-WORKFLOW_NAME = "Sage & Willow | Inbound Post-Call -> Missed-Call Callback (DEV)"
+WORKFLOW_NAME = "Sage & Willow | Post-Call -> Callback + Aria Email (DEV)"
 
 INBOUND_AGENT_ID = "agent_eceb7448aa1f37e8f436a63a43"
 OUTBOUND_AGENT_ID = "agent_4ef8160dc71826818c6fd8122b"
@@ -75,10 +84,20 @@ OPENAI_MODEL = "gpt-4.1-mini"
 # purpose: it exists to stop a burst (four abandoned calls in a row -> four
 # callbacks), and 24 h blocked Ubaid's retests (exec 1687). Raise at go-live if
 # the client wants it.
-DEDUP_MINUTES = 5
+# Do not ring the same number twice inside this window. Was 5: on 2026-09-18 a
+# lead rang back 3 minutes after our voicemail, hung up on the greeting, and the
+# window was the only thing between them and a third call. Ubaid raised it to 15.
+DEDUP_MINUTES = 15
 
 OUT_DIR = Path(__file__).parent
 SNAPSHOT_PATH = OUT_DIR / "post_call_callback_workflow.json"
+# The recap e-mail node body lives in its own file so test_post_call_email.js
+# can run the very same code. Same SMTP credential the backend's callback
+# e-mail uses.
+EMAIL_CODE = (OUT_DIR / "post_call_email.js").read_text(encoding="utf-8")
+SMTP_CRED = {"id": "m0mbibKf6il36id5", "name": "SMTP account"}
+EMAIL_FROM = "Aria <engineering@aiemply.com>"
+EMAIL_REPLY_TO = "engineering@aiemply.com"
 
 
 def api_key() -> str:
@@ -88,7 +107,9 @@ def api_key() -> str:
     mcp = Path(__file__).resolve().parents[2] / ".mcp.json"
     raw = mcp.read_text(encoding="utf-8")
     cfg = json.loads(raw[raw.index("{"):])
-    return cfg["mcpServers"]["n8n-mcp"]["env"]["N8N_API_KEY"]
+    # `n8n-mcp-aiemply` specifically - the repo's .mcp.json also configures
+    # n8n-mcp-impleko, a different instance. A bare "n8n-mcp" entry no longer exists.
+    return cfg["mcpServers"]["n8n-mcp-aiemply"]["env"]["N8N_API_KEY"]
 
 
 def request(method: str, path: str, body: dict | None = None) -> dict:
@@ -499,6 +520,24 @@ def build() -> dict:
 
         node("skip-1", "Skip: Nothing To Do", "n8n-nodes-base.noOp", 1, [400, 420], {}),
         node("skip-2", "Skip: Resolved Itself", "n8n-nodes-base.noOp", 1, [1500, 320], {}),
+
+        # ---- Aria's recap e-mail (both agents) ----------------------------------
+        node("email-compose", "Compose: Post-Call Email", "n8n-nodes-base.code", 2,
+             [-880, 620], {"jsCode": EMAIL_CODE}),
+        bool_if("if-email", "IF: Send Email?", [-660, 620], "send"),
+        node("email-send", "Send Email: Post-Call Recap", "n8n-nodes-base.emailSend", 2.1,
+             [-420, 560],
+             {"fromEmail": EMAIL_FROM,
+              "toEmail": "={{ $json.to }}",
+              "subject": "={{ $json.subject }}",
+              "emailFormat": "both",
+              "html": "={{ $json.html }}",
+              "text": "={{ $json.text }}",
+              "options": {"appendAttribution": False, "replyTo": EMAIL_REPLY_TO,
+                          "ccEmail": "={{ $json.cc }}"}},
+             credentials={"smtp": SMTP_CRED},
+             onError="continueRegularOutput"),
+        node("skip-3", "Skip: No Email", "n8n-nodes-base.noOp", 1, [-420, 720], {}),
     ]
 
     def link(src, outputs):
@@ -506,7 +545,10 @@ def build() -> dict:
                                for outs in outputs]}}
 
     connections = {}
-    connections.update(link("Webhook - Retell call_analyzed", [["Prepare Call"]]))
+    # The webhook fans out: the callback chain and the e-mail chain run side by side.
+    connections.update(link("Webhook - Retell call_analyzed", [["Prepare Call", "Compose: Post-Call Email"]]))
+    connections.update(link("Compose: Post-Call Email", [["IF: Send Email?"]]))
+    connections.update(link("IF: Send Email?", [["Send Email: Post-Call Recap"], ["Skip: No Email"]]))
     connections.update(link("Prepare Call", [["IF: Classify With AI?"]]))
     # true -> the model; false -> straight to the verdict (skip / callback routes)
     connections.update(link("IF: Classify With AI?", [["Classify Call Outcome"], ["Apply Verdict"]]))

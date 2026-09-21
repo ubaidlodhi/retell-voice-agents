@@ -33,6 +33,10 @@ IF node between "Lead Valid?" and "Dry Run?".
 
 The `dryRun` flag exists so the normalizer can be exercised end to end without
 placing a real phone call.
+
+`agent_version` picks which outbound version to dial: "latest" (draft),
+"latest_published" (the default - what every real lead gets) or a version
+number. Anything else is ignored. Used by outbound/outbound_test_dialer.html.
 """
 
 from __future__ import annotations
@@ -199,6 +203,19 @@ const source = pick('source', 'lead_source') === 'missed_call' ? 'missed_call' :
 const inboundIntent = pick('inbound_intent');
 const inboundCallId = pick('inbound_call_id');
 
+// ---- which outbound version to dial -----------------------------------
+// Real leads never send this, and get the PUBLISHED version - exactly what the
+// inbound number does. A test payload (the dialer page, a curl) may ask for:
+//   "latest"           - the current draft
+//   "latest_published" - the same as sending nothing
+//   a version number   - one specific version, e.g. 3 or "3"
+// Anything else falls back to latest_published, so a typo can never select
+// an arbitrary version or reach the draft by accident.
+const versionRaw = String(bag['agent_version'] ?? '').trim().toLowerCase();
+const agentVersion = versionRaw === 'latest' ? 'latest'
+  : /^\d{1,4}$/.test(versionRaw) ? Number(versionRaw)
+  : 'latest_published';
+
 // ---- testing guard ----------------------------------------------------
 // While TEST_MODE is on, only numbers in ALLOWED_NUMBERS may be dialled.
 const testMode = cfg.TEST_MODE === true || cfg.TEST_MODE === 'true';
@@ -234,6 +251,7 @@ return [{
     lead_source: source,
     inbound_intent: inboundIntent,
     inbound_call_id: inboundCallId,
+    agent_version: agentVersion,
   },
 }];
 """
@@ -319,6 +337,12 @@ def build() -> dict:
                   f"  from_number: '{RETELL_FROM_NUMBER}',\n"
                   "  to_number: $json.to_number,\n"
                   f"  override_agent_id: '{OUTBOUND_AGENT_ID}',\n"
+                  "  // LIVE since 2026-09-19: real leads dial the most recently PUBLISHED\n"
+                  "  // version, exactly as the inbound number does. Draft edits never reach a\n"
+                  "  // lead until someone publishes them. \"Normalize Lead\" resolves\n"
+                  "  // agent_version ('latest' / 'latest_published' / a number) and only a\n"
+                  "  // test payload can move it off latest_published.\n"
+                  "  override_agent_version: typeof $json.agent_version === 'number' ? $json.agent_version : ($json.agent_version || 'latest_published'),\n"
                   "  retell_llm_dynamic_variables: {\n"
                   "    lead_first_name: $json.lead_first_name,\n"
                   "    lead_last_name: $json.lead_last_name,\n"
@@ -345,7 +369,7 @@ def build() -> dict:
         node("resp-queued", "Respond: Call Queued", "n8n-nodes-base.respondToWebhook", 1.1,
              [860, 180],
              {"respondWith": "json",
-              "responseBody": "={{ JSON.stringify({ ok: true, call_id: $json.call_id, to: $json.to_number }) }}",
+              "responseBody": "={{ JSON.stringify({ ok: true, call_id: $json.call_id, to: $json.to_number, agent_version: $json.agent_version }) }}",
               "options": {}}),
 
         node("resp-dry", "Respond: Dry Run", "n8n-nodes-base.respondToWebhook", 1.1,

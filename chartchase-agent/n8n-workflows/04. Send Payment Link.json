@@ -1,0 +1,1981 @@
+{
+  "name": "04. Send Payment Link",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://qa.greencheckhealth.com/api/v2/voice_agent/send_email_payment_link",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization-token",
+              "value": "eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbiI6ImEyOWJlOTVhODZmYWIxZmJkYWU5OWFkZSJ9.Rx1twPgw8XWVjtQ0IHVOUdCw4C1EKa_IASkGThTDewA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "request_id",
+              "value": "={{ $json.request_id }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "amount_due",
+              "value": "={{ $json.invoice_amount }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        256,
+        -96
+      ],
+      "id": "07279e4b-8535-4d4f-861e-6485e046e87b",
+      "name": "Send Payment link",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Fzj6sYbg3hLCGDms",
+          "name": "Chartrequest basic auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e0c3043b-af04-423d-a8e7-6a99ac75cdb7",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        -96
+      ],
+      "id": "f53e184f-df30-4474-beb2-138638225660",
+      "name": "get disposition data",
+      "webhookId": "e0c3043b-af04-423d-a8e7-6a99ac75cdb7"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json.body.args;\n\n// Split comma-separated strings into arrays, trimming whitespace\nconst requestIds = inputData.request_id.split(',').map(id => id.trim());\nconst invoiceAmounts = inputData.invoice_amount.split(',').map(amt => amt.trim());\n\n// Safety check: make sure counts match before pairing them up\nif (requestIds.length !== invoiceAmounts.length) {\n  throw new Error(\n    `Mismatch: ${requestIds.length} request IDs but ${invoiceAmounts.length} invoice amounts. ` +\n    `request_id=\"${inputData.request_id}\", invoice_amount=\"${inputData.invoice_amount}\"`\n  );\n}\n\n// Build one output item per request_id/invoice_amount pair\nconst outputItems = requestIds.map((requestId, index) => {\n  return {\n    json: {\n      request_id: requestId,\n      invoice_amount: invoiceAmounts[index],\n      email: inputData.email,\n      customer_name: inputData.customer_name,\n      disposition: inputData.disposition,\n      notes: inputData.notes,\n      call_timestamp: inputData.call_timestamp,\n      promised_date: inputData.promised_date,\n      payment_method: inputData.payment_method,\n      promised_amount: inputData.promised_amount,\n      total_amount_due: inputData.total_amount_due\n    }\n  };\n});\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        -96
+      ],
+      "id": "23b76792-76b2-4fb4-ac8d-49e811b79219",
+      "name": "split_invoices"
+    }
+  ],
+  "pinData": {
+    "get disposition data": [
+      {
+        "json": {
+          "headers": {
+            "host": "chartrequest.app.n8n.cloud",
+            "user-agent": "axios/1.15.2",
+            "content-length": "26759",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, br",
+            "baggage": "sentry-environment=production,sentry-public_key=f9776ac2f798b66bdadc990a2ed64f17,sentry-trace_id=9025393aec18446595667c2425508d91,sentry-org_id=4511141371183104",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "100.20.5.228",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "a2eae918cdb20ccf-PDX",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "sentry-trace": "9025393aec18446595667c2425508d91-83ce98e0ecea6b1f",
+            "x-forwarded-for": "100.20.5.228, 172.68.174.35",
+            "x-forwarded-host": "chartrequest.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-102-67c649b6c4-xm6lq",
+            "x-is-trusted": "yes",
+            "x-real-ip": "100.20.5.228",
+            "x-retell-signature": "v=1787328654079,d=b53b38650ea1ba59ea6cb8b7262525693d5ad90a92e678966973b2a313ba017c"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "call": {
+              "call_id": "call_f183cd19af006ac69194c31fddc",
+              "call_type": "phone_call",
+              "agent_id": "agent_617a4705e7d92d9fc029eddfe5",
+              "agent_version": 174,
+              "agent_name": "ChartChase - Collection Agent (LIVE)",
+              "retell_llm_dynamic_variables": {
+                "request_ids": "14609659",
+                "recipient_name": "Sudarshan",
+                "invoice_amount": "29.75",
+                "days_past_due": "30",
+                "user_name": "",
+                "requestor_email": "ins@req3.com",
+                "patient_name": "Steven Paul",
+                "request_count": "1",
+                "total_invoice_amount": "29.75",
+                "requestor_organization": "New York Life Insurance Company"
+              },
+              "contact_dynamic_variables": {},
+              "custom_sip_headers": {},
+              "call_status": "ongoing",
+              "start_timestamp": 1787328575442,
+              "transcript": "Agent: Hi, this is Hannah calling on behalf of ChartRequest about a medical records request.  Is this Sudarshan? \nUser: Yeah. Position queue. \nAgent:  I'm calling about Request ID one four six zero nine six five nine, submitted by New York Life Insurance Company for the patient Steven Paul.  Is this a good time for a quick update? \nUser: Yeah. We can. \nAgent: Our records show an invoice balance of twenty-nine dollars and seventy-five cents, which is thirty days past due.  You can pay through the ChartRequest portal using your login, mail in a check, or I can send you a secure payment link to your email for instant payment and download.  Which of those works best for you? \nUser: Can you send me a link? \nAgent: Sure.  Should I send it to ins@req3.com, or a different email? \nUser: Yeah. The same email. \nAgent: Okay.  I'll send that secure link to ins@req3.com. When do you plan to pay? Today, this week, or a specific date? \nUser: Immediately after this call, \n",
+              "transcript_object": [
+                {
+                  "role": "agent",
+                  "content": "Hi, this is Hannah calling on behalf of ChartRequest about a medical records request.  Is this Sudarshan? ",
+                  "words": [
+                    {
+                      "word": "Hi, ",
+                      "start": 1.612,
+                      "end": 1.9893583984375
+                    },
+                    {
+                      "word": "this ",
+                      "start": 1.9893583984375,
+                      "end": 2.366717041015625
+                    },
+                    {
+                      "word": "is ",
+                      "start": 2.366717041015625,
+                      "end": 2.744075439453125
+                    },
+                    {
+                      "word": "Hannah ",
+                      "start": 2.744075439453125,
+                      "end": 3.12143408203125
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 3.12143408203125,
+                      "end": 3.49879248046875
+                    },
+                    {
+                      "word": "on ",
+                      "start": 3.49879248046875,
+                      "end": 3.87615087890625
+                    },
+                    {
+                      "word": "behalf ",
+                      "start": 3.87615087890625,
+                      "end": 4.253509521484375
+                    },
+                    {
+                      "word": "of ",
+                      "start": 4.253509521484375,
+                      "end": 4.630867919921875
+                    },
+                    {
+                      "word": "ChartRequest ",
+                      "start": 4.630867919921875,
+                      "end": 5.008226318359375
+                    },
+                    {
+                      "word": "about ",
+                      "start": 5.008226318359375,
+                      "end": 5.3855849609375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 5.3855849609375,
+                      "end": 5.762943359375
+                    },
+                    {
+                      "word": "medical ",
+                      "start": 5.762943359375,
+                      "end": 6.140302001953125
+                    },
+                    {
+                      "word": "records ",
+                      "start": 6.140302001953125,
+                      "end": 6.517660400390625
+                    },
+                    {
+                      "word": "request. ",
+                      "start": 6.517660400390625,
+                      "end": 6.895018798828125
+                    },
+                    {
+                      "word": " Is ",
+                      "start": 7.486666748046875,
+                      "end": 7.864025146484375
+                    },
+                    {
+                      "word": "this ",
+                      "start": 7.864025146484375,
+                      "end": 8.241383544921876
+                    },
+                    {
+                      "word": "Sudarshan? ",
+                      "start": 8.241383544921876,
+                      "end": 8.6187421875
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 0
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Yeah. Position queue. ",
+                  "words": [
+                    {
+                      "word": "Yeah. ",
+                      "start": 10.965000999999999,
+                      "end": 11.285
+                    },
+                    {
+                      "word": "Position ",
+                      "start": 11.285,
+                      "end": 11.685001
+                    },
+                    {
+                      "word": "queue. ",
+                      "start": 11.685001,
+                      "end": 11.925001
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": " I'm calling about Request ID one four six zero nine six five nine, submitted by New York Life Insurance Company for the patient Steven Paul.  Is this a good time for a quick update? ",
+                  "words": [
+                    {
+                      "word": " I'm ",
+                      "start": 13.135,
+                      "end": 13.5123583984375
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 13.5123583984375,
+                      "end": 13.889717041015626
+                    },
+                    {
+                      "word": "about ",
+                      "start": 13.889717041015626,
+                      "end": 14.267075439453125
+                    },
+                    {
+                      "word": "Request ",
+                      "start": 14.267075439453125,
+                      "end": 14.64443408203125
+                    },
+                    {
+                      "word": "ID ",
+                      "start": 14.64443408203125,
+                      "end": 15.02179248046875
+                    },
+                    {
+                      "word": "one ",
+                      "start": 15.02179248046875,
+                      "end": 15.39915087890625
+                    },
+                    {
+                      "word": "four ",
+                      "start": 15.39915087890625,
+                      "end": 15.776509521484375
+                    },
+                    {
+                      "word": "six ",
+                      "start": 15.776509521484375,
+                      "end": 16.153867919921876
+                    },
+                    {
+                      "word": "zero ",
+                      "start": 16.153867919921876,
+                      "end": 16.531226318359376
+                    },
+                    {
+                      "word": "nine ",
+                      "start": 16.531226318359376,
+                      "end": 16.9085849609375
+                    },
+                    {
+                      "word": "six ",
+                      "start": 16.9085849609375,
+                      "end": 17.285943359375
+                    },
+                    {
+                      "word": "five ",
+                      "start": 17.285943359375,
+                      "end": 17.663302001953124
+                    },
+                    {
+                      "word": "nine, ",
+                      "start": 17.663302001953124,
+                      "end": 18.040660400390625
+                    },
+                    {
+                      "word": "submitted ",
+                      "start": 18.040660400390625,
+                      "end": 18.418018798828125
+                    },
+                    {
+                      "word": "by ",
+                      "start": 18.418018798828125,
+                      "end": 18.79537744140625
+                    },
+                    {
+                      "word": "New ",
+                      "start": 18.79537744140625,
+                      "end": 19.17273583984375
+                    },
+                    {
+                      "word": "York ",
+                      "start": 19.17273583984375,
+                      "end": 19.55009423828125
+                    },
+                    {
+                      "word": "Life ",
+                      "start": 19.55009423828125,
+                      "end": 19.927452880859374
+                    },
+                    {
+                      "word": "Insurance ",
+                      "start": 19.927452880859374,
+                      "end": 20.304811279296874
+                    },
+                    {
+                      "word": "Company ",
+                      "start": 20.304811279296874,
+                      "end": 20.682169921875
+                    },
+                    {
+                      "word": "for ",
+                      "start": 20.682169921875,
+                      "end": 21.0595283203125
+                    },
+                    {
+                      "word": "the ",
+                      "start": 21.0595283203125,
+                      "end": 21.43688671875
+                    },
+                    {
+                      "word": "patient ",
+                      "start": 21.43688671875,
+                      "end": 21.814245361328126
+                    },
+                    {
+                      "word": "Steven ",
+                      "start": 21.814245361328126,
+                      "end": 22.191603759765623
+                    },
+                    {
+                      "word": "Paul. ",
+                      "start": 22.191603759765623,
+                      "end": 22.568962158203124
+                    },
+                    {
+                      "word": " Is ",
+                      "start": 22.724833251953125,
+                      "end": 23.10219189453125
+                    },
+                    {
+                      "word": "this ",
+                      "start": 23.10219189453125,
+                      "end": 23.47955029296875
+                    },
+                    {
+                      "word": "a ",
+                      "start": 23.47955029296875,
+                      "end": 23.85690869140625
+                    },
+                    {
+                      "word": "good ",
+                      "start": 23.85690869140625,
+                      "end": 24.234267333984373
+                    },
+                    {
+                      "word": "time ",
+                      "start": 24.234267333984373,
+                      "end": 24.611625732421874
+                    },
+                    {
+                      "word": "for ",
+                      "start": 24.611625732421874,
+                      "end": 24.988984375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 24.988984375,
+                      "end": 25.3663427734375
+                    },
+                    {
+                      "word": "quick ",
+                      "start": 25.3663427734375,
+                      "end": 25.743701171875
+                    },
+                    {
+                      "word": "update? ",
+                      "start": 25.743701171875,
+                      "end": 26.121059814453126
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 2
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Yeah. We can. ",
+                  "words": [
+                    {
+                      "word": "Yeah. ",
+                      "start": 26.375,
+                      "end": 26.615000000000002
+                    },
+                    {
+                      "word": "We ",
+                      "start": 26.615000000000002,
+                      "end": 26.854999000000003
+                    },
+                    {
+                      "word": "can. ",
+                      "start": 26.854999000000003,
+                      "end": 27.014999
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Our records show an invoice balance of twenty-nine dollars and seventy-five cents, which is thirty days past due.  You can pay through the ChartRequest portal using your login, mail in a check, or I can send you a secure payment link to your email for instant payment and download.  Which of those works best for you? ",
+                  "words": [
+                    {
+                      "word": "Our ",
+                      "start": 28.3,
+                      "end": 28.6773583984375
+                    },
+                    {
+                      "word": "records ",
+                      "start": 28.6773583984375,
+                      "end": 29.054717041015625
+                    },
+                    {
+                      "word": "show ",
+                      "start": 29.054717041015625,
+                      "end": 29.432075439453126
+                    },
+                    {
+                      "word": "an ",
+                      "start": 29.432075439453126,
+                      "end": 29.80943408203125
+                    },
+                    {
+                      "word": "invoice ",
+                      "start": 29.80943408203125,
+                      "end": 30.18679248046875
+                    },
+                    {
+                      "word": "balance ",
+                      "start": 30.18679248046875,
+                      "end": 30.56415087890625
+                    },
+                    {
+                      "word": "of ",
+                      "start": 30.56415087890625,
+                      "end": 30.941509521484374
+                    },
+                    {
+                      "word": "twenty-nine ",
+                      "start": 30.941509521484374,
+                      "end": 31.318867919921875
+                    },
+                    {
+                      "word": "dollars ",
+                      "start": 31.318867919921875,
+                      "end": 31.696226318359376
+                    },
+                    {
+                      "word": "and ",
+                      "start": 31.696226318359376,
+                      "end": 32.0735849609375
+                    },
+                    {
+                      "word": "seventy-five ",
+                      "start": 32.0735849609375,
+                      "end": 32.450943359375
+                    },
+                    {
+                      "word": "cents, ",
+                      "start": 32.450943359375,
+                      "end": 32.828302001953126
+                    },
+                    {
+                      "word": "which ",
+                      "start": 32.828302001953126,
+                      "end": 33.20566040039063
+                    },
+                    {
+                      "word": "is ",
+                      "start": 33.20566040039063,
+                      "end": 33.58301879882813
+                    },
+                    {
+                      "word": "thirty ",
+                      "start": 33.58301879882813,
+                      "end": 33.96037744140625
+                    },
+                    {
+                      "word": "days ",
+                      "start": 33.96037744140625,
+                      "end": 34.33773583984375
+                    },
+                    {
+                      "word": "past ",
+                      "start": 34.33773583984375,
+                      "end": 34.71509423828125
+                    },
+                    {
+                      "word": "due. ",
+                      "start": 34.71509423828125,
+                      "end": 35.092452880859376
+                    },
+                    {
+                      "word": " You ",
+                      "start": 34.74354174804687,
+                      "end": 35.120900146484374
+                    },
+                    {
+                      "word": "can ",
+                      "start": 35.120900146484374,
+                      "end": 35.498258544921875
+                    },
+                    {
+                      "word": "pay ",
+                      "start": 35.498258544921875,
+                      "end": 35.8756171875
+                    },
+                    {
+                      "word": "through ",
+                      "start": 35.8756171875,
+                      "end": 36.2529755859375
+                    },
+                    {
+                      "word": "the ",
+                      "start": 36.2529755859375,
+                      "end": 36.63033422851562
+                    },
+                    {
+                      "word": "ChartRequest ",
+                      "start": 36.63033422851562,
+                      "end": 37.00769262695312
+                    },
+                    {
+                      "word": "portal ",
+                      "start": 37.00769262695312,
+                      "end": 37.385051025390624
+                    },
+                    {
+                      "word": "using ",
+                      "start": 37.385051025390624,
+                      "end": 37.76240966796875
+                    },
+                    {
+                      "word": "your ",
+                      "start": 37.76240966796875,
+                      "end": 38.13976806640625
+                    },
+                    {
+                      "word": "login, ",
+                      "start": 38.13976806640625,
+                      "end": 38.51712646484375
+                    },
+                    {
+                      "word": "mail ",
+                      "start": 38.51712646484375,
+                      "end": 38.89448510742187
+                    },
+                    {
+                      "word": "in ",
+                      "start": 38.89448510742187,
+                      "end": 39.27184350585937
+                    },
+                    {
+                      "word": "a ",
+                      "start": 39.27184350585937,
+                      "end": 39.6492021484375
+                    },
+                    {
+                      "word": "check, ",
+                      "start": 39.6492021484375,
+                      "end": 40.026560546875
+                    },
+                    {
+                      "word": "or ",
+                      "start": 40.026560546875,
+                      "end": 40.4039189453125
+                    },
+                    {
+                      "word": "I ",
+                      "start": 40.4039189453125,
+                      "end": 40.78127758789063
+                    },
+                    {
+                      "word": "can ",
+                      "start": 40.78127758789063,
+                      "end": 41.15863598632812
+                    },
+                    {
+                      "word": "send ",
+                      "start": 41.15863598632812,
+                      "end": 41.53599438476562
+                    },
+                    {
+                      "word": "you ",
+                      "start": 41.53599438476562,
+                      "end": 41.91335302734375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 41.91335302734375,
+                      "end": 42.29071142578125
+                    },
+                    {
+                      "word": "secure ",
+                      "start": 42.29071142578125,
+                      "end": 42.66807006835938
+                    },
+                    {
+                      "word": "payment ",
+                      "start": 42.66807006835938,
+                      "end": 43.04542846679688
+                    },
+                    {
+                      "word": "link ",
+                      "start": 43.04542846679688,
+                      "end": 43.42278686523437
+                    },
+                    {
+                      "word": "to ",
+                      "start": 43.42278686523437,
+                      "end": 43.8001455078125
+                    },
+                    {
+                      "word": "your ",
+                      "start": 43.8001455078125,
+                      "end": 44.17750390625
+                    },
+                    {
+                      "word": "email ",
+                      "start": 44.17750390625,
+                      "end": 44.5548623046875
+                    },
+                    {
+                      "word": "for ",
+                      "start": 44.5548623046875,
+                      "end": 44.93222094726563
+                    },
+                    {
+                      "word": "instant ",
+                      "start": 44.93222094726563,
+                      "end": 45.30957934570313
+                    },
+                    {
+                      "word": "payment ",
+                      "start": 45.30957934570313,
+                      "end": 45.68693798828125
+                    },
+                    {
+                      "word": "and ",
+                      "start": 45.68693798828125,
+                      "end": 46.06429638671875
+                    },
+                    {
+                      "word": "download. ",
+                      "start": 46.06429638671875,
+                      "end": 46.44165478515625
+                    },
+                    {
+                      "word": " Which ",
+                      "start": 44.937125,
+                      "end": 45.3144833984375
+                    },
+                    {
+                      "word": "of ",
+                      "start": 45.3144833984375,
+                      "end": 45.691842041015626
+                    },
+                    {
+                      "word": "those ",
+                      "start": 45.691842041015626,
+                      "end": 46.06920043945313
+                    },
+                    {
+                      "word": "works ",
+                      "start": 46.06920043945313,
+                      "end": 46.44655908203125
+                    },
+                    {
+                      "word": "best ",
+                      "start": 46.44655908203125,
+                      "end": 46.82391748046875
+                    },
+                    {
+                      "word": "for ",
+                      "start": 46.82391748046875,
+                      "end": 47.20127587890625
+                    },
+                    {
+                      "word": "you? ",
+                      "start": 47.20127587890625,
+                      "end": 47.578634521484375
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 4
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Can you send me a link? ",
+                  "words": [
+                    {
+                      "word": "Can ",
+                      "start": 49.065,
+                      "end": 49.305
+                    },
+                    {
+                      "word": "you ",
+                      "start": 49.305,
+                      "end": 49.464999999999996
+                    },
+                    {
+                      "word": "send ",
+                      "start": 49.464999999999996,
+                      "end": 49.545003
+                    },
+                    {
+                      "word": "me ",
+                      "start": 49.545003,
+                      "end": 49.705003
+                    },
+                    {
+                      "word": "a ",
+                      "start": 49.705003,
+                      "end": 49.785
+                    },
+                    {
+                      "word": "link? ",
+                      "start": 49.785,
+                      "end": 50.025003
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Sure.  Should I send it to ins@req3.com, or a different email? ",
+                  "words": [
+                    {
+                      "word": "Sure. ",
+                      "start": 51.023,
+                      "end": 51.4003583984375
+                    },
+                    {
+                      "word": " Should ",
+                      "start": 52.03308325195312,
+                      "end": 52.41044189453125
+                    },
+                    {
+                      "word": "I ",
+                      "start": 52.41044189453125,
+                      "end": 52.78780029296875
+                    },
+                    {
+                      "word": "send ",
+                      "start": 52.78780029296875,
+                      "end": 53.16515869140625
+                    },
+                    {
+                      "word": "it ",
+                      "start": 53.16515869140625,
+                      "end": 53.54251733398438
+                    },
+                    {
+                      "word": "to ",
+                      "start": 53.54251733398438,
+                      "end": 53.91987573242187
+                    },
+                    {
+                      "word": "ins@req3.com, ",
+                      "start": 53.91987573242187,
+                      "end": 54.297234375
+                    },
+                    {
+                      "word": "or ",
+                      "start": 54.297234375,
+                      "end": 54.6745927734375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 54.6745927734375,
+                      "end": 55.051951171875
+                    },
+                    {
+                      "word": "different ",
+                      "start": 55.051951171875,
+                      "end": 55.42930981445313
+                    },
+                    {
+                      "word": "email? ",
+                      "start": 55.42930981445313,
+                      "end": 55.80666821289063
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 5
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Yeah. The same email. ",
+                  "words": [
+                    {
+                      "word": "Yeah. ",
+                      "start": 60.165,
+                      "end": 60.404996
+                    },
+                    {
+                      "word": "The ",
+                      "start": 60.404996,
+                      "end": 60.565
+                    },
+                    {
+                      "word": "same ",
+                      "start": 60.565,
+                      "end": 60.724999999999994
+                    },
+                    {
+                      "word": "email. ",
+                      "start": 60.724999999999994,
+                      "end": 60.964997999999994
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Okay.  I'll send that secure link to ins@req3.com. When do you plan to pay? Today, this week, or a specific date? ",
+                  "words": [
+                    {
+                      "word": "Okay. ",
+                      "start": 62.579,
+                      "end": 62.9563583984375
+                    },
+                    {
+                      "word": " I'll ",
+                      "start": 63.50779174804688,
+                      "end": 63.88515014648438
+                    },
+                    {
+                      "word": "send ",
+                      "start": 63.88515014648438,
+                      "end": 64.26250854492187
+                    },
+                    {
+                      "word": "that ",
+                      "start": 64.26250854492187,
+                      "end": 64.6398671875
+                    },
+                    {
+                      "word": "secure ",
+                      "start": 64.6398671875,
+                      "end": 65.0172255859375
+                    },
+                    {
+                      "word": "link ",
+                      "start": 65.0172255859375,
+                      "end": 65.39458422851563
+                    },
+                    {
+                      "word": "to ",
+                      "start": 65.39458422851563,
+                      "end": 65.77194262695312
+                    },
+                    {
+                      "word": "ins@req3.com. ",
+                      "start": 65.77194262695312,
+                      "end": 66.14930102539063
+                    },
+                    {
+                      "word": "When ",
+                      "start": 69.46370825195312,
+                      "end": 69.84106689453125
+                    },
+                    {
+                      "word": "do ",
+                      "start": 69.84106689453125,
+                      "end": 70.21842529296875
+                    },
+                    {
+                      "word": "you ",
+                      "start": 70.21842529296875,
+                      "end": 70.59578369140625
+                    },
+                    {
+                      "word": "plan ",
+                      "start": 70.59578369140625,
+                      "end": 70.97314233398437
+                    },
+                    {
+                      "word": "to ",
+                      "start": 70.97314233398437,
+                      "end": 71.35050073242188
+                    },
+                    {
+                      "word": "pay? ",
+                      "start": 71.35050073242188,
+                      "end": 71.727859375
+                    },
+                    {
+                      "word": "Today, ",
+                      "start": 71.727859375,
+                      "end": 72.1052177734375
+                    },
+                    {
+                      "word": "this ",
+                      "start": 72.1052177734375,
+                      "end": 72.482576171875
+                    },
+                    {
+                      "word": "week, ",
+                      "start": 72.482576171875,
+                      "end": 72.85993481445313
+                    },
+                    {
+                      "word": "or ",
+                      "start": 72.85993481445313,
+                      "end": 73.23729321289062
+                    },
+                    {
+                      "word": "a ",
+                      "start": 73.23729321289062,
+                      "end": 73.61465161132813
+                    },
+                    {
+                      "word": "specific ",
+                      "start": 73.61465161132813,
+                      "end": 73.99201025390624
+                    },
+                    {
+                      "word": "date? ",
+                      "start": 73.99201025390624,
+                      "end": 74.36936865234375
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 7
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Immediately after this call, ",
+                  "words": [
+                    {
+                      "word": "Immediately ",
+                      "start": 76.184995,
+                      "end": 76.66499999999999
+                    },
+                    {
+                      "word": "after ",
+                      "start": 76.66499999999999,
+                      "end": 76.985
+                    },
+                    {
+                      "word": "this ",
+                      "start": 76.985,
+                      "end": 77.224996
+                    },
+                    {
+                      "word": "call, ",
+                      "start": 77.224996,
+                      "end": 77.38499999999999
+                    }
+                  ]
+                }
+              ],
+              "transcript_with_tool_calls": [
+                {
+                  "role": "agent",
+                  "content": "Hi, this is Hannah calling on behalf of ChartRequest about a medical records request.  Is this Sudarshan? ",
+                  "words": [
+                    {
+                      "word": "Hi, ",
+                      "start": 1.612,
+                      "end": 1.9893583984375
+                    },
+                    {
+                      "word": "this ",
+                      "start": 1.9893583984375,
+                      "end": 2.366717041015625
+                    },
+                    {
+                      "word": "is ",
+                      "start": 2.366717041015625,
+                      "end": 2.744075439453125
+                    },
+                    {
+                      "word": "Hannah ",
+                      "start": 2.744075439453125,
+                      "end": 3.12143408203125
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 3.12143408203125,
+                      "end": 3.49879248046875
+                    },
+                    {
+                      "word": "on ",
+                      "start": 3.49879248046875,
+                      "end": 3.87615087890625
+                    },
+                    {
+                      "word": "behalf ",
+                      "start": 3.87615087890625,
+                      "end": 4.253509521484375
+                    },
+                    {
+                      "word": "of ",
+                      "start": 4.253509521484375,
+                      "end": 4.630867919921875
+                    },
+                    {
+                      "word": "ChartRequest ",
+                      "start": 4.630867919921875,
+                      "end": 5.008226318359375
+                    },
+                    {
+                      "word": "about ",
+                      "start": 5.008226318359375,
+                      "end": 5.3855849609375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 5.3855849609375,
+                      "end": 5.762943359375
+                    },
+                    {
+                      "word": "medical ",
+                      "start": 5.762943359375,
+                      "end": 6.140302001953125
+                    },
+                    {
+                      "word": "records ",
+                      "start": 6.140302001953125,
+                      "end": 6.517660400390625
+                    },
+                    {
+                      "word": "request. ",
+                      "start": 6.517660400390625,
+                      "end": 6.895018798828125
+                    },
+                    {
+                      "word": " Is ",
+                      "start": 7.486666748046875,
+                      "end": 7.864025146484375
+                    },
+                    {
+                      "word": "this ",
+                      "start": 7.864025146484375,
+                      "end": 8.241383544921876
+                    },
+                    {
+                      "word": "Sudarshan? ",
+                      "start": 8.241383544921876,
+                      "end": 8.6187421875
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 0
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Yeah. Position queue. ",
+                  "words": [
+                    {
+                      "word": "Yeah. ",
+                      "start": 10.965000999999999,
+                      "end": 11.285
+                    },
+                    {
+                      "word": "Position ",
+                      "start": 11.285,
+                      "end": 11.685001
+                    },
+                    {
+                      "word": "queue. ",
+                      "start": 11.685001,
+                      "end": 11.925001
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": " I'm calling about Request ID one four six zero nine six five nine, submitted by New York Life Insurance Company for the patient Steven Paul.  Is this a good time for a quick update? ",
+                  "words": [
+                    {
+                      "word": " I'm ",
+                      "start": 13.135,
+                      "end": 13.5123583984375
+                    },
+                    {
+                      "word": "calling ",
+                      "start": 13.5123583984375,
+                      "end": 13.889717041015626
+                    },
+                    {
+                      "word": "about ",
+                      "start": 13.889717041015626,
+                      "end": 14.267075439453125
+                    },
+                    {
+                      "word": "Request ",
+                      "start": 14.267075439453125,
+                      "end": 14.64443408203125
+                    },
+                    {
+                      "word": "ID ",
+                      "start": 14.64443408203125,
+                      "end": 15.02179248046875
+                    },
+                    {
+                      "word": "one ",
+                      "start": 15.02179248046875,
+                      "end": 15.39915087890625
+                    },
+                    {
+                      "word": "four ",
+                      "start": 15.39915087890625,
+                      "end": 15.776509521484375
+                    },
+                    {
+                      "word": "six ",
+                      "start": 15.776509521484375,
+                      "end": 16.153867919921876
+                    },
+                    {
+                      "word": "zero ",
+                      "start": 16.153867919921876,
+                      "end": 16.531226318359376
+                    },
+                    {
+                      "word": "nine ",
+                      "start": 16.531226318359376,
+                      "end": 16.9085849609375
+                    },
+                    {
+                      "word": "six ",
+                      "start": 16.9085849609375,
+                      "end": 17.285943359375
+                    },
+                    {
+                      "word": "five ",
+                      "start": 17.285943359375,
+                      "end": 17.663302001953124
+                    },
+                    {
+                      "word": "nine, ",
+                      "start": 17.663302001953124,
+                      "end": 18.040660400390625
+                    },
+                    {
+                      "word": "submitted ",
+                      "start": 18.040660400390625,
+                      "end": 18.418018798828125
+                    },
+                    {
+                      "word": "by ",
+                      "start": 18.418018798828125,
+                      "end": 18.79537744140625
+                    },
+                    {
+                      "word": "New ",
+                      "start": 18.79537744140625,
+                      "end": 19.17273583984375
+                    },
+                    {
+                      "word": "York ",
+                      "start": 19.17273583984375,
+                      "end": 19.55009423828125
+                    },
+                    {
+                      "word": "Life ",
+                      "start": 19.55009423828125,
+                      "end": 19.927452880859374
+                    },
+                    {
+                      "word": "Insurance ",
+                      "start": 19.927452880859374,
+                      "end": 20.304811279296874
+                    },
+                    {
+                      "word": "Company ",
+                      "start": 20.304811279296874,
+                      "end": 20.682169921875
+                    },
+                    {
+                      "word": "for ",
+                      "start": 20.682169921875,
+                      "end": 21.0595283203125
+                    },
+                    {
+                      "word": "the ",
+                      "start": 21.0595283203125,
+                      "end": 21.43688671875
+                    },
+                    {
+                      "word": "patient ",
+                      "start": 21.43688671875,
+                      "end": 21.814245361328126
+                    },
+                    {
+                      "word": "Steven ",
+                      "start": 21.814245361328126,
+                      "end": 22.191603759765623
+                    },
+                    {
+                      "word": "Paul. ",
+                      "start": 22.191603759765623,
+                      "end": 22.568962158203124
+                    },
+                    {
+                      "word": " Is ",
+                      "start": 22.724833251953125,
+                      "end": 23.10219189453125
+                    },
+                    {
+                      "word": "this ",
+                      "start": 23.10219189453125,
+                      "end": 23.47955029296875
+                    },
+                    {
+                      "word": "a ",
+                      "start": 23.47955029296875,
+                      "end": 23.85690869140625
+                    },
+                    {
+                      "word": "good ",
+                      "start": 23.85690869140625,
+                      "end": 24.234267333984373
+                    },
+                    {
+                      "word": "time ",
+                      "start": 24.234267333984373,
+                      "end": 24.611625732421874
+                    },
+                    {
+                      "word": "for ",
+                      "start": 24.611625732421874,
+                      "end": 24.988984375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 24.988984375,
+                      "end": 25.3663427734375
+                    },
+                    {
+                      "word": "quick ",
+                      "start": 25.3663427734375,
+                      "end": 25.743701171875
+                    },
+                    {
+                      "word": "update? ",
+                      "start": 25.743701171875,
+                      "end": 26.121059814453126
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 2
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Yeah. We can. ",
+                  "words": [
+                    {
+                      "word": "Yeah. ",
+                      "start": 26.375,
+                      "end": 26.615000000000002
+                    },
+                    {
+                      "word": "We ",
+                      "start": 26.615000000000002,
+                      "end": 26.854999000000003
+                    },
+                    {
+                      "word": "can. ",
+                      "start": 26.854999000000003,
+                      "end": 27.014999
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Our records show an invoice balance of twenty-nine dollars and seventy-five cents, which is thirty days past due.  You can pay through the ChartRequest portal using your login, mail in a check, or I can send you a secure payment link to your email for instant payment and download.  Which of those works best for you? ",
+                  "words": [
+                    {
+                      "word": "Our ",
+                      "start": 28.3,
+                      "end": 28.6773583984375
+                    },
+                    {
+                      "word": "records ",
+                      "start": 28.6773583984375,
+                      "end": 29.054717041015625
+                    },
+                    {
+                      "word": "show ",
+                      "start": 29.054717041015625,
+                      "end": 29.432075439453126
+                    },
+                    {
+                      "word": "an ",
+                      "start": 29.432075439453126,
+                      "end": 29.80943408203125
+                    },
+                    {
+                      "word": "invoice ",
+                      "start": 29.80943408203125,
+                      "end": 30.18679248046875
+                    },
+                    {
+                      "word": "balance ",
+                      "start": 30.18679248046875,
+                      "end": 30.56415087890625
+                    },
+                    {
+                      "word": "of ",
+                      "start": 30.56415087890625,
+                      "end": 30.941509521484374
+                    },
+                    {
+                      "word": "twenty-nine ",
+                      "start": 30.941509521484374,
+                      "end": 31.318867919921875
+                    },
+                    {
+                      "word": "dollars ",
+                      "start": 31.318867919921875,
+                      "end": 31.696226318359376
+                    },
+                    {
+                      "word": "and ",
+                      "start": 31.696226318359376,
+                      "end": 32.0735849609375
+                    },
+                    {
+                      "word": "seventy-five ",
+                      "start": 32.0735849609375,
+                      "end": 32.450943359375
+                    },
+                    {
+                      "word": "cents, ",
+                      "start": 32.450943359375,
+                      "end": 32.828302001953126
+                    },
+                    {
+                      "word": "which ",
+                      "start": 32.828302001953126,
+                      "end": 33.20566040039063
+                    },
+                    {
+                      "word": "is ",
+                      "start": 33.20566040039063,
+                      "end": 33.58301879882813
+                    },
+                    {
+                      "word": "thirty ",
+                      "start": 33.58301879882813,
+                      "end": 33.96037744140625
+                    },
+                    {
+                      "word": "days ",
+                      "start": 33.96037744140625,
+                      "end": 34.33773583984375
+                    },
+                    {
+                      "word": "past ",
+                      "start": 34.33773583984375,
+                      "end": 34.71509423828125
+                    },
+                    {
+                      "word": "due. ",
+                      "start": 34.71509423828125,
+                      "end": 35.092452880859376
+                    },
+                    {
+                      "word": " You ",
+                      "start": 34.74354174804687,
+                      "end": 35.120900146484374
+                    },
+                    {
+                      "word": "can ",
+                      "start": 35.120900146484374,
+                      "end": 35.498258544921875
+                    },
+                    {
+                      "word": "pay ",
+                      "start": 35.498258544921875,
+                      "end": 35.8756171875
+                    },
+                    {
+                      "word": "through ",
+                      "start": 35.8756171875,
+                      "end": 36.2529755859375
+                    },
+                    {
+                      "word": "the ",
+                      "start": 36.2529755859375,
+                      "end": 36.63033422851562
+                    },
+                    {
+                      "word": "ChartRequest ",
+                      "start": 36.63033422851562,
+                      "end": 37.00769262695312
+                    },
+                    {
+                      "word": "portal ",
+                      "start": 37.00769262695312,
+                      "end": 37.385051025390624
+                    },
+                    {
+                      "word": "using ",
+                      "start": 37.385051025390624,
+                      "end": 37.76240966796875
+                    },
+                    {
+                      "word": "your ",
+                      "start": 37.76240966796875,
+                      "end": 38.13976806640625
+                    },
+                    {
+                      "word": "login, ",
+                      "start": 38.13976806640625,
+                      "end": 38.51712646484375
+                    },
+                    {
+                      "word": "mail ",
+                      "start": 38.51712646484375,
+                      "end": 38.89448510742187
+                    },
+                    {
+                      "word": "in ",
+                      "start": 38.89448510742187,
+                      "end": 39.27184350585937
+                    },
+                    {
+                      "word": "a ",
+                      "start": 39.27184350585937,
+                      "end": 39.6492021484375
+                    },
+                    {
+                      "word": "check, ",
+                      "start": 39.6492021484375,
+                      "end": 40.026560546875
+                    },
+                    {
+                      "word": "or ",
+                      "start": 40.026560546875,
+                      "end": 40.4039189453125
+                    },
+                    {
+                      "word": "I ",
+                      "start": 40.4039189453125,
+                      "end": 40.78127758789063
+                    },
+                    {
+                      "word": "can ",
+                      "start": 40.78127758789063,
+                      "end": 41.15863598632812
+                    },
+                    {
+                      "word": "send ",
+                      "start": 41.15863598632812,
+                      "end": 41.53599438476562
+                    },
+                    {
+                      "word": "you ",
+                      "start": 41.53599438476562,
+                      "end": 41.91335302734375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 41.91335302734375,
+                      "end": 42.29071142578125
+                    },
+                    {
+                      "word": "secure ",
+                      "start": 42.29071142578125,
+                      "end": 42.66807006835938
+                    },
+                    {
+                      "word": "payment ",
+                      "start": 42.66807006835938,
+                      "end": 43.04542846679688
+                    },
+                    {
+                      "word": "link ",
+                      "start": 43.04542846679688,
+                      "end": 43.42278686523437
+                    },
+                    {
+                      "word": "to ",
+                      "start": 43.42278686523437,
+                      "end": 43.8001455078125
+                    },
+                    {
+                      "word": "your ",
+                      "start": 43.8001455078125,
+                      "end": 44.17750390625
+                    },
+                    {
+                      "word": "email ",
+                      "start": 44.17750390625,
+                      "end": 44.5548623046875
+                    },
+                    {
+                      "word": "for ",
+                      "start": 44.5548623046875,
+                      "end": 44.93222094726563
+                    },
+                    {
+                      "word": "instant ",
+                      "start": 44.93222094726563,
+                      "end": 45.30957934570313
+                    },
+                    {
+                      "word": "payment ",
+                      "start": 45.30957934570313,
+                      "end": 45.68693798828125
+                    },
+                    {
+                      "word": "and ",
+                      "start": 45.68693798828125,
+                      "end": 46.06429638671875
+                    },
+                    {
+                      "word": "download. ",
+                      "start": 46.06429638671875,
+                      "end": 46.44165478515625
+                    },
+                    {
+                      "word": " Which ",
+                      "start": 44.937125,
+                      "end": 45.3144833984375
+                    },
+                    {
+                      "word": "of ",
+                      "start": 45.3144833984375,
+                      "end": 45.691842041015626
+                    },
+                    {
+                      "word": "those ",
+                      "start": 45.691842041015626,
+                      "end": 46.06920043945313
+                    },
+                    {
+                      "word": "works ",
+                      "start": 46.06920043945313,
+                      "end": 46.44655908203125
+                    },
+                    {
+                      "word": "best ",
+                      "start": 46.44655908203125,
+                      "end": 46.82391748046875
+                    },
+                    {
+                      "word": "for ",
+                      "start": 46.82391748046875,
+                      "end": 47.20127587890625
+                    },
+                    {
+                      "word": "you? ",
+                      "start": 47.20127587890625,
+                      "end": 47.578634521484375
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 4
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Can you send me a link? ",
+                  "words": [
+                    {
+                      "word": "Can ",
+                      "start": 49.065,
+                      "end": 49.305
+                    },
+                    {
+                      "word": "you ",
+                      "start": 49.305,
+                      "end": 49.464999999999996
+                    },
+                    {
+                      "word": "send ",
+                      "start": 49.464999999999996,
+                      "end": 49.545003
+                    },
+                    {
+                      "word": "me ",
+                      "start": 49.545003,
+                      "end": 49.705003
+                    },
+                    {
+                      "word": "a ",
+                      "start": 49.705003,
+                      "end": 49.785
+                    },
+                    {
+                      "word": "link? ",
+                      "start": 49.785,
+                      "end": 50.025003
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Sure.  Should I send it to ins@req3.com, or a different email? ",
+                  "words": [
+                    {
+                      "word": "Sure. ",
+                      "start": 51.023,
+                      "end": 51.4003583984375
+                    },
+                    {
+                      "word": " Should ",
+                      "start": 52.03308325195312,
+                      "end": 52.41044189453125
+                    },
+                    {
+                      "word": "I ",
+                      "start": 52.41044189453125,
+                      "end": 52.78780029296875
+                    },
+                    {
+                      "word": "send ",
+                      "start": 52.78780029296875,
+                      "end": 53.16515869140625
+                    },
+                    {
+                      "word": "it ",
+                      "start": 53.16515869140625,
+                      "end": 53.54251733398438
+                    },
+                    {
+                      "word": "to ",
+                      "start": 53.54251733398438,
+                      "end": 53.91987573242187
+                    },
+                    {
+                      "word": "ins@req3.com, ",
+                      "start": 53.91987573242187,
+                      "end": 54.297234375
+                    },
+                    {
+                      "word": "or ",
+                      "start": 54.297234375,
+                      "end": 54.6745927734375
+                    },
+                    {
+                      "word": "a ",
+                      "start": 54.6745927734375,
+                      "end": 55.051951171875
+                    },
+                    {
+                      "word": "different ",
+                      "start": 55.051951171875,
+                      "end": 55.42930981445313
+                    },
+                    {
+                      "word": "email? ",
+                      "start": 55.42930981445313,
+                      "end": 55.80666821289063
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 5
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Yeah. The same email. ",
+                  "words": [
+                    {
+                      "word": "Yeah. ",
+                      "start": 60.165,
+                      "end": 60.404996
+                    },
+                    {
+                      "word": "The ",
+                      "start": 60.404996,
+                      "end": 60.565
+                    },
+                    {
+                      "word": "same ",
+                      "start": 60.565,
+                      "end": 60.724999999999994
+                    },
+                    {
+                      "word": "email. ",
+                      "start": 60.724999999999994,
+                      "end": 60.964997999999994
+                    }
+                  ]
+                },
+                {
+                  "role": "agent",
+                  "content": "Okay.  I'll send that secure link to ins@req3.com. When do you plan to pay? Today, this week, or a specific date? ",
+                  "words": [
+                    {
+                      "word": "Okay. ",
+                      "start": 62.579,
+                      "end": 62.9563583984375
+                    },
+                    {
+                      "word": " I'll ",
+                      "start": 63.50779174804688,
+                      "end": 63.88515014648438
+                    },
+                    {
+                      "word": "send ",
+                      "start": 63.88515014648438,
+                      "end": 64.26250854492187
+                    },
+                    {
+                      "word": "that ",
+                      "start": 64.26250854492187,
+                      "end": 64.6398671875
+                    },
+                    {
+                      "word": "secure ",
+                      "start": 64.6398671875,
+                      "end": 65.0172255859375
+                    },
+                    {
+                      "word": "link ",
+                      "start": 65.0172255859375,
+                      "end": 65.39458422851563
+                    },
+                    {
+                      "word": "to ",
+                      "start": 65.39458422851563,
+                      "end": 65.77194262695312
+                    },
+                    {
+                      "word": "ins@req3.com. ",
+                      "start": 65.77194262695312,
+                      "end": 66.14930102539063
+                    },
+                    {
+                      "word": "When ",
+                      "start": 69.46370825195312,
+                      "end": 69.84106689453125
+                    },
+                    {
+                      "word": "do ",
+                      "start": 69.84106689453125,
+                      "end": 70.21842529296875
+                    },
+                    {
+                      "word": "you ",
+                      "start": 70.21842529296875,
+                      "end": 70.59578369140625
+                    },
+                    {
+                      "word": "plan ",
+                      "start": 70.59578369140625,
+                      "end": 70.97314233398437
+                    },
+                    {
+                      "word": "to ",
+                      "start": 70.97314233398437,
+                      "end": 71.35050073242188
+                    },
+                    {
+                      "word": "pay? ",
+                      "start": 71.35050073242188,
+                      "end": 71.727859375
+                    },
+                    {
+                      "word": "Today, ",
+                      "start": 71.727859375,
+                      "end": 72.1052177734375
+                    },
+                    {
+                      "word": "this ",
+                      "start": 72.1052177734375,
+                      "end": 72.482576171875
+                    },
+                    {
+                      "word": "week, ",
+                      "start": 72.482576171875,
+                      "end": 72.85993481445313
+                    },
+                    {
+                      "word": "or ",
+                      "start": 72.85993481445313,
+                      "end": 73.23729321289062
+                    },
+                    {
+                      "word": "a ",
+                      "start": 73.23729321289062,
+                      "end": 73.61465161132813
+                    },
+                    {
+                      "word": "specific ",
+                      "start": 73.61465161132813,
+                      "end": 73.99201025390624
+                    },
+                    {
+                      "word": "date? ",
+                      "start": 73.99201025390624,
+                      "end": 74.36936865234375
+                    }
+                  ],
+                  "metadata": {
+                    "response_id": 7
+                  }
+                },
+                {
+                  "role": "user",
+                  "content": "Immediately after this call, ",
+                  "words": [
+                    {
+                      "word": "Immediately ",
+                      "start": 76.184995,
+                      "end": 76.66499999999999
+                    },
+                    {
+                      "word": "after ",
+                      "start": 76.66499999999999,
+                      "end": 76.985
+                    },
+                    {
+                      "word": "this ",
+                      "start": 76.985,
+                      "end": 77.224996
+                    },
+                    {
+                      "word": "call, ",
+                      "start": 77.224996,
+                      "end": 77.38499999999999
+                    }
+                  ]
+                },
+                {
+                  "role": "tool_call_invocation",
+                  "tool_call_id": "call_oLuU6u431bJnf8EcuBeUbc4r",
+                  "name": "send_payment_link_email",
+                  "arguments": "{\"invoice_amount\":\"29.75\",\"request_id\":\"14609659\",\"notes\":null,\"disposition\":\"agreed_to_pay\",\"promised_amount\":29.75,\"total_amount_due\":29.75,\"promised_date\":\"2026-08-21\",\"email\":\"ins@req3.com\",\"payment_method\":\"credit_card\",\"call_timestamp\":\"2026-08-21T09:10:00-07:00\",\"customer_name\":\"New York Life Insurance Company\"}",
+                  "time_sec": 78.636,
+                  "type": "custom"
+                }
+              ],
+              "latency": {},
+              "metadata": {
+                "request_ids": "14609659",
+                "recipient_name": "Sudarshan",
+                "invoice_amount": "29.75",
+                "total_invoice_amount": "29.75",
+                "days_past_due": "30",
+                "requestor_email": "ins@req3.com",
+                "patient_name": "Steven Paul",
+                "request_count": "1",
+                "requestor_organization": "New York Life Insurance Company"
+              },
+              "call_cost": {
+                "product_costs": [],
+                "total_duration_seconds": 0,
+                "total_duration_unit_price": 0,
+                "combined_cost": 0
+              },
+              "data_storage_setting": "everything",
+              "opt_in_signed_url": false,
+              "from_number": "+14707905839",
+              "to_number": "+14047264146",
+              "direction": "outbound",
+              "telephony_identifier": {
+                "twilio_call_sid": "CA6752c40450ed751441b53fce3ade59ef"
+              }
+            },
+            "name": "send_payment_link_email",
+            "args": {
+              "invoice_amount": "29.75",
+              "request_id": "14609659",
+              "notes": null,
+              "disposition": "agreed_to_pay",
+              "promised_amount": 29.75,
+              "total_amount_due": 29.75,
+              "promised_date": "2026-08-21",
+              "email": "ins@req3.com",
+              "payment_method": "credit_card",
+              "call_timestamp": "2026-08-21T09:10:00-07:00",
+              "customer_name": "New York Life Insurance Company"
+            }
+          },
+          "webhookUrl": "https://chartrequest.app.n8n.cloud/webhook/e0c3043b-af04-423d-a8e7-6a99ac75cdb7",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "get disposition data": {
+      "main": [
+        [
+          {
+            "node": "split_invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "split_invoices": {
+      "main": [
+        [
+          {
+            "node": "Send Payment link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "3Lef1SFasDFsypJs",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "a19d1ffe-b3fe-4cb3-8925-5f5875e7165f",
+  "meta": {
+    "instanceId": "0abb16ec12a94ebb412535e26e364cbcc2c642f81dbc2853ba257d14e7b06ae1"
+  },
+  "nodeGroups": [],
+  "id": "YpNZBCrB4ZzKf3nw",
+  "tags": []
+}

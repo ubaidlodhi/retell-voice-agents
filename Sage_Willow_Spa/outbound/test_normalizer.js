@@ -84,6 +84,33 @@ const CASES = [
 
   ['unknown source falls back to website_form', env({ source: 'sms', name: 'X Y', phone: '2532681856' }), CFG_TEST,
     { lead_source: 'website_form' }],
+
+  // ---- which agent version to dial ------------------------------------
+  // Real leads never send the field: they must get the published version.
+  ['no agent_version -> latest_published', env({ name: 'Real Customer', phone: '415-419-4572' }), CFG_LIVE,
+    { agent_version: 'latest_published' }],
+  ['agent_version "latest" -> the draft', env({ phone: '+12532681856', source: 'missed_call', agent_version: 'latest' }), CFG_LIVE,
+    { agent_version: 'latest' }],
+  ['agent_version is case/space-insensitive', env({ phone: '+12532681856', source: 'missed_call', agent_version: ' LATEST ' }), CFG_LIVE,
+    { agent_version: 'latest' }],
+  ['agent_version "latest_published" is explicit', env({ phone: '+12532681856', source: 'missed_call', agent_version: 'latest_published' }), CFG_LIVE,
+    { agent_version: 'latest_published' }],
+  ['agent_version as a number', env({ phone: '+12532681856', source: 'missed_call', agent_version: 5 }), CFG_LIVE,
+    { agent_version: 5 }],
+  ['agent_version as a digit string becomes a number', env({ phone: '+12532681856', source: 'missed_call', agent_version: '3' }), CFG_LIVE,
+    { agent_version: 3 }],
+  ['agent_version 0 is a real version', env({ phone: '+12532681856', source: 'missed_call', agent_version: 0 }), CFG_LIVE,
+    { agent_version: 0 }],
+  ['agent_version garbage -> latest_published', env({ phone: '+12532681856', source: 'missed_call', agent_version: 'v5' }), CFG_LIVE,
+    { agent_version: 'latest_published' }],
+  ['agent_version negative -> latest_published', env({ phone: '+12532681856', source: 'missed_call', agent_version: -1 }), CFG_LIVE,
+    { agent_version: 'latest_published' }],
+  ['agent_version decimal -> latest_published', env({ phone: '+12532681856', source: 'missed_call', agent_version: '3.5' }), CFG_LIVE,
+    { agent_version: 'latest_published' }],
+  ['agent_version empty string -> latest_published', env({ phone: '+12532681856', source: 'missed_call', agent_version: '' }), CFG_LIVE,
+    { agent_version: 'latest_published' }],
+  ['agent_version null -> latest_published', env({ phone: '+12532681856', source: 'missed_call', agent_version: null }), CFG_LIVE,
+    { agent_version: 'latest_published' }],
 ];
 
 const normalize = (raw, cfg) => {

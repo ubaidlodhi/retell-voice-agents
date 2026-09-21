@@ -1,0 +1,37 @@
+{
+  "name": "Global Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "01297bde-4d13-4317-b55e-750f3a7ee9fb",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5e3d697b-7a4f-4013-b857-c3ff77d31f16",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0abb16ec12a94ebb412535e26e364cbcc2c642f81dbc2853ba257d14e7b06ae1"
+  },
+  "nodeGroups": [],
+  "id": "3Lef1SFasDFsypJs",
+  "tags": []
+}

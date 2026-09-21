@@ -1,0 +1,1210 @@
+{
+  "name": "02. New & Follow-up Calls",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.retellai.com/v2/create-phone-call",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from_number\": \"+14707905839\",\n  \"to_number\": \"{{ $json.phone_number }}\",\n  \"agent_id\": \"agent_617a4705e7d92d9fc029eddfe5\",\n  \"metadata\": {\n    \"request_ids\": \"{{ $json.request_ids }}\",\n    \"recipient_name\": \"{{ $json.requestor_name }}\",\n    \"amount_owed\": \"{{ $json.patient_names }}\",\n \"invoice_amount\": \"{{ $json.invoice_amounts }}\",\n \"total_invoice_amount\": \"{{ $json.total_invoice_amount }}\",\n    \"days_past_due\": \"{{ $json.days_past_due_list }}\",\n\"attempt\": \"{{ Number($json.follow_up_count || 0) + 1 }}\",\n    \"requestor_email\": \"{{ $json.requestor_email }}\",\n    \"status\": \"{{ $json.status }}\",\n    \"phone_number\": \"{{ $json.phone_number }}\",\n    \"patient_name\": \"{{ $json.patient_names }}\",\n    \"request_count\":\"{{ $json.request_count }}\",\n\"follow_up_count\":\"{{ $json.follow_up_count }}\"\n\n  },\n  \"retell_llm_dynamic_variables\": { \n    \"request_ids\": \"{{ $json.request_ids }}\",\n    \"recipient_name\": \"{{ $json.requestor_name }}\",\n    \"user_name\": \"{{ $json.requestor_name }}\",\n    \"invoice_amount\": \"{{ $json.invoice_amounts }}\",\n \"total_invoice_amount\": \"{{ $json.total_invoice_amount }}\",\n    \"days_past_due\": \"{{ $json.days_past_due_list }}\",\n   \"attempt\": \"{{ Number($json.follow_up_count || 0) + 1 }}\",\n    \"requestor_email\": \"{{ $json.requestor_email }}\",\n    \"status\": \"{{ $json.status }}\",\n    \"phone_number\": \"{{ $json.phone_number }}\",\n    \"patient_name\": \"{{ $json.patient_names }}\",\n    \"requestor_organization\": \"{{ $json.organization_name }}\",\n \"request_count\":\"{{ $json.request_count }}\",\n\"follow_up_count\":\"{{ $json.follow_up_count }}\"\n\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2592,
+        -640
+      ],
+      "id": "241b92ec-7040-4d35-ba3a-3370a76e05a8",
+      "name": "retell call",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "h6labA2U3ykD7eHE",
+          "name": "ChartRequest Bearer Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */15 19-23 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1824,
+        -640
+      ],
+      "id": "a21ac73e-0fe5-4cda-82d5-8acd25d5ae66",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from Retell call node directly (not from DataTable output)\n\nconst retellItems = $('retell call').all(); // ← replace with your exact node name\n\n\n\nreturn retellItems.map(item => {\n\n  const data = item.json;\n\n  const retellVars = data.retell_llm_dynamic_variables || {};\n\n\n\n  const newAttempt = String(Number(retellVars.attempt || 0) + 1);\n\n\n\n  const metadata = {\n\n    request_ids:          retellVars.request_ids           || \"\",\n\n    requestor_name:       retellVars.recipient_name         || retellVars.user_name || \"\",\n\n    patient_names:        retellVars.patient_name           || \"\",\n\n    invoice_amounts:      retellVars.invoice_amount         || \"\",\n\n    total_invoice_amount: retellVars.total_invoice_amount   || \"0\",\n\n    days_past_due_list:   retellVars.days_past_due          || \"\",\n\n    request_count:        retellVars.request_count          || \"0\",\n\n    requestor_email:      retellVars.requestor_email        || \"\",\n\n    organization_name:    retellVars.requestor_organization || \"\",\n\n    phone_number:         data.to_number                   || retellVars.phone_number || \"\",\n\n    status:               retellVars.status                || \"new\",\n\n    follow_up_count:      retellVars.attempt               || \"0\",\n\n    attempt:              newAttempt,\n\n  };\n\n\n\n  const updatedRetellVars = {\n\n    request_ids:            metadata.request_ids,\n\n    recipient_name:         metadata.requestor_name,\n\n    user_name:              metadata.requestor_name,\n\n    patient_name:           metadata.patient_names,\n\n    invoice_amount:         metadata.invoice_amounts,\n\n    total_invoice_amount:   metadata.total_invoice_amount,\n\n    days_past_due:          metadata.days_past_due_list,\n\n    request_count:          metadata.request_count,\n\n    requestor_email:        metadata.requestor_email,\n\n    requestor_organization: metadata.organization_name,\n\n    status:                 metadata.status,\n\n    phone_number:           metadata.phone_number,\n\n    attempt:                newAttempt,\n\n  };\n\n\n\n  return {\n\n    json: {\n\n      from_number:                  \"+14707905839\",\n\n      to_number:                    data.to_number || retellVars.phone_number,\n\n      agent_id:                     \"agent_617a4705e7d92d9fc029eddfe5\",\n\n      metadata,\n\n      retell_llm_dynamic_variables: updatedRetellVars,\n\n    }\n\n  };\n\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        -640
+      ],
+      "id": "1fbfad77-b0ed-4cdf-a2b4-f2c26e67794d",
+      "name": "Stringify Json metadata",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "EXusP2zkWdWV8iRI",
+          "mode": "list",
+          "cachedResultName": "call_attempts",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EXusP2zkWdWV8iRI"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "attempt_number": "={{ Number($('retell call').item.json.retell_llm_dynamic_variables.attempt) }}",
+            "voice_request_id": "={{ $json.metadata.request_ids }}",
+            "retell_call_id": "={{ $('retell call').item.json.call_id }}",
+            "metadata_json": "={{ JSON.stringify($json.retell_llm_dynamic_variables) }}",
+            "requestor_email": "={{ $json.retell_llm_dynamic_variables.requestor_email }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "retell_call_id",
+              "displayName": "retell_call_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "voice_request_id",
+              "displayName": "voice_request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "requestor_email",
+              "displayName": "requestor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "attempt_number",
+              "displayName": "attempt_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_started_at",
+              "displayName": "call_started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "call_completed_at",
+              "displayName": "call_completed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "metadata_json",
+              "displayName": "metadata_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3360,
+        -640
+      ],
+      "id": "440ea1b7-bce7-4c21-9de1-d42ade6b243e",
+      "name": "Insert row in call attempts table"
+    },
+    {
+      "parameters": {
+        "jsCode": "const newInvoiceData = $(\"Invoice - Unique Phone Numbers\").all().map(item => item.json);\nconst followUpInvoiceData = $(\"Follow-up - Unique Phone Numbers\").all().map(item => item.json);\n\nconst combinedData = [...newInvoiceData, ...followUpInvoiceData];\n\n// Filter on phone_number instead since request_ids comes from API later\nconst cleanData = combinedData\n  .filter(item => item && item.phone_number && item.phone_number !== \"\")\n  .map(item => {\n    const cleaned = {};\n    for (const [key, value] of Object.entries(item)) {\n      cleaned[key] = (value === \"Null\" || value === \"null\" || value === \"undefined\")\n        ? null\n        : value;\n    }\n    return cleaned;\n  });\n\nreturn cleanData.map(json => ({ json }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -736
+      ],
+      "id": "50a8dff1-3918-4ac3-bc2f-59de9034e2f1",
+      "name": "combine pending invoice",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const newInvoiceData = $(\"Invoice - Unique Phone Numbers\").all().map(item => item.json);\nconst followUpInvoiceData = $(\"Follow-up - Unique Phone Numbers\").all().map(item => item.json);\n\nconst combinedData = [...newInvoiceData, ...followUpInvoiceData];\n\n// Filter on phone_number instead since request_ids comes from API later\nconst cleanData = combinedData\n  .filter(item => item && item.phone_number && item.phone_number !== \"\")\n  .map(item => {\n    const cleaned = {};\n    for (const [key, value] of Object.entries(item)) {\n      cleaned[key] = (value === \"Null\" || value === \"null\" || value === \"undefined\")\n        ? null\n        : value;\n    }\n    return cleaned;\n  });\n\nreturn cleanData.map(json => ({ json }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -640
+      ],
+      "id": "9a0268b1-806a-4931-885e-88accc12a6bb",
+      "name": "Fix phone number format"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "limit": "={{ $json.call_limit }}"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1376,
+        -640
+      ],
+      "id": "7051f5b9-33bd-41a0-9546-02ed195fb878",
+      "name": "Active Calls",
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "requestor_email",
+              "keyValue": "={{ $json.retell_llm_dynamic_variables.requestor_email }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "active"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone_number",
+              "displayName": "phone_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "last_call_outcome",
+              "displayName": "last_call_outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "recipent_name",
+              "displayName": "recipent_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "disposition",
+              "displayName": "disposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "organization_name",
+              "displayName": "organization_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_locked",
+              "displayName": "call_locked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "promised_amount",
+              "displayName": "promised_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "follow_up_required_flag",
+              "displayName": "follow_up_required_flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "next_follow_up_date",
+              "displayName": "next_follow_up_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "promised_date",
+              "displayName": "promised_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "requestor_email",
+              "displayName": "requestor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "provider_name",
+              "displayName": "provider_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "organization_service_level",
+              "displayName": "organization_service_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "follow_up_count",
+              "displayName": "follow_up_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "download_recording_url",
+              "displayName": "download_recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2880,
+        -640
+      ],
+      "id": "09b76723-be5c-4aad-85ca-2042955dd33c",
+      "name": "Update active call status"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "70259c21-f4dd-40a9-a445-0414c735a655",
+              "name": "call_limit",
+              "value": 20,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1600,
+        -640
+      ],
+      "id": "4b22a20b-012c-4bed-b19a-373e2f983641",
+      "name": "call limit variable"
+    },
+    {
+      "parameters": {
+        "jsCode": "const newInvoiceData = $(\"Get new invoice data\").all().map(item => item.json);\n\nreturn newInvoiceData;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -544
+      ],
+      "id": "c1024d01-dcf6-424c-bd04-07c66d8e1987",
+      "name": "Invoices - Accumulation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const DAILY_BUDGET = $('call limit variable').first().json.call_limit;\n\n// 1. Active calls\nconst activeCalls = $('Get new calls count').first().json[\"active-calls-number\"];\n\n// 2. New calls available from current input\nconst newAvailable = $input.all().filter(item => item.json && Object.keys(item.json).length > 0).length;\n\n// Allocate within budget: active first, then new, then follow-up takes the rest\nconst budgetAfterActive = Math.max(0, DAILY_BUDGET - activeCalls);\nconst newCalls          = Math.min(newAvailable, budgetAfterActive);\nconst followupCalls     = Math.max(0, budgetAfterActive - newCalls);\n\nconst totalCalls = activeCalls + newCalls + followupCalls;\n\nreturn [{\n  json: {\n    activeCalls,\n    newCalls,\n    followupCalls,\n    totalCalls\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        -640
+      ],
+      "id": "e7c84a64-0002-4e44-82b0-17d28f7d5b0b",
+      "name": "Calculate Remaining Calls"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().filter(item => {\n  const json = item.json;\n  return json && Object.keys(json).length > 0;\n});\n\nconst numObjects = items.length;\nconst newCallsNumber = $('call limit variable').first().json.call_limit - numObjects;\n\nreturn [\n  {\n    json: {\n      \"new-calls-number\": newCallsNumber,\n      \"active-calls-number\": numObjects\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        -640
+      ],
+      "id": "3adfeeca-1922-443e-9b93-8233c97919b0",
+      "name": "Get new calls count"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "ilike",
+              "keyValue": "=new"
+            },
+            {
+              "keyName": "follow_up_count",
+              "condition": "lt",
+              "keyValue": "5"
+            },
+            {
+              "keyName": "phone_number",
+              "condition": "isNotEmpty"
+            }
+          ]
+        },
+        "limit": "={{ $json['new-calls-number'] }}",
+        "orderBy": true,
+        "orderByColumn": "timestamp",
+        "orderByDirection": "ASC"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -640,
+        -640
+      ],
+      "id": "0a7395e8-b309-4509-9c3d-1a7c80b4e7f0",
+      "name": "Get new invoice data",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "ilike",
+              "keyValue": "=follow-up"
+            },
+            {
+              "keyName": "next_follow_up_date",
+              "keyValue": "={{ $now.toISODate() }}"
+            },
+            {
+              "keyName": "follow_up_count",
+              "condition": "lt",
+              "keyValue": "5"
+            },
+            {
+              "keyName": "next_follow_up_date",
+              "condition": "isNotEmpty"
+            }
+          ]
+        },
+        "limit": "={{ $json.followupCalls }}",
+        "orderBy": true,
+        "orderByColumn": "timestamp",
+        "orderByDirection": "ASC"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        -736
+      ],
+      "id": "6b774d1c-60f2-4ac8-8247-396c7686dd41",
+      "name": "Get follow-up invoice data",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = [];\nconst seen = new Set();\n\nfor (const item of $input.all()) {\n  // Skip empty items (no json, or json with no keys)\n  if (!item.json || Object.keys(item.json).length === 0) {\n    continue;\n  }\n\n  let phone = (item.json.phone_number || '').replace(/\\D/g, '');\n  // Normalize to E.164 format (+1XXXXXXXXXX)\n  if (phone.length === 11 && phone.startsWith('1')) {\n    // Already has US country code → just add +\n    phone = '+' + phone;\n  } else if (phone.length === 10) {\n    // No country code → add +1\n    phone = '+1' + phone;\n  } else {\n    // Can't normalize → keep original\n    phone = item.json.phone_number;\n  }\n\n  // Skip if we've already seen this phone number\n  if (seen.has(phone)) {\n    continue;\n  }\n  seen.add(phone);\n\n  result.push({\n    json: {\n      ...item.json,\n      phone_number: phone\n    }\n  });\n}\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -736
+      ],
+      "id": "628cedd0-0ba7-474a-bcc2-d6c7010e2fe5",
+      "name": "Follow-up - Unique Phone Numbers",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  // Skip empty items (no json, or json with no keys)\n  if (!item.json || Object.keys(item.json).length === 0) {\n    continue;\n  }\n  let phone = (item.json.phone_number || '').replace(/\\D/g, '');\n  // Normalize to E.164 format (+1XXXXXXXXXX)\n  if (phone.length === 11 && phone.startsWith('1')) {\n    // Already has US country code → just add +\n    phone = '+' + phone;\n  } else if (phone.length === 10) {\n    // No country code → add +1\n    phone = '+1' + phone;\n  } else {\n    // Can't normalize → keep original\n    phone = item.json.phone_number;\n  }\n  // Skip if we've already seen this phone number\n  if (seen.has(phone)) {\n    continue;\n  }\n  seen.add(phone);\n  result.push({\n    json: {\n      ...item.json,\n      phone_number: phone\n    }\n  });\n}\n// Final pass: drop any empty objects that slipped through\nreturn result.filter(item => item.json && Object.keys(item.json).length > 0);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        -640
+      ],
+      "id": "0cc595d2-2930-4920-b4c4-ca57e1fe8b64",
+      "name": "Invoice - Unique Phone Numbers",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "=https://qa.greencheckhealth.com/api/v2/voice_agent/over_due_requests?email={{ $json.requestor_email }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "=httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization-token",
+              "value": "eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbiI6ImEyOWJlOTVhODZmYWIxZmJkYWU5OWFkZSJ9.Rx1twPgw8XWVjtQ0IHVOUdCw4C1EKa_IASkGThTDewA"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1504,
+        -640
+      ],
+      "id": "5d35b4f1-6ba0-44ab-8420-428a7c1d05cd",
+      "name": "verify that invoice is still unpaid",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "7Heoh9R7hSQa9QsR",
+          "name": "Chartchase auth"
+        },
+        "httpBasicAuth": {
+          "id": "Fzj6sYbg3hLCGDms",
+          "name": "Chartrequest basic auth"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function sanitizeString(value) {\n  if (typeof value !== 'string') return value;\n  return value\n    .replace(/[\\x00-\\x1F\\x7F]/g, ' ')\n    .trim();\n}\n\nfunction sanitizeObject(obj) {\n  if (obj === null || obj === undefined) return obj;\n  if (typeof obj === 'string') return sanitizeString(obj);\n  if (Array.isArray(obj)) return obj.map(sanitizeObject);\n  if (typeof obj === 'object') {\n    const cleaned = {};\n    for (const [key, value] of Object.entries(obj)) {\n      cleaned[key] = sanitizeObject(value);\n    }\n    return cleaned;\n  }\n  return obj;\n}\n\nfunction isValidUSPhone(phone) {\n  if (!phone || typeof phone !== 'string') return false;\n\n  const digits = phone.replace(/\\D/g, '');\n\n  let areaCode, exchange;\n\n  if (digits.length === 11 && digits[0] === '1') {\n    areaCode = digits.slice(1, 4);\n    exchange = digits.slice(4, 7);\n  } else if (digits.length === 10) {\n    areaCode = digits.slice(0, 3);\n    exchange = digits.slice(3, 6);\n  } else {\n    return false;\n  }\n\n  if (!/^[2-9]\\d{2}$/.test(areaCode)) return false;\n  if (!/^[2-9]\\d{2}$/.test(exchange)) return false;\n\n  const fakeAreaCodes = new Set(['999', '000', '111', '222', '333', '444', '555', '666', '777']);\n  if (fakeAreaCodes.has(areaCode)) return false;\n\n  return true;\n}\n\nlet data = items.map(item => item.json);\n\nlet cleanedData = data.filter(obj => Object.keys(obj).length > 0);\n\ncleanedData = cleanedData.filter(obj => {\n  const valid = isValidUSPhone(obj.phone_number);\n  if (!valid) {\n    console.log(`Skipping request_id ${obj.request_id} - invalid phone: ${obj.phone_number}`);\n  }\n  return valid;\n});\n\nif (cleanedData.length === 0) {\n  return [];\n}\n\nreturn cleanedData.map(d => ({ json: sanitizeObject(d) }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        -640
+      ],
+      "id": "6b808a67-91b2-4355-97bb-f76c267d5f7f",
+      "name": "Remove empty objects & Clean Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const beforeVerify = $('Fix phone number format').all().map(item => item.json);\nconst afterVerify = $input.all().map(item => item.json);\n\n// Build a map of email → verify result\nconst verifyMap = new Map();\nafterVerify.forEach(item => {\n  if (item.overdue_requests && item.overdue_requests.length > 0) {\n    // Get email from first overdue request\n    const email = item.overdue_requests[0]?.requestor_email;\n    if (email) verifyMap.set(email, item);\n  }\n});\n\n// Find items from beforeVerify whose email has no valid verify result\nconst failedItems = beforeVerify.filter(item => {\n  return !verifyMap.has(item.requestor_email);\n});\n\nconsole.log(`Total in: ${beforeVerify.length}`);\nconsole.log(`Total out (non-empty): ${verifyMap.size}`);\nconsole.log(`Failed: ${failedItems.length}`);\nconsole.log(`Failed emails: ${failedItems.map(i => i.requestor_email).join(', ')}`);\n\nreturn failedItems.length > 0\n  ? failedItems.map(json => ({ json }))\n  : [{ json: { message: 'All emails passed', total: beforeVerify.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        -800
+      ],
+      "id": "b9cbd3f5-9683-43dd-9861-2d936162d55b",
+      "name": "Get Paid / Empty Invoices"
+    },
+    {
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "requestor_email",
+              "keyValue": "={{ $json.requestor_email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2128,
+        -800
+      ],
+      "id": "ba668a28-6406-4173-908b-336bcb1938e0",
+      "name": "Delete Paid Invoices from DB"
+    },
+    {
+      "parameters": {
+        "jsCode": "const groups = new Map();\n\nfor (const item of $input.all()) {\n  // Skip empty responses\n  if (!item.json || !item.json.overdue_requests || item.json.overdue_requests.length === 0) continue;\n\n  for (const requestor of item.json.overdue_requests) {\n    if (!requestor.requestor_contact_number || !requestor.request_ids?.length) continue;\n\n    // Normalize phone to E.164\n    let phone = String(requestor.requestor_contact_number).replace(/\\D/g, '');\n    if (phone.length === 10) phone = '+1' + phone;\n    else if (phone.length === 11 && phone.startsWith('1')) phone = '+' + phone;\n    else phone = '+' + phone;\n\n    // Set up group if first time seeing this phone\n    if (!groups.has(phone)) {\n      groups.set(phone, {\n        phone_number: phone,\n        requestor_name: requestor.requestor_name,\n        requestor_email: requestor.requestor_email,\n        organization_name: requestor.requestor_organization_name,\n        provider_name: requestor.provider_name,\n        organization_service_level: requestor.organization_service_level,\n        status: 'new',\n        follow_up_count: 0,\n        request_count: 0,\n        total_invoice_amount: 0,\n        request_ids: [],\n        invoice_amounts: [],\n        days_past_due_list: [],\n        patient_names: []\n      });\n    }\n\n    // Push each invoice into the group\n    const group = groups.get(phone);\n    for (const invoice of requestor.request_ids) {\n      group.request_ids.push(invoice.request_id);\n      group.invoice_amounts.push(invoice.invoice_amount);\n      group.days_past_due_list.push(invoice.days_past_due);\n      group.patient_names.push(invoice.patient_name);\n      group.total_invoice_amount += invoice.invoice_amount;\n    }\n  }\n}\n\n// Finalize counts, stringify arrays for DataTable\nfor (const group of groups.values()) {\n  group.request_count = group.request_ids.length;\n  group.total_invoice_amount = Math.round(group.total_invoice_amount * 100) / 100;\n  group.request_ids = group.request_ids.join(', ');\n  group.invoice_amounts = JSON.stringify(group.invoice_amounts);\n  group.days_past_due_list = JSON.stringify(group.days_past_due_list);\n  group.patient_names = group.patient_names.join(', '); \n}\n\nreturn Array.from(groups.values()).map(json => ({ json }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        -640
+      ],
+      "id": "8dc48328-a7fc-4fd6-b285-e21ec20fe6da",
+      "name": "Group Overdue Invoices by Phone"
+    },
+    {
+      "parameters": {
+        "content": "TO get the new call and followup first 20 available for that run ",
+        "height": 768,
+        "width": 3270
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2000,
+        -1024
+      ],
+      "typeVersion": 1,
+      "id": "1e74a338-4c58-41c1-8ecf-0cede6dfd40a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "to verify that lead exists and to delete the not return inovice details from datatabke and to to pass only the requested id for the invoice less then 15 ",
+        "height": 976,
+        "width": 1168,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1360,
+        -1040
+      ],
+      "typeVersion": 1,
+      "id": "0f6acbad-24c7-4af9-8a51-1458454e5c80",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "connect the retell outbound  call with user and send the requestor invoice detal",
+        "height": 976,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2544,
+        -1040
+      ],
+      "typeVersion": 1,
+      "id": "9be476da-0eaf-4a0a-ad18-ffcd55528788",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "to make the call status active on voice request so that if the call is active until second run it will not call and the last node add the call attempt in the data table",
+        "height": 640,
+        "width": 800,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2800,
+        -864
+      ],
+      "typeVersion": 1,
+      "id": "1d106c00-f27b-4939-b1f0-26d2cc776dc2",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fa4aea7c-bd4c-481f-b7c8-24c7fdb7d1a5",
+              "leftValue": "={{ $json[\"new-calls-number\"] }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -928,
+        -640
+      ],
+      "id": "05662438-7e4b-441b-b9e2-3396b10e8519",
+      "name": "Check If Call Threashold Exceeded"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5a218277-a806-4d05-8cfe-b10271fab814",
+              "leftValue": "={{ $json.followupCalls }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        176,
+        -640
+      ],
+      "id": "326d8254-49a1-4848-9188-07a82f93e836",
+      "name": "Check if follow-up needed?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node — Mode: \"Run Once for All Items\"\n//\n// Handles both possible input shapes:\n//  1) Previous node produced separate n8n items (expected case)\n//  2) Previous node produced ONE item whose .json is a raw array of objects\n//     (happens when an HTTP Request / webhook node returns a JSON array\n//     without \"Split Into Items\" turned on)\n//\n// LOGIC:\n//  - request_id count >= 15 -> ALL original fields kept, but request_ids,\n//                               invoice_amounts, days_past_due_list, and\n//                               patient_names are sliced down to their\n//                               first 10 entries (as arrays)\n//  - request_id count < 15  -> full record sent as-is, with those same\n//                               four fields converted to full arrays\n//\n// Nothing is dropped — every record produces exactly one output item.\n\nconst LOW_THRESHOLD = 15;\n\n// Helper: parse a comma-separated string field, optionally wrapped in [ ]\n// e.g. \"[25,81.72,20]\" or \"14609449, 14609631\" -> [\"25\",\"81.72\",\"20\"]\nfunction parseListField(raw, transform = (v) => v) {\n  if (!raw) return [];\n  return String(raw)\n    .replace(/^\\[|\\]$/g, \"\") // strip leading/trailing brackets if present\n    .split(\",\")\n    .map((s) => s.trim())\n    .filter((s) => s.length > 0)\n    .map(transform);\n}\n\n// Step 1: flatten everything into a plain list of record objects,\n// regardless of which shape they arrived in.\nconst records = [];\nfor (const item of $input.all()) {\n  if (Array.isArray(item.json)) {\n    records.push(...item.json); // case 2: unwrap the array\n  } else {\n    records.push(item.json); // case 1: already a single record\n  }\n}\n\n// Step 2: build output based on the count of request ids\nconst output = [];\nfor (const data of records) {\n  const idsArray = parseListField(data.request_ids);\n  const invoiceAmountsArray = parseListField(data.invoice_amounts, (v) => parseFloat(v));\n  const daysPastDueArray = parseListField(data.days_past_due_list, (v) => parseInt(v, 10));\n  const patientNamesArray = parseListField(data.patient_names);\n\n  const count = idsArray.length;\n  const isReduced = count >= LOW_THRESHOLD;\n\n  output.push({\n    json: {\n      ...data, // keep ALL original fields: phone_number, requestor_name,\n                // requestor_email, organization_name, provider_name,\n                // organization_service_level, status, follow_up_count,\n                // request_count, total_invoice_amount, etc.\n      route: \"detail\",\n      request_id_count: count,\n      summary_message: `This request contains ${count} record request(s).`,\n      request_ids: isReduced ? idsArray.slice(0, 10) : idsArray,\n      invoice_amounts: isReduced ? invoiceAmountsArray.slice(0, 10) : invoiceAmountsArray,\n      days_past_due_list: isReduced ? daysPastDueArray.slice(0, 10) : daysPastDueArray,\n      patient_names: isReduced ? patientNamesArray.slice(0, 10) : patientNamesArray,\n    },\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        -640
+      ],
+      "id": "9b00f663-a25d-4b2f-a883-f43fa1f6ca2d",
+      "name": "Filter only 10 Req IDs if Greater Than 15"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-09-15T23:45:00.000+05:30",
+          "Readable date": "September 15th 2026, 11:45:00 pm",
+          "Readable time": "11:45:00 pm",
+          "Day of week": "Tuesday",
+          "Year": "2026",
+          "Month": "September",
+          "Day of month": "15",
+          "Hour": "23",
+          "Minute": "45",
+          "Second": "00",
+          "Timezone": "Asia/Kolkata (UTC+05:30)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "call limit variable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "retell call": {
+      "main": [
+        [
+          {
+            "node": "Update active call status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stringify Json metadata": {
+      "main": [
+        [
+          {
+            "node": "Insert row in call attempts table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row in call attempts table": {
+      "main": [
+        []
+      ]
+    },
+    "combine pending invoice": {
+      "main": [
+        [
+          {
+            "node": "Fix phone number format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix phone number format": {
+      "main": [
+        [
+          {
+            "node": "verify that invoice is still unpaid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Calls": {
+      "main": [
+        [
+          {
+            "node": "Get new calls count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update active call status": {
+      "main": [
+        [
+          {
+            "node": "Stringify Json metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "call limit variable": {
+      "main": [
+        [
+          {
+            "node": "Active Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoices - Accumulation": {
+      "main": [
+        [
+          {
+            "node": "Fix phone number format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Remaining Calls": {
+      "main": [
+        [
+          {
+            "node": "Check if follow-up needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get new calls count": {
+      "main": [
+        [
+          {
+            "node": "Check If Call Threashold Exceeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get new invoice data": {
+      "main": [
+        [
+          {
+            "node": "Invoice - Unique Phone Numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get follow-up invoice data": {
+      "main": [
+        [
+          {
+            "node": "Follow-up - Unique Phone Numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-up - Unique Phone Numbers": {
+      "main": [
+        [
+          {
+            "node": "combine pending invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice - Unique Phone Numbers": {
+      "main": [
+        [
+          {
+            "node": "Calculate Remaining Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "verify that invoice is still unpaid": {
+      "main": [
+        [
+          {
+            "node": "Group Overdue Invoices by Phone",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Paid / Empty Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Remove empty objects & Clean Data": {
+      "main": [
+        [
+          {
+            "node": "Filter only 10 Req IDs if Greater Than 15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Paid / Empty Invoices": {
+      "main": [
+        [
+          {
+            "node": "Delete Paid Invoices from DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Paid Invoices from DB": {
+      "main": [
+        []
+      ]
+    },
+    "Group Overdue Invoices by Phone": {
+      "main": [
+        [
+          {
+            "node": "Remove empty objects & Clean Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Call Threashold Exceeded": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get new invoice data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if follow-up needed?": {
+      "main": [
+        [
+          {
+            "node": "Get follow-up invoice data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invoices - Accumulation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter only 10 Req IDs if Greater Than 15": {
+      "main": [
+        [
+          {
+            "node": "retell call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "3Lef1SFasDFsypJs"
+  },
+  "versionId": "daee9ffb-7e89-4cfb-a8f4-313e83827ed1",
+  "meta": {
+    "instanceId": "0abb16ec12a94ebb412535e26e364cbcc2c642f81dbc2853ba257d14e7b06ae1"
+  },
+  "nodeGroups": [],
+  "id": "M91rHTVjHzhrhIEU",
+  "tags": []
+}

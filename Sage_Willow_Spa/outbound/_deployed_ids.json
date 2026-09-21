@@ -1,8 +1,8 @@
 {
   "conversation_flow_id": "conversation_flow_599a68571a81",
-  "conversation_flow_version": 0,
+  "conversation_flow_version": 6,
   "agent_id": "agent_4ef8160dc71826818c6fd8122b",
-  "agent_version": 0,
-  "flow_name": "Aria - Sage & Willow Spa - Outbound V07",
-  "agent_name": "Aria - Sage & Willow Spa (Outbound) V07"
+  "agent_version": 6,
+  "flow_name": "Aria - Sage & Willow Spa - Outbound V17",
+  "agent_name": "Aria - Sage & Willow Spa - Outbound Agent"
 }

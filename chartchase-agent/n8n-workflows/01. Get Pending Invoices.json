@@ -1,0 +1,991 @@
+{
+  "name": "01. Get Pending Invoices",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 19 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        -96
+      ],
+      "id": "a9b03b59-0b89-420a-a109-18bf95c9920e",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone_number": "={{ $json.requestor_contact_number }}",
+            "recipent_name": "={{ $json.requestor_name }}",
+            "organization_name": "={{ $json.requestor_organization_name }}",
+            "status": "new",
+            "requestor_email": "={{ $json.requestor_email }}",
+            "provider_name": "={{ $json.provider_name }}",
+            "organization_service_level": "={{ $json.organization_service_level }}",
+            "next_follow_up_date": "Null",
+            "follow_up_count": 0
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone_number",
+              "displayName": "phone_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "last_call_outcome",
+              "displayName": "last_call_outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "recipent_name",
+              "displayName": "recipent_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "disposition",
+              "displayName": "disposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "organization_name",
+              "displayName": "organization_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_locked",
+              "displayName": "call_locked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "promised_amount",
+              "displayName": "promised_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "follow_up_required_flag",
+              "displayName": "follow_up_required_flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "next_follow_up_date",
+              "displayName": "next_follow_up_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "promised_date",
+              "displayName": "promised_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "requestor_email",
+              "displayName": "requestor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "provider_name",
+              "displayName": "provider_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "organization_service_level",
+              "displayName": "organization_service_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "follow_up_count",
+              "displayName": "follow_up_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "download_recording_url",
+              "displayName": "download_recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": true
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        -112
+      ],
+      "id": "364fbb9c-ea84-4cf7-b7b0-4332a0a0c920",
+      "name": "Insert pending invoice data in db1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "overdue_requests",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -96
+      ],
+      "id": "e015886c-1af6-483d-ab23-687031df9766",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1dcb3d68-9d9b-4d59-9e44-2c6d0b632d98",
+              "leftValue": "={{ $json.overdue_requests[0].request_ids[0].requestor_contact_number }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        -96
+      ],
+      "id": "389790f0-ccd6-40e8-b1ea-4021bbb15ec3",
+      "name": "Does phone number exists1"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "requestor_email",
+              "keyValue": "={{ $json.overdue_requests[0].request_ids[1].requestor_email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        -112
+      ],
+      "id": "934f8f60-6805-442d-ae29-adb2535452ed",
+      "name": "If row does not exist1"
+    },
+    {
+      "parameters": {
+        "content": "Testing Version",
+        "height": 80,
+        "width": 160
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -704,
+        192
+      ],
+      "typeVersion": 1,
+      "id": "8cea362d-3163-4574-9a9b-5944d21a2c52",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Latest live version",
+        "height": 80,
+        "width": 198
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -768,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "65e78c68-2b6c-4c08-9488-c627244df85f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "url": "https://qa.greencheckhealth.com/api/v2/voice_agent/over_due_requests",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization-token",
+              "value": "eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbiI6ImEyOWJlOTVhODZmYWIxZmJkYWU5OWFkZSJ9.Rx1twPgw8XWVjtQ0IHVOUdCw4C1EKa_IASkGThTDewA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"per_page\": \"25\"\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $pageCount + 1 > $response.body.total_pages }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -224,
+        -96
+      ],
+      "id": "12721e5f-312b-4f46-89b2-59c0b112cb7d",
+      "name": "QA - Get pending requests",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Fzj6sYbg3hLCGDms",
+          "name": "Chartrequest basic auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        160
+      ],
+      "id": "ccc96ebc-6a24-4922-9026-055072669c73",
+      "name": "Schedule Trigger",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone_number": "={{ $json.requestor_contact_number }}",
+            "recipent_name": "={{ $json.requestor_name }}",
+            "organization_name": "={{ $json.requestor_organization_name }}",
+            "status": "new",
+            "requestor_email": "={{ $json.requestor_email }}",
+            "provider_name": "={{ $json.provider_name }}",
+            "organization_service_level": "={{ $json.organization_service_level }}",
+            "next_follow_up_date": "Null",
+            "follow_up_count": 0
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "phone_number",
+              "displayName": "phone_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "last_call_outcome",
+              "displayName": "last_call_outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "recipent_name",
+              "displayName": "recipent_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "disposition",
+              "displayName": "disposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "organization_name",
+              "displayName": "organization_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_locked",
+              "displayName": "call_locked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "promised_amount",
+              "displayName": "promised_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "follow_up_required_flag",
+              "displayName": "follow_up_required_flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "next_follow_up_date",
+              "displayName": "next_follow_up_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "promised_date",
+              "displayName": "promised_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "requestor_email",
+              "displayName": "requestor_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "provider_name",
+              "displayName": "provider_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "organization_service_level",
+              "displayName": "organization_service_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "follow_up_count",
+              "displayName": "follow_up_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "download_recording_url",
+              "displayName": "download_recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": true
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        160
+      ],
+      "id": "3cd280e5-507f-44ac-a788-89600c2e9e8d",
+      "name": "Insert pending invoice data in db"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "overdue_requests",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        160
+      ],
+      "id": "07904a07-a79a-41fe-a56c-6f17ec042798",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1dcb3d68-9d9b-4d59-9e44-2c6d0b632d98",
+              "leftValue": "={{ $json.overdue_requests.requestor_contact_number }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        160
+      ],
+      "id": "df5720a1-12cd-4529-8101-2ca380a14556",
+      "name": "Does phone number exists"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "EayTprE2y7RQET2f",
+          "mode": "list",
+          "cachedResultName": "voice requests",
+          "cachedResultUrl": "/projects/0V4MjK2HkhxhQZk9/datatables/EayTprE2y7RQET2f"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "requestor_email",
+              "keyValue": "={{ $json.overdue_requests.requestor_email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        160
+      ],
+      "id": "dba49216-e3c1-4450-879c-79c8141d8b34",
+      "name": "If row does not exist"
+    },
+    {
+      "parameters": {
+        "url": "https://qa.greencheckhealth.com/api/v2/voice_agent/over_due_requests",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization-token",
+              "value": "eyJhbGciOiJIUzI1NiJ9.eyJ0b2tlbiI6ImEyOWJlOTVhODZmYWIxZmJkYWU5OWFkZSJ9.Rx1twPgw8XWVjtQ0IHVOUdCw4C1EKa_IASkGThTDewA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"per_page\": \"25\"\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $pageCount + 1 > $response.body.total_pages }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -240,
+        160
+      ],
+      "id": "ff59ebd0-bce1-4cb0-af5d-899b2264565e",
+      "name": "QA - Get pending requests1",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Fzj6sYbg3hLCGDms",
+          "name": "Chartrequest basic auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const req = item.json.overdue_requests;\n  \n  return {\n    json: {\n      requestor_organization_name: req.requestor_organization_name,\n      provider_name:               req.provider_name,\n      organization_service_level:  req.organization_service_level,\n      requestor_contact_number:    req.requestor_contact_number,\n      requestor_email:             req.requestor_email,\n      requestor_name:              req.requestor_name,\n      request_count:               req.request_count,\n      request_id:                  req.request_ids.map(r => r.request_id).join(', '),\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        -112
+      ],
+      "id": "145a6224-0d83-4ee0-b58a-d37a2010b7f5",
+      "name": "Format invoice data"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const req = item.json.overdue_requests;\n  \n  // Extract individual fields from request_ids array of objects\n  const ids = req.request_ids.map(r => r.request_id);\n  const invoiceAmounts = req.request_ids.map(r => r.invoice_amount);\n  const patientNames = req.request_ids.map(r => r.patient_name);\n  const daysPastDue = req.request_ids.map(r => r.days_past_due);\n  const totalInvoiceAmount = Math.round(invoiceAmounts.reduce((sum, a) => sum + a, 0) * 100) / 100;\n\n  return {\n    json: {\n      requestor_organization_name: req.requestor_organization_name,\n      provider_name:               req.provider_name,\n      organization_service_level:  req.organization_service_level,\n      requestor_contact_number:    req.requestor_contact_number,\n      requestor_email:             req.requestor_email,\n      requestor_name:              req.requestor_name,\n      request_count:               req.request_count,\n      request_ids:                 ids.join(', '),\n      invoice_amounts:             JSON.stringify(invoiceAmounts),\n      patient_names:               patientNames.join(', '),\n      days_past_due_list:          JSON.stringify(daysPastDue),\n      total_invoice_amount:        totalInvoiceAmount,\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        160
+      ],
+      "id": "3ef75497-8db5-4969-90bd-144eacce1bbb",
+      "name": "Format invoice data1"
+    },
+    {
+      "parameters": {
+        "content": "Scduler to get the Invoice details and store to data wth status new to call the user ",
+        "height": 368,
+        "width": 1632,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -544,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "be9cb56f-439a-4694-8b33-1013b9e61a64",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger1": [
+      {
+        "json": {
+          "timestamp": "2026-09-10T19:03:22.160+05:30",
+          "Readable date": "September 10th 2026, 7:03:22 pm",
+          "Readable time": "7:03:22 pm",
+          "Day of week": "Thursday",
+          "Year": "2026",
+          "Month": "September",
+          "Day of month": "10",
+          "Hour": "19",
+          "Minute": "03",
+          "Second": "22",
+          "Timezone": "Asia/Kolkata (UTC+05:30)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "QA - Get pending requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Does phone number exists1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Does phone number exists1": {
+      "main": [
+        [
+          {
+            "node": "If row does not exist1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If row does not exist1": {
+      "main": [
+        [
+          {
+            "node": "Format invoice data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QA - Get pending requests": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "QA - Get pending requests1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Does phone number exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Does phone number exists": {
+      "main": [
+        [
+          {
+            "node": "If row does not exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If row does not exist": {
+      "main": [
+        [
+          {
+            "node": "Format invoice data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QA - Get pending requests1": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format invoice data": {
+      "main": [
+        [
+          {
+            "node": "Insert pending invoice data in db1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format invoice data1": {
+      "main": [
+        [
+          {
+            "node": "Insert pending invoice data in db",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "3Lef1SFasDFsypJs"
+  },
+  "versionId": "90811979-2708-4750-8e65-5a97c64c6744",
+  "meta": {
+    "instanceId": "0abb16ec12a94ebb412535e26e364cbcc2c642f81dbc2853ba257d14e7b06ae1"
+  },
+  "nodeGroups": [],
+  "id": "P0Or97O26BI0fw3F",
+  "tags": []
+}

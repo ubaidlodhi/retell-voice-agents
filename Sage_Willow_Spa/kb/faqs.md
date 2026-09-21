@@ -128,7 +128,7 @@ Yes, your session can be customized to focus on areas like back, shoulders, neck
 
 ### Q: Which massage should I choose?
 
-It depends on what you're looking for. For relaxation, **Swedish** is the classic choice. For deeper tension or chronic muscle pain, **Deep Tissue** uses firmer pressure. Our **Signature Massage** is fully customized — the therapist blends techniques based on what your body needs that day.
+It depends on what you're looking for. For relaxation, **Swedish** is the classic choice. For deeper tension or chronic muscle pain, **Deep Tissue** uses firmer pressure. Our **Signature Massage** is fully customized — the therapist blends Swedish, deep tissue, and walk-on-back techniques based on what your body needs that day. If you enjoy heat, **Hot Stone** uses warmed stones, and the **Eastern Therapeutic Ritual** pairs heated stones with warm herbal oil for a deeper, warming treatment.
 
 ---
 
