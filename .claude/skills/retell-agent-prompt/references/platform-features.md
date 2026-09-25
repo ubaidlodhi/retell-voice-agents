@@ -82,7 +82,7 @@ Fine-tune how the agent interacts at the audio level (dashboard → speech setti
 - **Background sound** — ambient call-center/office sound for realism.
 - **Responsiveness** — how quickly the agent jumps in. Lower it for elderly or deliberate callers (more wait time before responding). "Dynamically adjust based on user input" adapts to the caller's pace.
 - **Interruption sensitivity** — how easily the caller can cut the agent off. Lower it to resist background speech/noise.
-- **Backchanneling** — how often and with what words the agent acknowledges ("mm-hm", "right") while listening.
+- **Backchanneling** — **keep it off** (`enable_backchannel: false`, and don't set `backchannel_frequency` / `backchannel_words`). Deprecated in practice: modern voices carry acknowledgement in their delivery, the injected "mm-hm" lands on the wrong beat and reads as interrupting, and it feeds more of the agent's own audio back into the STT.
 - **Boosted keywords** — bias recognition toward specific terms; add brand names, product names, and people's names so STT gets them right.
 - **Speech normalization (audio)** — converts dates/currency/numbers to plain words at the audio layer (complements the preset).
 - **Reminder frequency** — how often the agent nudges an inactive caller (pairs with your silence prose — keep them consistent).

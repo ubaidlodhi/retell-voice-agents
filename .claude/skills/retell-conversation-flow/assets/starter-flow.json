@@ -32,7 +32,12 @@
     {
       "name": "Resolution status",
       "type": "enum",
-      "choices": ["resolved", "transferred", "ticket_created", "abandoned"]
+      "choices": [
+        "resolved",
+        "transferred",
+        "ticket_created",
+        "abandoned"
+      ]
     },
     {
       "name": "Call summary",
@@ -51,7 +56,10 @@
     "global_prompt": "REPLACE WITH GLOBAL PROMPT — see references/global-prompt-template.md",
     "start_node_id": "node-greeting",
     "start_speaker": "agent",
-    "model_choice": { "type": "cascading", "model": "gpt-4.1" },
+    "model_choice": {
+      "type": "cascading",
+      "model": "gpt-4.1"
+    },
     "knowledge_base_ids": [],
     "tools": [],
     "nodes": [
@@ -74,7 +82,11 @@
           }
         ],
         "start_speaker": "agent",
-        "display_position": { "x": 200, "y": 200 }
+        "display_position": {
+          "x": 200,
+          "y": 200
+        },
+        "interruption_sensitivity": 0
       },
       {
         "id": "node-close-call",
@@ -85,7 +97,10 @@
           "text": "say \"Thanks so much for calling. Have a great day!\""
         },
         "speak_during_execution": true,
-        "display_position": { "x": 600, "y": 200 }
+        "display_position": {
+          "x": 600,
+          "y": 200
+        }
       }
     ]
   }

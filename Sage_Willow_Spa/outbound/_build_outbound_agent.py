@@ -53,7 +53,7 @@ RETELL_BASE = "https://api.retellai.com"
 
 # Source of truth: the live inbound agent's flow.
 SOURCE_FLOW_ID = "conversation_flow_bdb1968b28ed"
-SOURCE_FLOW_VERSION = 18  # PUBLISHED 2026-09-22: V38-V58 (spelled names), 30 s silence
+SOURCE_FLOW_VERSION = 21  # 2026-09-25: V38-V63 (+ reschedule looks up first, cancel asked once)
 SOURCE_AGENT_ID = "agent_eceb7448aa1f37e8f436a63a43"
 
 # Dev backend built by _build_outbound_backend_workflow.py (n8n yfbpUaEzZQghelh3).
@@ -101,7 +101,7 @@ LOOKUP_NODES = ("node-status-assistant", "node-cancel-assistant", "node-resched-
 CALLBACK_NUMBER_SPOKEN = "six two eight, two eight six, two two eight one"
 
 # Bump on every meaningful build so the client knows which revision they tested.
-AGENT_VERSION = "V19"
+AGENT_VERSION = "V22"
 
 # A silent line ends after this long (Ubaid, 2026-09-22, after Nicky's "no need
 # to wait almost 3 mins"): 89 s let call_b004eecd sit for 149 s. First 50 s,
@@ -181,7 +181,7 @@ Call direction: {{direction}}"""
 NEW_CALL_CONTEXT = """## Call Context
 
 OUTBOUND call - you placed it. lead_source is "{{lead_source}}":
-- website_form: they filled out the booking form on our website and asked us to get in touch. They have never spoken to us.
+- website_form: they submitted the callback form on our website and asked us to get in touch. They have never spoken to us.
 - missed_call: they rang the spa a little earlier and the call ended before anything got done. You are returning it. What they seemed to want, if known: {{inbound_intent}}
 
 Lead name: {{lead_first_name}} {{lead_last_name}}
@@ -251,6 +251,11 @@ def patch_global_prompt(prompt: str) -> str:
 # recording, restarting two or three times, before Retell's voicemail
 # detection left the message. The opener is judged on what was heard, so the
 # rule lives in both opener nodes: a recording gets silence, not an opener.
+# Website-form leads (Ubaid, 2026-09-25): do not open with "Hi, is this Ron?" -
+# say who we are and why we are ringing, then ask how to help.
+WEBSITE_FORM_OPENER = ("Hi, this is Aria from Sage and Willow Spa. You submitted a callback form on our "
+                       "website - how can I help you today?")
+
 RECORDING_RULE = """A RECORDING IS NOT A PERSON. If what you hear sounds like a machine - a phone number read out, "you've reached", "not available", "can't take your call", "leave a message", "at the tone", a beep - do NOT open. Reply NO_RESPONSE_NEEDED and stay quiet, and keep doing so while the recording runs; the voicemail step takes over on its own. A recording is not echo either: if one cut you off, stay quiet rather than starting the opener again. Only a live person gets the opener."""
 
 OPENING_NAMED = """The reason for this call is lead_source = "{{lead_source}}" (see Call Context). A missed_call lead never filled out a form, and a website_form lead never rang us - never mix those up.
@@ -259,10 +264,11 @@ THEY SPEAK FIRST - "Hello?", a name, a grunt, anything. Whatever it is, your FIR
 
 """ + RECORDING_RULE + """
 
-FIRST TURN ONLY - open with exactly: "Hi, is this {{lead_first_name}}?" then STOP. No second sentence, no stacked question. You are checking you have the right person before you say anything else.
+FIRST TURN ONLY - open with exactly ONE of these, then STOP:
+- website_form: \"""" + WEBSITE_FORM_OPENER + """\" Do NOT open by asking for them by name.
+- missed_call, or lead_source is anything else: "Hi, is this {{lead_first_name}}?" No second sentence, no stacked question - you are checking you have the right person before you say anything else.
 
-Once they confirm it is them, ONE turn, then straight to the question. You have not introduced yourself yet, so do it now:
-- website_form: "Hi {{lead_first_name}}, this is Aria from Sage and Willow Spa - you filled out our booking form. Which massage can I book for you?"
+After "Hi, is this {{lead_first_name}}?" - once they confirm it is them, ONE turn, then straight to the question. You have not introduced yourself yet, so do it now:
 - missed_call: "Hi {{lead_first_name}}, this is Aria from Sage and Willow Spa - looks like we got cut off a moment ago. What can I help you with?"
 - lead_source is anything else: "Hi {{lead_first_name}}, this is Aria from Sage and Willow Spa - you reached out to us. What can I help you with?"
 On a missed_call lead, if {{inbound_intent}} says they were booking, end with "Which massage can I book for you?" instead of "What can I help you with?"
@@ -273,8 +279,8 @@ You are NOT asking permission first - they reached out to us, so get to the poin
 After that you have introduced yourself. NEVER say either line again, in whole or in part.
 
 Handle here and wait - do not route:
-- "Hello?" / "Can you hear me?" AFTER you have opened -> "Yep, I can hear you - is this {{lead_first_name}}?"
-- "Who is this?" -> website_form: "It's Aria from Sage and Willow Spa - you filled out our booking form." missed_call: "It's Aria from Sage and Willow Spa - you rang us a little earlier."
+- "Hello?" / "Can you hear me?" AFTER you have opened -> website_form: "Yep, I can hear you - how can I help you today?" Otherwise: "Yep, I can hear you - is this {{lead_first_name}}?"
+- "Who is this?" -> website_form: "It's Aria from Sage and Willow Spa - you submitted a callback form on our website." missed_call: "It's Aria from Sage and Willow Spa - you rang us a little earlier."
 - "Is this a robot?" -> "I'm Aria, the virtual receptionist at Sage and Willow Spa - happy to help." Then carry on.
 - They name a massage straight away -> take it and move on.
 - missed_call lead says they never called -> "No problem at all - sorry to bother you. Take care." and end the call.
@@ -293,13 +299,12 @@ THEY SPEAK FIRST - "Hello?", a name, a grunt, anything. Whatever it is, your FIR
 
 """ + RECORDING_RULE + """
 
-FIRST TURN ONLY - open with exactly ONE of these, then STOP. No second sentence, no stacked question.
-- website_form: "Hi, this is Aria from Sage and Willow Spa - am I speaking with the person who filled out our booking form?"
+FIRST TURN ONLY - open with exactly ONE of these, then STOP. No stacked question.
+- website_form: \"""" + WEBSITE_FORM_OPENER + """\"
 - missed_call: "Hi, this is Aria from Sage and Willow Spa - did someone at this number just try to reach us?"
 - unknown: "Hi, this is Aria from Sage and Willow Spa - am I speaking with the person who reached out to us?"
 
-Once they confirm it is them, ONE turn, then straight to the question. You have ALREADY introduced yourself - do NOT say your name or the spa again:
-- website_form: "Great - which massage can I book for you?"
+The website_form opener already asks how you can help - there is no second turn; just answer what they say. For missed_call and unknown, once they confirm it is them, ONE turn, then straight to the question. You have ALREADY introduced yourself - do NOT say your name or the spa again:
 - missed_call: "Sorry about that - what can I help you with?"
 - unknown: "Great - what can I help you with?"
 On a missed_call lead, if {{inbound_intent}} says they were booking, end with "Which massage can I book for you?" instead of "What can I help you with?"
@@ -311,7 +316,7 @@ After that you have introduced yourself. NEVER say the opener again, in whole or
 
 Handle here and wait - do not route:
 - "Hello?" / "Can you hear me?" AFTER you have opened -> "Yep, I can hear you." then the opener question again, once.
-- "Who is this?" -> website_form: "It's Aria from Sage and Willow Spa - you filled out our booking form." missed_call: "It's Aria from Sage and Willow Spa - you rang us a little earlier." unknown: "It's Aria from Sage and Willow Spa - you reached out to us."
+- "Who is this?" -> website_form: "It's Aria from Sage and Willow Spa - you submitted a callback form on our website." missed_call: "It's Aria from Sage and Willow Spa - you rang us a little earlier." unknown: "It's Aria from Sage and Willow Spa - you reached out to us."
 - "Is this a robot?" -> "I'm Aria, the virtual receptionist at Sage and Willow Spa - happy to help." Then carry on.
 - They name a massage straight away -> take it and move on.
 - missed_call lead says they never called -> "No problem at all - sorry to bother you. Take care." and end the call.
@@ -339,7 +344,7 @@ Do NOT ask why. Do NOT offer a discount, a different day, a different service, o
 If they asked to be taken off the list or told you not to call again, say instead: "Understood - I'll make sure we don't call again. Take care." """
 
 NO_FORM_RECALL = """They do not remember reaching out, or they are wary this is a sales call. Say it once, calmly, in one sentence, matching lead_source = "{{lead_source}}":
-- website_form: they filled out the booking form on sage-willow-spa dot com asking us to call about a massage appointment.
+- website_form: they submitted the callback form on sage-willow-spa dot com asking us to call them.
 - missed_call: someone rang the spa from this number at {{lead_submitted_at}} and the call dropped before we could help, so you are just returning it.
 
 Say it ONCE. Do not argue, do not repeat it, and do not read their details back to prove it - that makes it worse, not better.
@@ -713,6 +718,9 @@ def build_flow(source: dict, target_webhook: str) -> dict:
         for e in n.get("edges", []):
             if e["destination_node_id"] == "node-book-name":
                 e["destination_node_id"] = "node-book-name-gate"
+        for ex in n.get("finetune_transition_examples", []) or []:
+            if ex.get("destination_node_id") == "node-book-name":
+                ex["destination_node_id"] = "node-book-name-gate"
     nodes["node-book-name"].pop("skip_response_edge", None)
     name_pos = nodes["node-book-name"].get("display_position", {"x": 0, "y": 0})
     flow["nodes"].append({
@@ -804,6 +812,26 @@ def build_flow(source: dict, target_webhook: str) -> dict:
     # is." as a dead end; the add-ons node says the time back instead.
     if "Never choose for them" not in nodes["node-book-discovery"]["instruction"]["text"]             or "[Time] it is - would you like to add any enhancements?" not in nodes["node-book-addons"]["instruction"]["text"]:
         raise SystemExit("V57 hand-off wording missing from the source flow")
+    # V59 (inbound): therapist requests after the time is agreed go back to discovery.
+    for nid, eid in (("node-book-addons", "e-addons-therapist"), ("node-book-name", "e-name-therapist")):
+        ids = [e["id"] for e in nodes[nid].get("edges", [])]
+        if not ids or ids[0] != eid:
+            raise SystemExit(f"{nid}: {eid} missing or not first - inbound V59 not in the source flow?")
+    if "get_staff" not in nodes["node-book-amend"].get("tool_ids", []):
+        raise SystemExit("amend cannot look up a therapist - inbound V59 not in the source flow?")
+    # V60 (inbound): function nodes that speak while their tool runs say a pinned
+    # line, never an improvised one ("You're all set" before the booking returned).
+    for nid in ("node-book-submit", "node-cancel-do", "node-resched-do", "node-handoff-callback"):
+        if (nodes[nid].get("instruction") or {}).get("type") != "static_text":
+            raise SystemExit(f"{nid} wait line is not pinned - inbound V60 not in the source flow?")
+    # Website-form leads: no "is this <name>?" opener, and one name for the form throughout.
+    for gid in ("node-greeting", "node-greeting-unnamed"):
+        t = nodes[gid]["instruction"]["text"]
+        if WEBSITE_FORM_OPENER not in t:
+            raise SystemExit(f"{gid} lost the website-form opener")
+    if "booking form" in json.dumps([n.get("instruction") for n in flow["nodes"]]) + flow["global_prompt"]:
+        raise SystemExit("'booking form' survives somewhere - the form is the callback form")
+
     # V58: both openers refuse to talk over a recording, the name node asks for
     # both spellings, and nothing still points at the removed phone node.
     for gid in ("node-greeting", "node-greeting-unnamed"):
@@ -813,13 +841,17 @@ def build_flow(source: dict, target_webhook: str) -> dict:
         raise SystemExit("name node lost its outbound first line")
     if "Do NOT ask them to spell it" in nodes["node-book-name"]["instruction"]["text"]:
         raise SystemExit("name node still carries the V53 no-spelling wording")
+    # Check against the real node list: nodes added during the build (the name
+    # gate, the NEW_NODES) are not in the `nodes` lookup built at the start.
+    real_ids = {n["id"] for n in flow["nodes"]} | {n["id"] for n in NEW_NODES}
     dangling = [(n["id"], ex.get("id")) for n in flow["nodes"]
                 for ex in n.get("finetune_transition_examples", [])
-                if ex.get("destination_node_id") and ex["destination_node_id"] not in nodes]
+                if ex.get("destination_node_id") and ex["destination_node_id"] not in real_ids]
     if dangling:
         raise SystemExit(f"transition examples point at nodes that do not exist: {dangling}")
     direct = [e["id"] for n in flow["nodes"] for e in n.get("edges", [])
-              if e["destination_node_id"] == "node-book-discovery" and e["id"] not in ("e-service-chosen", "e-bookfail-retry")]
+              if e["destination_node_id"] == "node-book-discovery"
+              and e["id"] not in ("e-service-chosen", "e-bookfail-retry", "e-addons-therapist", "e-name-therapist")]
     if direct:
         raise SystemExit(f"edges start a booking at discovery, bypassing the service node: {direct}")
     strays = [n["id"] for n in flow["nodes"] if n["id"] != "node-out-gate"

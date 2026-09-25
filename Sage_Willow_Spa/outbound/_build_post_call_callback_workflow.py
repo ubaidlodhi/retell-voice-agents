@@ -11,10 +11,16 @@ both directions.
 Flow
 ----
     Webhook (POST /webhook/sage-willow-post-call)      <- Retell agent webhook, call_analyzed
-        -> Compose: Post-Call Email   (outbound/post_call_email.js: real conversation? -> HTML)
-             -> IF Send Email? -> Send Email: Post-Call Recap  (SMTP, Aria <engineering@aiemply.com>,
-                                                     to the spa, engineering on CC; test line skipped)
-                               -> Skip: No Email
+        -> Compose: Post-Call Email   (outbound/post_call_email.js: real conversation? facts,
+                                       branded shell, template fallback, the GPT request)
+             -> IF Real Conversation? -> no  -> Skip: No Email
+                                      -> yes -> Write: Recap (GPT-4.1-mini)   (OpenAI chat completions,
+                                                  JSON out, 3 tries, continues on error)
+                                             -> Render: Recap Email  (outbound/post_call_email_render.js:
+                                                  checks the words, template if anything is off)
+                                             -> IF Send Email? -> Send Email: Post-Call Recap  (SMTP,
+                                                  Aria <engineering@aiemply.com>, to the spa, CC engineering)
+                                                               -> Skip: No Email   (dry runs)
         -> Prepare Call               (hard facts only: right agent? real caller? transcript?)
         -> IF Classify With AI?
              yes -> Classify Call Outcome   (AI Agent: OpenAI gpt-4.1-mini + structured output)
@@ -95,6 +101,8 @@ SNAPSHOT_PATH = OUT_DIR / "post_call_callback_workflow.json"
 # can run the very same code. Same SMTP credential the backend's callback
 # e-mail uses.
 EMAIL_CODE = (OUT_DIR / "post_call_email.js").read_text(encoding="utf-8")
+# GPT-4.1-mini writes the recap (Ubaid, 2026-09-25); this checks and renders it.
+RENDER_CODE = (OUT_DIR / "post_call_email_render.js").read_text(encoding="utf-8")
 SMTP_CRED = {"id": "m0mbibKf6il36id5", "name": "SMTP account"}
 EMAIL_FROM = "Aria <engineering@aiemply.com>"
 EMAIL_REPLY_TO = "engineering@aiemply.com"
@@ -524,9 +532,27 @@ def build() -> dict:
         # ---- Aria's recap e-mail (both agents) ----------------------------------
         node("email-compose", "Compose: Post-Call Email", "n8n-nodes-base.code", 2,
              [-880, 620], {"jsCode": EMAIL_CODE}),
-        bool_if("if-email", "IF: Send Email?", [-660, 620], "send"),
+        bool_if("if-write", "IF: Real Conversation?", [-660, 620], "write"),
+        node("email-write", "Write: Recap (GPT-4.1-mini)", "n8n-nodes-base.httpRequest", 4.2,
+             [-440, 560],
+             {"method": "POST",
+              "url": "https://api.openai.com/v1/chat/completions",
+              "authentication": "predefinedCredentialType",
+              "nodeCredentialType": "openAiApi",
+              "sendBody": True,
+              "specifyBody": "json",
+              # the request (model, prompt, facts, transcript) is built in post_call_email.js
+              "jsonBody": "={{ JSON.stringify($json.openai_body) }}",
+              "options": {"timeout": 30000}},
+             credentials={"openAiApi": OPENAI_CRED},
+             retryOnFail=True, maxTries=3, waitBetweenTries=1000,
+             # a failed call still reaches Render, which sends the template instead
+             onError="continueRegularOutput"),
+        node("email-render", "Render: Recap Email", "n8n-nodes-base.code", 2,
+             [-220, 560], {"jsCode": RENDER_CODE}),
+        bool_if("if-email", "IF: Send Email?", [0, 560], "send"),
         node("email-send", "Send Email: Post-Call Recap", "n8n-nodes-base.emailSend", 2.1,
-             [-420, 560],
+             [220, 500],
              {"fromEmail": EMAIL_FROM,
               "toEmail": "={{ $json.to }}",
               "subject": "={{ $json.subject }}",
@@ -537,7 +563,7 @@ def build() -> dict:
                           "ccEmail": "={{ $json.cc }}"}},
              credentials={"smtp": SMTP_CRED},
              onError="continueRegularOutput"),
-        node("skip-3", "Skip: No Email", "n8n-nodes-base.noOp", 1, [-420, 720], {}),
+        node("skip-3", "Skip: No Email", "n8n-nodes-base.noOp", 1, [220, 720], {}),
     ]
 
     def link(src, outputs):
@@ -547,7 +573,10 @@ def build() -> dict:
     connections = {}
     # The webhook fans out: the callback chain and the e-mail chain run side by side.
     connections.update(link("Webhook - Retell call_analyzed", [["Prepare Call", "Compose: Post-Call Email"]]))
-    connections.update(link("Compose: Post-Call Email", [["IF: Send Email?"]]))
+    connections.update(link("Compose: Post-Call Email", [["IF: Real Conversation?"]]))
+    connections.update(link("IF: Real Conversation?", [["Write: Recap (GPT-4.1-mini)"], ["Skip: No Email"]]))
+    connections.update(link("Write: Recap (GPT-4.1-mini)", [["Render: Recap Email"]]))
+    connections.update(link("Render: Recap Email", [["IF: Send Email?"]]))
     connections.update(link("IF: Send Email?", [["Send Email: Post-Call Recap"], ["Skip: No Email"]]))
     connections.update(link("Prepare Call", [["IF: Classify With AI?"]]))
     # true -> the model; false -> straight to the verdict (skip / callback routes)

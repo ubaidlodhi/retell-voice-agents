@@ -9,9 +9,11 @@ description: >
   "agent that books appointments and transfers when stuck", "multi-step inbound agent",
   "convert this call script into a Retell flow", "Retell flow JSON", "design the nodes for…",
   "fix this Retell flow", "my Retell agent is looping/stuck/repeating". Also trigger when the user
-  shows you an existing `Aubrey_Integration.json`-style file or talks about nodes, edges, transitions,
+  shows you an exported conversation-flow JSON, or talks about nodes, edges, transitions,
   global nodes, branch nodes, code nodes, MCP nodes, extract dynamic variables, ticket creation flows,
-  or warm-vs-cold transfer logic. Even partial mentions ("help me with my Retell flow") should trigger.
+  warm-vs-cold transfer logic, agent versions and publishing, or tuning call behaviour (interruption
+  sensitivity, silence timeout, voicemail, backchannel). Even partial mentions ("help me with my
+  Retell flow") should trigger.
 ---
 
 # Retell Conversation Flow — Production Agent Builder
@@ -47,6 +49,12 @@ A single prompt struggles when you need: deterministic routing on a variable, mi
 4. **Brevity on voice.** Default to 1–2 sentence agent turns. Phone attention drops sharply after 8–10 seconds of uninterrupted AI speech.
 
 5. **Sound human.** Contractions, filler words ("so," "got it," "okay"), one question per turn. The TTS engine reads what the LLM writes — pronunciation rules in the global prompt are not optional.
+
+6. **Structure beats prose.** A rule the model has ignored twice is a graph problem, not a wording problem. Move the capability, don't sharpen the sentence: a step that must not look things up gets its own node carrying only the tool it may use. Node shape and `tool_ids` are enforcement; instruction text is a hint.
+
+7. **Every turn ends with a question.** Prompt transitions are judged on the caller's *next* turn, so a turn ending in a statement gives the caller nothing to answer and the call stalls until the reminder fires. Acknowledgements belong at the top of the next node's instruction, where a question follows them.
+
+8. **The flow is half the agent.** Silence timeout, interruption sensitivity, voicemail behaviour, STT mode and publishing decide as much of the call as the graph does — see `references/agent-settings.md`. And a fix only reaches callers once the agent is **published**.
 
 ---
 
@@ -148,6 +156,16 @@ Tools live at `conversationFlow.tools[]` and are referenced by function/subagent
 
 For three ways to call external systems and which to choose, see [`references/node-types.md`](references/node-types.md) §Tools.
 
+### Step 5b — Agree the backend contract
+
+The flow's tools are only as good as what answers them. Before wiring, settle these with whoever owns the endpoint — each one has broken a live call:
+
+- **Response size** — Retell silently drops oversized tool results (budget ~10 KB). Give lookups a catalog shape and a detail shape rather than one fat payload.
+- **No UUIDs in the model's hands** — tool parameters take what a person said (name, duration, the time they agreed to); the backend resolves IDs. See `references/backend-contract.md`.
+- **Retries** — 3 attempts ~1 s apart on every outbound HTTP call, so one transient network blip doesn't become "I can't pull that up" on a healthy call.
+- **Honest failure envelope** — a failed tool returns something the flow can route on, and the failure node offers a callback instead of inventing a value.
+- **Post-call webhook** — subscribe to `call_analyzed` and derive outcomes from tool results, not from the model's own label.
+
 ### Step 6 — Configure post-call analysis
 
 In `post_call_analysis_data` at agent level, declare structured fields the post-call LLM should extract. Types: `enum` (with `choices`), `number`, `string`, `boolean`. Naming these well makes them powerful filters in Retell's call history dashboard. Read [`references/post-call-analysis.md`](references/post-call-analysis.md) for use cases.
@@ -170,6 +188,18 @@ If validation fails, fix and re-run. Don't deliver an unvalidated flow.
 python d:/retell-voice-agents/.claude/skills/retell-conversation-flow/scripts/validate_flow.py path/to/agent.json
 ```
 
+### Step 7b — Set the agent-level settings, then publish
+
+The flow JSON carries none of this, and it decides how the call feels. Full table in [`references/agent-settings.md`](references/agent-settings.md); the ones that are never negotiable:
+
+- `enable_backchannel: false` — **always**. Deprecated in practice; injected "mm-hm" lands on the wrong beat and feeds the agent's own audio back into the STT. Drop `backchannel_frequency` / `backchannel_words` with it.
+- `interruption_sensitivity: 0` **on the opening node** (line echo cuts off greetings; nobody real does).
+- `end_call_after_silence_ms` 30–50 s — reminders and the timeout stack, so a 90 s default means ~2 minutes of dead air.
+- Outbound: `start_speaker: "user"` + `begin_after_user_silence_ms`, plus `voicemail_option` static text.
+- `webhook_url` + `webhook_events: ["call_analyzed"]` if anything downstream needs the call.
+
+Then **publish**, and read the published version back: a draft edit changes nothing for real callers, and `publish-agent` opens a fresh draft N+1 (so the newest version legitimately reads `is_published: false`). Assert on the published copy that your change is present **and** that the tool URLs are the production ones.
+
 ### Step 8 — Deliver
 
 Output to the user:
@@ -191,7 +221,13 @@ For every flow in the agent, recommend the user test these seven scenarios in th
 6. **Tool failure** — webhook returns error or times out (failure path works?).
 7. **Caller insists / push-back** — push-back after offer to handle (clean transfer?).
 
+8. **Partial answer** — caller answers a different attribute than the one asked ("ninety minutes" to "which service?"). Does the node keep it and read the options back, or loop the same question?
+9. **Silence after pickup** — say nothing at all. Does the reminder fire once, then the call close within the budget you set?
+10. **Machine answers** (outbound) — does the agent stay quiet through the recorded greeting and leave exactly one message?
+
 Plus per-flow specifics: variable extraction failure (else-edge), Transfer failed, IVR wrong-routing.
+
+Retell's **test-case definitions** turn these into repeatable simulations: each definition carries a `response_engine` (pin it to the **published** flow version), a `user_prompt` persona written as the caller actually behaves, free-text `metrics` the judge scores, and optional `dynamic_variables` / `tool_mocks`. Run them as a batch test. Two rules learned the hard way: pin the version explicitly (a definition left on an old version silently tests the wrong agent), and if the tests run against a real backend, design the set to net to zero — book, then reschedule, then cancel the same fixture — and run them one at a time, in order.
 
 ---
 
@@ -215,6 +251,18 @@ These are bugs observed repeatedly in production. The skill prevents them by def
 
 8. **Duplicate edge IDs.** Caused by copy-pasting nodes. Validation script catches these — never skip Step 7.
 
+9. **`enable_backchannel: true`.** Deprecated in practice and audible as interrupting. Keep it false everywhere.
+
+10. **Line echo treated as a caller.** The line plays the agent's own voice back ~1 s late and STT files it as speech, so the agent answers itself on the greeting. Opening node at `interruption_sensitivity: 0` **plus** an echo rule in Turn-Taking.
+
+11. **A turn that ends in a statement.** Nothing for the caller to answer → no edge can fire → dead air until the reminder. End every turn with a question.
+
+12. **Sharpening prose instead of moving the capability.** If a node can call the tool, it will. Split the step into a node that carries only the tool it may use.
+
+13. **`exists` on a variable that may be empty.** It is true for an empty string, and a missing variable renders as literal braces. Branch on an exact sentinel and make the else-path the safe one.
+
+14. **Model-carried UUIDs.** IDs get garbled between tool calls. Resolve them server-side from what the caller actually said.
+
 ---
 
 ## Debug an Existing Flow
@@ -231,6 +279,18 @@ If the user shows you a broken `conversationFlow` JSON or describes a stuck/loop
 
 5. **Propose a minimal fix** before rewriting. Often a single edge condition tightening, or replacing a "DO NOTHING" block with `"Got it — one moment."` plus an `always_edge` is enough.
 
+### Before blaming the flow
+
+Half of "the agent is broken" reports are not the graph. Check, in this order:
+
+1. **Which version took the call?** The call record names the agent version. If it predates your fix, the fix was never published — or the number is pinned to a specific version.
+2. **What did the tools return?** Read the actual tool results in the call record. A `success: false`, an empty payload, or a result that never arrived (dropped for size) explains most "she said something odd" reports.
+3. **Is the "caller" turn really the caller?** A turn that repeats the agent's own words back, garbled, is line echo (anti-pattern 15), not a person.
+4. **Did the caller actually answer?** A stall after a sensible agent line is usually a turn that ended in a statement (16), not a broken edge.
+5. **What do the timestamps say?** Dead air that matches `reminder_trigger × count + end_call_after_silence_ms` is a settings problem, not a prompt problem.
+
+Then read the whole transcript top to bottom before proposing anything. Quote the exact turn that went wrong when you report it — "the model got confused" is not a diagnosis.
+
 ---
 
 ## Reference Files
@@ -241,8 +301,10 @@ Read these on demand. They contain the depth that doesn't fit in this overview.
 - [`references/edges-and-transitions.md`](references/edges-and-transitions.md) — Edge primitives, equation operators (full list verified against Retell docs), evaluation order, finetune examples. Read when designing transitions.
 - [`references/global-prompt-template.md`](references/global-prompt-template.md) — Production-grade global prompt template with all 10 sections including pronunciation rules. Borrow verbatim.
 - [`references/anti-patterns.md`](references/anti-patterns.md) — Failure modes library with symptom → cause → fix table. Read when debugging.
-- [`references/standard-patterns.md`](references/standard-patterns.md) — The Standard Collection Pattern + 4 other reusable shapes (transfer-with-fallback, code-then-branch, extract-then-route, IVR-with-fallback).
+- [`references/standard-patterns.md`](references/standard-patterns.md) — The Standard Collection Pattern + 9 other reusable shapes (transfer-with-fallback, code-then-branch, IVR, choice gate, outbound opener with answering-machine guard, human-scale tool schemas).
 - [`references/post-call-analysis.md`](references/post-call-analysis.md) — Field types, use cases, the IVR-fields cheatsheet.
+- [`references/agent-settings.md`](references/agent-settings.md) — Everything that lives on the agent rather than the flow: backchannel, interruption sensitivity, the dead-air arithmetic, STT mode, voicemail, webhooks, versions and publishing, dashboard drift, building a sibling agent by transform. Read before shipping anything.
+- [`references/backend-contract.md`](references/backend-contract.md) — What the webhook side owes the agent: response-size budget, server-side ID resolution, retries, honest failure envelopes, post-call records. Read when wiring tools.
 
 ## Asset Templates
 
@@ -284,5 +346,12 @@ Retell bills on prompt tokens. Keep the global prompt lean — under ~3,500 toke
 - [ ] No placeholder URLs (`TODO.example.com`)
 - [ ] No "DO NOTHING" / "STAY SILENT" instructions in any node
 - [ ] No inline conditional dynamic variable substitution in agent speech
+- [ ] `enable_backchannel` is false (and `backchannel_frequency` / `backchannel_words` are gone)
+- [ ] Opening node at `interruption_sensitivity: 0`, echo rule present in the global prompt's Turn-Taking
+- [ ] Every conversation node's turn ends with a question
+- [ ] Silence budget set deliberately (`end_call_after_silence_ms` + reminders ≈ 30–70 s of dead air), and the global prompt's silence prose matches it
+- [ ] Outbound only: `start_speaker: "user"`, answering-machine rule in both openers, `voicemail_option` set, wrong-person / bad-time / not-interested exits wired
+- [ ] No tool parameter asks the model to carry an ID it read from another tool
 - [ ] `validate_flow.py` passes
+- [ ] Agent **published**, and the published version read back: change present, tool URLs are production
 - [ ] Recommended test scenarios delivered alongside the JSON

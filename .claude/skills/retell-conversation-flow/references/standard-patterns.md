@@ -177,7 +177,7 @@ Cross-cutting interrupts. Add `global_node_setting` to make any node available f
 [GLOBAL HUMAN REQUEST]
    global_node_setting.condition:
      "When user explicitly asks to speak with a person, agent, or representative,
-      OR insists on a human after Aubrey has offered to help"
+      OR insists on a human after the agent has offered to help"
    instruction: "Got it — let me connect you. Please hold."
    then transfer_call → default routing
 
@@ -274,14 +274,90 @@ When the agent needs to weave multiple tool calls into a single fluent conversat
 
 ---
 
+## Pattern 8: Choice Gate — the node that cannot skip ahead
+
+For any flow where the caller must settle **what** before the agent looks up **when**. The enforcement is the node's tool list, not its prose (see anti-pattern 17).
+
+```
+[CHOICE GATE]                (subagent — tool_ids: [catalogue_lookup] ONLY)
+   global_node_setting: "caller wants to book / asks for an appointment"
+   "Find out which item they want. If they answer with a duration, a time, or a
+    person instead of an item, keep what they gave you and read the list back in
+    the same turn: '[what they said] — which one did you want? We have [names].'"
+   finetune_transition_examples:
+        partial answer (a duration only)   → no destination = STAY
+        real choice (names an item)        → destination = DISCOVERY
+   edges[] → "caller named a specific item from the list" → DISCOVERY
+   edges[] → "caller gives up or wants something else"    → GREETING
+        ↓
+[DISCOVERY]                  (subagent — availability + booking tools)
+   the only node that can see times, and it can only be reached with a choice made
+```
+
+Rules that make it hold:
+- The booking trigger (`global_node_setting`) lives on the **gate**, never on the node that owns the lookup tool. If any edge reaches discovery directly, the gate is decorative — assert this in your build script.
+- The gate returns to itself by staying (an example with no `destination_node_id`), never with a self-loop edge, which Retell rejects.
+- One re-ask maximum, and the re-ask carries the list.
+
+---
+
+## Pattern 9: Outbound Opening with an Answering-Machine Guard
+
+Outbound calls are answered by three things: the person, someone else, or a machine. The opener must handle all three before it says anything.
+
+```
+[NAME-KNOWN BRANCH]          (branch — equation on an exact sentinel, else → unnamed opener)
+        ↓                                    ↓
+[OPENER (name known)]                [OPENER (no name)]
+   start_speaker: "user", begin_after_user_silence_ms: 4000
+   interruption_sensitivity: 0
+   "A RECORDING IS NOT A PERSON. If you hear a number read out, 'you've reached',
+    'leave a message', 'at the tone', or a beep — do NOT open. Reply
+    NO_RESPONSE_NEEDED and stay quiet while it runs. Never restart the opener
+    because a recording talked over you."
+   "FIRST TURN ONLY: '<one line>' then STOP."
+   edges[] → wrong person | bad time | not interested | doesn't recall us | the real flow
+```
+
+Plus, at agent level, `voicemail_option` static text so the platform leaves the message after the tone (`agent-settings.md`). The flow's job is only to stay quiet until then.
+
+The four exit edges are not optional — without them the agent tries to book an appointment for someone who just said "you've got the wrong number".
+
+---
+
+## Pattern 10: Human-Scale Tool Schemas (server-side resolvers)
+
+Every tool parameter should be something a person said out loud. IDs are the backend's problem.
+
+```
+[COLLECT]  service name, duration in minutes, the time they agreed to, their phone
+     ↓
+[FUNCTION NODE]  book_appointment(serviceName, durationInMinutes, startDate, phone, firstName, lastName)
+     ↓
+   backend resolves: variant id ← name + duration
+                     schedule id ← the live availability response for that slot
+                     staff       ← whoever is free, unless they asked for someone
+                     contact     ← looked up or created from the phone
+     ↓
+   returns {success, confirmed, a one-line message} — nothing the agent must parse
+```
+
+Why: the model corrupts UUIDs it is asked to carry between calls, and a corrupted ID either errors or, worse, books against the wrong record. See `backend-contract.md` §2.
+
+---
+
 ## Composing patterns
 
 Real agents use multiple patterns. A typical inbound healthcare agent might have:
 
 - **Pattern 4** (pre-call lookup → personalized opening)
+- **Pattern 8** (choice gate in front of any lookup-driven flow)
 - **Pattern 1** (Standard Collection × N flows: appointment, refill, billing, etc.)
+- **Pattern 10** (human-scale tool schemas throughout)
 - **Pattern 2** (Transfer with fallback to clinical staff)
 - **Pattern 5** (Global distress, fatality, human-request)
 - **Pattern 6** (rare; only for outbound IVR campaigns)
+
+An outbound twin of that agent adds **Pattern 9** and inherits the rest.
 
 Lay out the graph on paper before writing JSON. Once the patterns are clear, the JSON writes itself.

@@ -221,6 +221,31 @@ Attach example transcripts to teach the LLM exactly when to fire an edge. Dramat
 
 Three or four examples per ambiguous edge typically resolves most issues. Use these on edges that misfire in testing — a near-miss positive and a near-miss negative is the right minimum.
 
+### Omit `destination_node_id` to teach "stay here"
+
+The field is optional, and leaving it out is the documented way to say *this turn fires nothing — stay in the node*. That is the half most people miss, and it is the half that fixes the common bug where a partial answer walks the caller into the next step:
+
+```json
+"finetune_transition_examples": [
+  { "id": "ft-partial-stay",
+    "transcript": [
+      { "role": "agent",   "content": "Which one did you want?" },
+      { "role": "user",    "content": "Ninety minutes." }
+    ] },
+  { "id": "ft-real-choice", "destination_node_id": "node-discovery",
+    "transcript": [
+      { "role": "agent",   "content": "Which one did you want?" },
+      { "role": "user",    "content": "The standard one." }
+    ] }
+]
+```
+
+Two more things worth knowing:
+
+- **Examples live on the node, not the edge.** They are a node-level array; each entry names its own destination (or none). Their `id` values share the same uniqueness discipline as edge IDs.
+- **They go stale when you rewire.** A refactor that removes or renames a destination node leaves examples pointing at nothing — import still succeeds, the edge just misbehaves. Remap them whenever edges move, and run `validate_flow.py`, which resolves every example destination.
+- **Write the transcript the way it actually sounds.** Real callers answer a different attribute than the one asked for, trail off, or say "yeah, sure" without choosing. A polite textbook example teaches nothing, because the model already handles that case.
+
 ---
 
 ## Edge ID uniqueness

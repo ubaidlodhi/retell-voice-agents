@@ -58,6 +58,14 @@ check('test line inbound: no recap', run({ event: 'call_analyzed', call: baseCal
 check('test line outbound: no recap', run({ event: 'call_analyzed', call: baseCall({ agent_id: OUTBOUND, direction: 'outbound', from_number: '+16282862281', to_number: '+12532681856' }) }).skip_reason, 'test line');
 check('test line, other formatting: no recap', run({ event: 'call_analyzed', call: baseCall({ from_number: '12532681856' }) }).skip_reason, 'test line');
 check('inbound booked: html escaped', r.html.includes('Sage &amp; Willow Spa'), true);
+// ---- what GPT-4.1-mini is handed -------------------------------------------------------------
+check('writer: real call is written', r.write, true);
+check('writer: model is gpt-4.1-mini, JSON out', [r.openai_body.model, r.openai_body.response_format.type], ['gpt-4.1-mini', 'json_object']);
+check('writer: facts carry the booking from the tool', r.facts.appointment, 'Swedish Massage, one hour, Wednesday, October 7 at 10:00 AM');
+check('writer: transcript reaches the model', JSON.parse(r.openai_body.messages[1].content).transcript.includes('Caller: Hi, I want to book a massage.'), true);
+check('writer: shells carry one body marker each', [r.html_shell.split('<!--ARIA_BODY-->').length, r.text_shell.split('{{ARIA_BODY}}').length], [2, 2]);
+check('writer: greeting + link stay in code', [r.html_shell.includes('Hi Nicky,'), r.html_shell.includes('dashboard/logs?call=call_test0001')], [true, true]);
+check('writer: skipped calls are not written', run({ event: 'call_analyzed', call: baseCall({ from_number: '+12532681856' }) }).write, false);
 
 // ---- inbound, cancelled via tool, model says otherwise --------------------------------
 r = run({ event: 'call_analyzed', call: baseCall({ transcript_with_tool_calls: [

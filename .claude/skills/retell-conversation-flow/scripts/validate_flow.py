@@ -29,6 +29,17 @@ that produce opaque import errors or silent runtime breakage:
   15. Equation `operator` values are in Retell's allowed enum
       (==, !=, >, >=, <, <=, contains, not_contains, exists, not_exist) —
       catches "CONTAINS" / "does not exists" before they fail import.
+  16. `enable_backchannel: true` anywhere in the payload — deprecated in
+      practice and always wrong on a production agent. Keep it false.
+  17. `finetune_transition_examples`: destinations resolve to a real node
+      (they go stale when edges are rewired) and example IDs are unique.
+      An example with NO destination is fine — that means "stay in this node".
+  18. Instruction text that tells the LLM to be silent ("do nothing", "stay
+      silent", "do not respond") — the LLM reads stage directions aloud.
+  19. Code nodes referencing `{{var}}` inside the code string — inside a code
+      node, dynamic variables are read as `dv.var`; `{{var}}` is literal text.
+  20. The start node is interruptible — line echo cuts off openings that
+      nobody real would interrupt. Wants `interruption_sensitivity: 0`.
 
 Exit code 0 = pass, 1 = fail.
 
@@ -61,6 +72,14 @@ ALLOWED_COMBINER_OPERATORS = {"&&", "||"}
 
 # Substrings that flag a placeholder URL.
 PLACEHOLDER_URL_MARKERS = ("TODO", "REPLACE_WITH", "example.com", "your-domain", "<your", "{{your")
+
+# Phrases that instruct the LLM to produce no output. It cannot — it reads the
+# stage direction aloud instead. Use a concrete line or a silent edge primitive.
+SILENCE_INSTRUCTION_MARKERS = (
+    "do nothing", "stay silent", "remain silent", "say nothing",
+    "do not respond", "don't respond", "do not speak", "don't speak",
+    "generate no", "no further text", "produce no output",
+)
 
 # Node types Retell's import endpoint accepts. A subagent node attaches tools via
 # `tool_ids` (plural, array of strings). Putting tools as `tools: [...]` on a subagent
@@ -254,7 +273,7 @@ def validate(path):
 
     # 12. Voice config — voice_model paired with the wrong voice provider triggers
     # an opaque import error ("Selected voice model X is not supported for this
-    # voice provider"). Production agents (e.g. Aubrey) omit voice_model and let
+    # voice provider"). Production agents typically omit voice_model and let
     # Retell pick the provider's default. Warn when it's set.
     if data.get("voice_model"):
         warnings.append(
@@ -335,6 +354,89 @@ def validate(path):
                             f"Edge {e.get('id','?')} on node {n.get('id','?')}: equation with "
                             f"operator {op!r} has no `right` operand — comparison may evaluate false."
                         )
+
+    # 16. enable_backchannel must be false. It is deprecated in practice: modern
+    # voices carry acknowledgement in their delivery, and injected "mm-hm" tokens
+    # land on the wrong beat and feed the agent's own audio back into the STT.
+    for scope, obj in (("agent", data), ("conversationFlow", cf)):
+        if obj.get("enable_backchannel"):
+            errors.append(
+                f"{scope}.enable_backchannel is true. Backchanneling is deprecated in "
+                f"practice — set it to false and drop backchannel_frequency / "
+                f"backchannel_words with it."
+            )
+    for n in nodes:
+        if n.get("enable_backchannel"):
+            errors.append(f"Node {n.get('id')} sets enable_backchannel: true. Keep it false.")
+
+    # 17. finetune_transition_examples — destinations must resolve (they go stale
+    # when edges are rewired or a node is dropped in a derived flow), and IDs must
+    # be unique. NO destination is legitimate: it teaches "stay in this node".
+    example_ids = []
+    for n in nodes:
+        examples = n.get("finetune_transition_examples") or []
+        if not isinstance(examples, list):
+            errors.append(f"Node {n.get('id')}.finetune_transition_examples must be a list.")
+            continue
+        for ex in examples:
+            if not isinstance(ex, dict):
+                continue
+            if ex.get("id"):
+                example_ids.append(ex["id"])
+            dest = ex.get("destination_node_id")
+            if dest and dest not in nodes_by_id:
+                errors.append(
+                    f"Node {n.get('id')}: finetune_transition_example {ex.get('id','?')!r} points at "
+                    f"{dest!r}, which is not a node. Stale examples survive import and make the "
+                    f"edge misfire — remap them whenever you rewire edges."
+                )
+            if not ex.get("transcript"):
+                warnings.append(
+                    f"Node {n.get('id')}: finetune_transition_example {ex.get('id','?')!r} has no "
+                    f"transcript — it teaches nothing."
+                )
+    ex_dupes = [eid for eid, c in Counter(example_ids).items() if c > 1]
+    if ex_dupes:
+        errors.append(f"Duplicate finetune_transition_example IDs: {ex_dupes}")
+
+    # 18. Instructions that order silence. The LLM must produce a turn, so it
+    # reads the stage direction aloud instead. Anti-pattern #1.
+    for n in nodes:
+        text = ((n.get("instruction") or {}).get("text") or "").lower()
+        hits = [m for m in SILENCE_INSTRUCTION_MARKERS if m in text]
+        if hits:
+            warnings.append(
+                f"Node {n.get('id')} instruction contains {hits} — telling the LLM to be silent "
+                f"makes it read the stage direction aloud. Give it a concrete line, or use "
+                f"always_edge / skip_response_edge / branch. (NO_RESPONSE_NEEDED is the one "
+                f"legitimate way to produce a silent turn.)"
+            )
+
+    # 19. Code nodes read dynamic variables as `dv.name`; `{{name}}` inside the
+    # code string is literal text and silently yields the wrong result.
+    for n in nodes:
+        if n.get("type") != "code":
+            continue
+        code = n.get("code") or (n.get("instruction") or {}).get("text") or ""
+        if "{{" in str(code):
+            errors.append(
+                f"Code node {n.get('id')} references {{{{...}}}} inside its code. Inside a code "
+                f"node, dynamic variables are NOT substituted — read them as `dv.<name>` (all "
+                f"values are strings) and return an object mapped through response_variables."
+            )
+
+    # 20. The opening node should be uninterruptible. Line echo (the line playing
+    # the agent's own voice back ~1s late) is transcribed as a caller turn and
+    # chops the greeting; nobody real barges into a four-second opener.
+    if start_id and start_id in nodes_by_id:
+        start_node = nodes_by_id[start_id]
+        if start_node.get("type") in ("conversation", "subagent"):
+            sens = start_node.get("interruption_sensitivity")
+            if sens is None or sens > 0:
+                warnings.append(
+                    f"Start node {start_id} has interruption_sensitivity={sens!r}. Set it to 0 so "
+                    f"line echo cannot cut off the opening (anti-pattern 15)."
+                )
 
     return errors, warnings
 

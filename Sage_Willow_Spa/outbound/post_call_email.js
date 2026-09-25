@@ -7,9 +7,20 @@
 // that actually happened (Ubaid, 2026-09-21).
 //
 // The e-mail is deliberately plain: a recap in Aria's voice, the outcome, the
-// booking if one changed hands, the contact, two links. Brand colours from the
+// booking if one changed hands, the contact, one link. Brand colours from the
 // AIEmply palette, inline styles only, no images, no dashes of the long kind,
 // nothing that reads like a promotion.
+//
+// Who writes what (Ubaid, 2026-09-25: "written by gpt-4.1-mini, not hard coded"):
+//   * GPT-4.1-mini writes the subject and the recap paragraphs, from the facts
+//     below plus the transcript ("Write: Recap" node, request built here as
+//     openai_body; "Render: Recap Email" checks the result and fills it in).
+//   * This node keeps everything that must be exact: which calls get an e-mail,
+//     the facts (from tool results, not from the model), the greeting, the
+//     cards, the link, the layout. html_shell / text_shell carry a marker where
+//     the paragraphs go.
+//   * subject / html / text below are the template version - the fallback the
+//     render step uses if the model is down or writes something it rejects.
 
 const INBOUND_AGENT_ID = 'agent_eceb7448aa1f37e8f436a63a43';
 const OUTBOUND_AGENT_ID = 'agent_4ef8160dc71826818c6fd8122b';
@@ -29,7 +40,7 @@ const event = body.event;
 const call = body.call || {};
 const dryRun = body.dryRun === true || body.dryRun === 'true';
 
-const skip = (why) => [{ json: { send: false, skip_reason: why, call_id: call.call_id || null, dryRun } }];
+const skip = (why) => [{ json: { write: false, send: false, skip_reason: why, call_id: call.call_id || null, dryRun } }];
 const last10 = (p) => String(p || '').replace(/\D/g, '').slice(-10);
 const isTestNumber = (p) => [...TEST_NUMBERS].some(t => last10(t) === last10(p) && last10(p));
 
@@ -225,7 +236,15 @@ const card = (title, list) =>
 const links = [];
 if (call.call_id) links.push(`<a href="${esc(DASHBOARD + call.call_id)}" style="color:#144EB8;text-decoration:none;font:600 13px ${FONT};">Open the call</a>`);
 
-let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(subject)}</title></head>` +
+const PARA_STYLE = `margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;`;
+const BODY_MARK = '<!--ARIA_BODY-->';
+const TEXT_MARK = '{{ARIA_BODY}}';
+const templateBody =
+  `<p style="${PARA_STYLE}">${esc(intro)}</p>` +
+  `<p style="margin:0 0 22px;font:15px/1.6 ${FONT};color:#1C2740;">${esc(summary)}</p>` +
+  notes.map(n => `<p style="${PARA_STYLE}">${esc(n)}</p>`).join('');
+
+const shell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title></head>` +
   `<body style="margin:0;padding:0;background:#F3F6F9;">` +
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F6F9;"><tr><td align="center" style="padding:28px 16px;">` +
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border:1px solid #E1E7EF;border-radius:12px;">` +
@@ -237,10 +256,9 @@ let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewpor
   `</tr></table></td></tr>` +
   // body
   `<tr><td style="padding:26px 28px 8px;">` +
-  `<p style="margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;">${esc(GREETING)}</p>` +
-  `<p style="margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;">${esc(intro)}</p>` +
-  `<p style="margin:0 0 22px;font:15px/1.6 ${FONT};color:#1C2740;">${esc(summary)}</p>` +
-  notes.map(n => `<p style="margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;">${esc(n)}</p>`).join('') +
+  `<p style="${PARA_STYLE}">${esc(GREETING)}</p>` +
+  bodyHtml +
+  `<div style="height:8px;line-height:8px;">&nbsp;</div>` +
   card('Call details', rows) +
   (contactRows.length ? card('Contact', contactRows) : '') +
   (links.length ? `<p style="margin:4px 0 20px;">${links.join(`<span style="color:#D1DAE5;padding:0 10px;">|</span>`)}</p>` : '') +
@@ -253,20 +271,91 @@ let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewpor
   `</td></tr>` +
   `</table></td></tr></table></body></html>`;
 
-const textLines = [GREETING, '', intro, '', summary, ''];
-for (const n of notes) textLines.push(n, '');
-textLines.push('Call details');
-for (const r of rows) textLines.push(`  ${r[0]}: ${r[1]}`);
-if (contactRows.length) { textLines.push('', 'Contact'); for (const r of contactRows) textLines.push(`  ${r[0]}: ${r[1]}`); }
-if (call.call_id) textLines.push('', `Open the call: ${DASHBOARD}${call.call_id}`);
-textLines.push('', 'Aria', `Virtual receptionist, ${SPA}`, '', `Sent by AIEmply for ${SPA}.`);
-let text = textLines.join('\n');
+const textShell = (body) => {
+  const lines = [GREETING, '', body, ''];
+  lines.push('Call details');
+  for (const r of rows) lines.push(`  ${r[0]}: ${r[1]}`);
+  if (contactRows.length) { lines.push('', 'Contact'); for (const r of contactRows) lines.push(`  ${r[0]}: ${r[1]}`); }
+  if (call.call_id) lines.push('', `Open the call: ${DASHBOARD}${call.call_id}`);
+  lines.push('', 'Aria', `Virtual receptionist, ${SPA}`, '', `Sent by AIEmply for ${SPA}.`);
+  return lines.join('\n');
+};
 
-// Belt and braces: nothing long-dashed leaves this node.
-html = html.replace(/[—–]/g, ', ');
-text = text.replace(/[—–]/g, ', ');
+// Template version = the fallback. Belt and braces: nothing long-dashed leaves this node.
+const undash = (s) => s.replace(/[—–]/g, ', ');
+const html = undash(shell(subject, templateBody));
+const text = undash(textShell([intro, summary, ...notes].join('\n\n')));
+const html_shell = undash(shell(subject, BODY_MARK));
+const text_shell = undash(textShell(TEXT_MARK));
+
+// ---- the request GPT-4.1-mini gets ----------------------------------------------------------
+// Facts are what the tools and the analysis say happened - the writer may not
+// contradict them. The transcript is there for colour and for what the facts
+// cannot say (what they asked about, how the call felt).
+const facts = {
+  direction: isInbound ? 'inbound - they called the spa' : 'outbound - you called them',
+  outbound_reason: isOutbound ? (source === 'website_form' ? 'they submitted the callback form on the website' : 'returning a missed call to the spa') : '',
+  caller_name: name,
+  caller_phone: phone,
+  call_time: callWhen,
+  call_length: callLength,
+  outcome,
+  they_wanted: intent,
+  appointment: booking,
+  mood: sentiment,
+  callback_wanted: callbackWanted,
+  callback_reason: callbackReason,
+  spoke_spanish: language === 'spanish' || language === 'mixed',
+  tool_error: custom.tool_failure === true,
+  asked_not_to_be_called: custom.do_not_call === true,
+  wrong_person_answered: isOutbound && custom.reached_lead === 'wrong_person',
+  system_summary: clean(analysis.call_summary),
+};
+for (const k of Object.keys(facts)) if (facts[k] === '' || facts[k] === false) delete facts[k];
+
+const MAX_TRANSCRIPT = 7000;
+let transcript = turns
+  .filter(t => t && typeof t.content === 'string' && t.content.trim())
+  .map(t => `${t.role === 'agent' ? 'Aria' : 'Caller'}: ${t.content.trim()}`)
+  .join('\n');
+if (transcript.length > MAX_TRANSCRIPT) {
+  transcript = transcript.slice(0, 5500) + '\n[...]\n' + transcript.slice(-1400);
+}
+
+const WRITER_PROMPT = `You are Aria, the virtual receptionist at ${SPA} in Novato, California. After every phone call you send Nicky, who runs the spa, a short recap email. Write that recap.
+
+You get JSON with "facts" (checked against the booking system, always correct) and "transcript" (what was said on the call).
+
+Return a JSON object: {"subject": "...", "paragraphs": ["...", "..."]}
+
+How to write it:
+- First person, as Aria. Warm, plain and brief, like a note to a colleague. 2 to 4 short paragraphs, 120 words at most in total.
+- Start with who you spoke to and why. Inbound: they called the spa. Outbound: you called them, for the reason in facts.outbound_reason.
+- Then what happened and how it ended. For a booking, a move or a cancellation, use facts.appointment exactly as written. Never change a date, weekday, time, service, length, therapist or name.
+- Point out anything Nicky may want to act on: a callback they want (and why, if facts.callback_reason says), a question you could not answer, a tool error, a wrong number, someone asking not to be called again, an unhappy caller.
+- Call the caller by facts.caller_name when there is one, otherwise "the caller". Never guess a name from the transcript.
+- Only say what the facts or the transcript support. Leave out anything you are not sure of.
+- No greeting and no sign-off: "Hi Nicky," and your signature are added for you.
+- Plain sentences only: no lists, no markdown, no links, no email addresses, no prices, no phone numbers.
+- Never use an em dash or an en dash. Use commas or full stops.
+- Nothing that sounds like marketing: no "free", "guarantee", "urgent", "amazing", "deal", "act now", "limited time". Say a therapist was "available", never "free".
+- Never mention transcripts, recordings, AI, models, prompts or any software.
+
+Subject: "Call recap: " then facts.caller_name (or facts.caller_phone if there is no name), a comma, and the outcome in a few words. Under 70 characters.`;
+
+const openai_body = {
+  model: 'gpt-4.1-mini',
+  temperature: 0.4,
+  max_tokens: 600,
+  response_format: { type: 'json_object' },
+  messages: [
+    { role: 'system', content: WRITER_PROMPT },
+    { role: 'user', content: JSON.stringify({ facts, transcript }) },
+  ],
+};
 
 return [{ json: {
+  write: true,
   send: !dryRun,
   dryRun,
   skip_reason: dryRun ? 'dry run (composed, not sent)' : '',
@@ -274,9 +363,14 @@ return [{ json: {
   direction: isInbound ? 'inbound' : 'outbound',
   to: TO,
   cc: CC,
-  subject: subject.replace(/[—–]/g, ', '),
+  subject: undash(subject),
   html,
   text,
+  html_shell,
+  text_shell,
+  para_style: PARA_STYLE,
+  facts,
+  openai_body,
   outcome,
   name,
   phone: phoneRaw,
