@@ -36,7 +36,7 @@ The spa serves clients in **English** and **Spanish**.
 
 ## Payment Methods
 
-The spa accepts **cash** and **major credit or debit cards**.
+The spa accepts **cash**, **card**, **Venmo**, **Zelle**, and **PayPal**.
 
 Payment is collected at the spa **after your session** — no payment is needed in advance to book.
 
@@ -48,13 +48,16 @@ Payment is collected at the spa **after your session** — no payment is needed 
 
 ## Gratuity
 
-Gratuity is **not included** in the price of a service and is **not required**. Tips are always appreciated but never expected.
+Gratuity is **not included** in the price of a service and is **not required**. Tips are always appreciated but never expected. Tips can be given by cash, card, Venmo, Zelle, or PayPal.
 
 ---
 
 ## Gift Cards
 
-The spa offers **physical gift cards** and **e-gift cards**. Either works for any service offered.
+The spa offers **e-gift cards** and **physical gift cards**. Either works for any service offered.
+
+- **E-gift cards** are listed on the spa's website: **sage-willow-spa dot com**.
+- **Physical gift cards** are sold at the spa.
 
 ---
 
@@ -73,6 +76,12 @@ First-time clients may be asked to complete a **short intake form** before their
 ## Memberships and Packages
 
 There is no published membership program at this time. For package pricing or special offers, contact the spa directly.
+
+---
+
+## Specials, Discounts, and New-Client Offers
+
+Current specials, discounts, and new-client offers change from time to time and are **not listed here**. So never say whether a particular deal exists or not — not "yes", and not "we don't have that". Say the team will know what's on right now, and offer to have them call the caller back.
 
 ---
 

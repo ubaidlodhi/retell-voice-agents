@@ -66,6 +66,40 @@ check('writer: transcript reaches the model', JSON.parse(r.openai_body.messages[
 check('writer: shells carry one body marker each', [r.html_shell.split('<!--ARIA_BODY-->').length, r.text_shell.split('{{ARIA_BODY}}').length], [2, 2]);
 check('writer: greeting + link stay in code', [r.html_shell.includes('Hi Nicky,'), r.html_shell.includes('dashboard/logs?call=call_test0001')], [true, true]);
 check('writer: skipped calls are not written', run({ event: 'call_analyzed', call: baseCall({ from_number: '+12532681856' }) }).write, false);
+check('writer: outcome proven by the tool, no Retell labels in the facts', [r.facts.confirmed_outcome, r.facts.outcome, r.facts.they_wanted], ['appointment booked', undefined, undefined]);
+check('writer: shells carry one detail-row marker each', [r.html_shell.split('<!--ARIA_TOP_ROWS-->').length, r.text_shell.split('{{ARIA_TOP_ROWS}}').length], [2, 2]);
+check('writer: row template has both blanks', [r.row_tpl.includes('%%LABEL%%'), r.row_tpl.includes('%%VALUE%%')], [true, true]);
+check('writer: template keeps its own Outcome row', [r.text.includes('Call details\n  Outcome: Appointment booked\n  They wanted to: book a massage\n  Appointment:'), r.html_shell.includes('>Outcome</td>')], [true, false]);
+check('writer: asked for outcome + they_wanted, and "they" for the caller', ['"outcome"', '"they_wanted"', 'Never "he", "she"'].every(k => r.openai_body.messages[0].content.includes(k)), true);
+// two people at once (call_cc43d37f): the guest count reaches the appointment line
+const twoGuests = [
+  { role: 'tool_call_invocation', tool_call_id: 'b2', name: 'book_appointment', arguments: JSON.stringify({ firstName: 'Test', lastName: 'John', serviceName: 'Deep Tissue Massage', numberOfParticipants: 2, startDate: '2026-09-26T12:00:00', endDate: '2026-09-26T13:30:00' }) },
+  { role: 'tool_call_result', tool_call_id: 'b2', content: '{"success":true,"confirmed":true}' }];
+const g2 = run({ event: 'call_analyzed', call: baseCall({ transcript_with_tool_calls: twoGuests }) });
+check('two guests: appointment line', g2.text.includes('Appointment: Deep Tissue Massage, ninety minutes, Saturday, September 26 at 12:00 PM, for two guests'), true);
+check('two guests: in the facts too', g2.facts.appointment, 'Deep Tissue Massage, ninety minutes, Saturday, September 26 at 12:00 PM, for two guests');
+check('one guest: no guest wording', r.facts.appointment.includes('guest'), false);
+
+// ---- V65: two people at once, and request-first services ----------------------------------------
+const pairCall = [
+  { role: 'tool_call_invocation', tool_call_id: 'p1', name: 'book_appointment', arguments: JSON.stringify({ firstName: 'Test', lastName: 'John',
+    guestFirstName: 'Test', guestLastName: 'Jane', serviceName: 'Deep Tissue Massage', guestServiceName: 'Swedish Massage', guestDurationInMinutes: 60,
+    startDate: '2026-09-30T14:00:00', endDate: '2026-09-30T15:30:00', phone: '+14155550100' }) },
+  { role: 'tool_call_result', tool_call_id: 'p1', content: JSON.stringify({ success: true, guests: 2, status: 'CONFIRMED', bookings: [
+    { who: 'caller', bookingId: 'a', startDate: '2026-09-30T14:00:00', endDate: '2026-09-30T15:30:00' },
+    { who: 'guest', bookingId: 'b', startDate: '2026-09-30T14:00:00', endDate: '2026-09-30T15:00:00' }] }) }];
+const pr = run({ event: 'call_analyzed', call: baseCall({ transcript_with_tool_calls: pairCall }) });
+check('pair: both appointments on the line', pr.facts.appointment,
+  'Wednesday, September 30 at 2:00 PM, side by side: Deep Tissue Massage, ninety minutes for Test John, and Swedish Massage, one hour for their guest Test Jane');
+check('pair: booked, contact is the caller', [pr.outcome, pr.name], ['appointment booked', 'Test John']);
+const pendCall = [
+  { role: 'tool_call_invocation', tool_call_id: 'q1', name: 'book_appointment', arguments: JSON.stringify({ firstName: 'Test', lastName: 'John',
+    serviceName: 'Couples Massage', startDate: '2026-10-01T13:00:00', endDate: '2026-10-01T14:00:00', phone: '+14155550100' }) },
+  { role: 'tool_call_result', tool_call_id: 'q1', content: JSON.stringify({ success: true, confirmed: false, status: 'PENDING', requested: true }) }];
+const pq = run({ event: 'call_analyzed', call: baseCall({ transcript_with_tool_calls: pendCall }) });
+check('request-first: a request, not booked', [pq.outcome, pq.facts.confirmed_outcome, pq.subject], ['appointment requested', 'appointment requested', 'Call recap: Test John, appointment requested']);
+check('request-first: the line says it waits for approval', pq.facts.appointment.endsWith('(a request, waiting for your approval in Wix)'), true);
+check('request-first: the writer is told', pq.openai_body.messages[0].content.includes('"appointment requested"'), true);
 
 // ---- inbound, cancelled via tool, model says otherwise --------------------------------
 r = run({ event: 'call_analyzed', call: baseCall({ transcript_with_tool_calls: [
@@ -90,23 +124,51 @@ r = run({ event: 'call_analyzed', call: outCall({ retell_llm_dynamic_variables: 
 check('outbound form: intro', r.text.includes('about the booking form they sent in'), true);
 check('outbound form: name from dynamic vars', r.name, 'TEST JOHN');
 
-// ---- outbound machine outcomes: no e-mail ------------------------------------------------------
-for (const [label, over] of [
-  ['voicemail_reached', { disconnection_reason: 'voicemail_reached' }],
-  ['in_voicemail flag', { call_analysis: { in_voicemail: true, custom_analysis_data: {} } }],
-  ['dial_no_answer', { disconnection_reason: 'dial_no_answer', duration_ms: 0 }],
-  ['dial_busy', { disconnection_reason: 'dial_busy' }],
-  ['dial_failed', { disconnection_reason: 'dial_failed' }],
-  ['reached_lead no_answer', { call_analysis: { in_voicemail: false, custom_analysis_data: { reached_lead: 'no_answer' } } }],
-  ['reached_lead voicemail', { call_analysis: { in_voicemail: false, custom_analysis_data: { reached_lead: 'voicemail' } } }],
-  ['nobody spoke', { transcript_object: [{ role: 'agent', content: 'Hi, is this Test?' }] }],
-  ['call not connected', { call_status: 'not_connected' }],
-  ['user_declined', { disconnection_reason: 'user_declined' }],
-  ['error_no_audio_received', { disconnection_reason: 'error_no_audio_received' }],
+// ---- outbound callback never reached them: one "missed lead" e-mail, no model (2026-10-03) ------
+const SCREENER = [{ role: 'user', content: 'Hello. Please state your name after the tone, and Google Voice will try to connect you.' },
+  { role: 'user', content: 'Hello?' }, { role: 'agent', content: 'Hi, this is Aria from Sage and Willow Spa.' }];
+for (const [label, over, result] of [
+  ['voicemail_reached', { disconnection_reason: 'voicemail_reached' }, 'Voicemail, message left'],
+  ['in_voicemail flag', { call_analysis: { in_voicemail: true, custom_analysis_data: {} } }, 'Voicemail, message left'],
+  ['dial_no_answer', { disconnection_reason: 'dial_no_answer', duration_ms: 0 }, 'No answer'],
+  ['dial_busy', { disconnection_reason: 'dial_busy' }, 'Line busy'],
+  ['dial_failed', { disconnection_reason: 'dial_failed' }, 'Call did not go through'],
+  ['reached_lead no_answer', { call_analysis: { in_voicemail: false, custom_analysis_data: { reached_lead: 'no_answer' } } }, 'No answer'],
+  ['reached_lead voicemail', { call_analysis: { in_voicemail: false, custom_analysis_data: { reached_lead: 'voicemail' } } }, 'Voicemail, message left'],
+  ['nobody spoke', { transcript_object: [{ role: 'agent', content: 'Hi, is this Test?' }] }, 'Picked up, never talked'],
+  ['call not connected', { call_status: 'not_connected' }, 'Call did not go through'],
+  ['user_declined', { disconnection_reason: 'user_declined' }, 'Call did not go through'],
+  ['error_no_audio_received', { disconnection_reason: 'error_no_audio_received' }, 'Call did not go through'],
+  ['call screener, then "Hello?" (call_2e664e7e)', { transcript_object: SCREENER,
+    call_analysis: { in_voicemail: false, custom_analysis_data: { reached_lead: 'unclear' } } }, 'Picked up, never talked'],
+  ['one "Hello?" and gone', { transcript_object: [{ role: 'agent', content: 'Hi, this is Aria.' }, { role: 'user', content: 'Hello?' }],
+    call_analysis: { in_voicemail: false, custom_analysis_data: { reached_lead: 'unclear' } } }, 'Picked up, never talked'],
 ]) {
   r = run({ event: 'call_analyzed', call: outCall(over) });
-  check(`outbound skip: ${label}`, [r.send, !!r.skip_reason], [false, true]);
+  check(`outbound missed lead: ${label}`, [r.write, r.send, r.missed, r.subject, r.text.includes(`Result: ${result}`)],
+    [false, false, true, 'Missed lead: TEST JOHN, please call them back', true]);
 }
+r = run({ event: 'call_analyzed', call: outCall({ disconnection_reason: 'voicemail_reached',
+  retell_llm_dynamic_variables: { lead_first_name: '', lead_last_name: '', lead_phone: '+14155550101', lead_source: 'missed_call',
+    lead_submitted_at: 'Friday, October 2 at 12:13 PM', inbound_intent: 'booking a couples massage' } }) });
+check('missed lead: no name -> phone in subject', r.subject, 'Missed lead: +1 (415) 555-0101, please call them back');
+check('missed lead: their call, what they wanted, what I did, the ask', [
+  r.text.includes('+1 (415) 555-0101 rang the spa on Friday, October 2 at 12:13 PM about booking a couples massage, and the call ended before I could help.'),
+  r.text.includes('but it went to voicemail, so I left a message asking them to call us back.'),
+  r.text.includes('Could you give them a call when you have a moment?'),
+  r.text.includes('They wanted: booking a couples massage')], [true, true, true, true]);
+check('missed lead: same look as the recap, call link, no dashes', [r.html.includes('#1563E0'), r.html.includes('dashboard/logs?call=call_test0001'),
+  /[—–]/.test(r.html + r.text + r.subject)], [true, true, false]);
+r = run({ event: 'call_analyzed', call: outCall({ disconnection_reason: 'voicemail_reached',
+  retell_llm_dynamic_variables: { lead_first_name: 'Jane', lead_last_name: 'Doe', lead_source: 'website_form', lead_submitted_at: 'Friday, October 2 at 9:00 AM' } }) });
+check('missed lead: website form wording', [r.text.includes('Jane Doe asked for a call back through the website form on Friday, October 2 at 9:00 AM.'),
+  r.text.includes('Form sent: Friday, October 2 at 9:00 AM')], [true, true]);
+r = run({ event: 'call_analyzed', dryRun: true, call: outCall({ disconnection_reason: 'voicemail_reached' }) });
+check('missed lead: dry run composes, never sends', [r.missed, r.skip_reason], [false, 'dry run (missed lead composed, not sent)']);
+r = run({ event: 'call_analyzed', call: outCall({ transcript_object: [{ role: 'user', content: 'Hello?' }, { role: 'user', content: 'Yes, speaking.' },
+  { role: 'user', content: 'Not today, thanks.' }], call_analysis: { in_voicemail: false, custom_analysis_data: { reached_lead: 'unclear' } } }) });
+check('outbound: three things said is a conversation -> normal recap', [r.write, !!r.missed], [true, false]);
+check('outbound mid-call status is still skipped', run({ event: 'call_analyzed', call: outCall({ call_status: 'ongoing' }) }).skip_reason, 'call_status ongoing');
 r = run({ event: 'call_analyzed', call: outCall({ call_analysis: { custom_analysis_data: { reached_lead: 'wrong_person', outbound_outcome: 'wrong_number' } } }) });
 check('outbound wrong person still counts as a real call', [r.send, r.outcome], [true, 'wrong person answered']);
 

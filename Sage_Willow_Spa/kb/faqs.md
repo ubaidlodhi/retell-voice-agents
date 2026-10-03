@@ -44,13 +44,13 @@ Let me check the next available time for you.
 
 ### Q: Do you have gift cards?
 
-Yes, we offer both **physical gift cards and e-gift cards**.
+Yes, we offer both **e-gift cards and physical gift cards**. E-gift cards are on our website, **sage-willow-spa dot com**, and physical gift cards are sold at the spa.
 
 ---
 
 ### Q: What payment methods do you accept?
 
-We accept **cash** and **major credit or debit cards**. Payment is collected at the spa after your session.
+We accept **cash**, **card**, **Venmo**, **Zelle**, and **PayPal**. Payment is collected at the spa after your session.
 
 ---
 
@@ -74,7 +74,7 @@ Yes, receipts can be emailed or printed after your session.
 
 ### Q: Is gratuity included in the price?
 
-Gratuity is **not included** and is always appreciated, but it is **not required**.
+Gratuity is **not included** and is always appreciated, but it is **not required**. Tips can be given by cash, card, Venmo, Zelle, or PayPal.
 
 ---
 
@@ -135,6 +135,14 @@ It depends on what you're looking for. For relaxation, **Swedish** is the classi
 ### Q: Do you offer memberships or packages?
 
 Please contact us directly for information on packages or special offers. We don't have a published membership program at the moment.
+
+---
+
+### Q: Do you have a new-client discount, or any specials or deals right now?
+
+Specials change from time to time, so I don't want to tell you the wrong thing. I can have the team call you back with what's on right now.
+
+(Never say a deal does or doesn't exist - the current offers are not listed here.)
 
 ---
 

@@ -84,5 +84,50 @@ check('"free" as in available is fine', r.writer, 'gpt-4.1-mini');
 r = render({ ...c, send: false, dryRun: true }, gpt(GOOD));
 check('dry run: rendered, not sent', [r.writer, r.send], ['gpt-4.1-mini', false]);
 
+// ---- Outcome / They wanted to come from the model (Ubaid, 2026-09-25) --------------------------------
+const rowIn = (html, label, value) => html.includes(`>${label}</td>`) && html.includes(`>${value}</td>`);
+r = render(c, gpt({ ...GOOD, outcome: 'Appointment booked with Nicky', they_wanted: 'book a Signature Massage with Nicky' }));
+check('rows: model outcome + wanted in the html', [r.writer, rowIn(r.html, 'Outcome', 'Appointment booked with Nicky'), rowIn(r.html, 'They wanted to', 'book a Signature Massage with Nicky')], ['gpt-4.1-mini', true, true]);
+check('rows: and in the text', [r.text.includes('  Outcome: Appointment booked with Nicky\n  They wanted to: book a Signature Massage with Nicky\n  Appointment:')], [true]);
+check('rows: no marker or blank left', /ARIA_TOP_ROWS|%%LABEL%%|%%VALUE%%/.test(r.html + r.text), false);
+check('rows: exactly one Outcome row', r.html.split('>Outcome</td>').length - 1, 1);
+r = render(c, gpt({ ...GOOD, outcome: 'Asked a question', they_wanted: 'ask about prices' }));
+check('booked on record, model says otherwise -> tool result wins the row', [r.writer, rowIn(r.html, 'Outcome', 'Appointment booked'), /replaced by the tool result/.test(r.writer_note)], ['gpt-4.1-mini', true, true]);
+
+// the call Ubaid flagged: asked about massages, booked nothing, Retell said "book a massage"
+const infoCall = { ...call, call_id: 'call_render0002', transcript_with_tool_calls: [],
+  transcript_object: [{ role: 'agent', content: 'Do you want to book a massage?' }, { role: 'user', content: 'Can you go over the options? What is the signature massage?' }, { role: 'user', content: "No, I'm going to book later." }],
+  call_analysis: { call_summary: 'The user asked about massage options and decided not to book.', custom_analysis_data: { caller_intent: 'new_booking', resolution_status: 'info_provided', caller_sentiment: 'neutral' } } };
+const ci = compose({ event: 'call_analyzed', call: infoCall });
+check('info call: facts carry no outcome label and no Retell intent', [ci.facts.confirmed_outcome, ci.facts.they_wanted, ci.facts.outcome], [undefined, undefined, undefined]);
+const INFO = { subject: 'Call recap: +1 (415) 555-0100, asked about massages', outcome: 'Asked about massages, will book later', they_wanted: 'hear the massage options',
+  paragraphs: ['I took a call from someone who wanted to hear the massage options.', 'I explained the Signature Massage. They said they would book later, so nothing needs doing.'] };
+r = render(ci, gpt(INFO));
+check('info call: model rows, not "book a massage"', [r.writer, rowIn(r.html, 'Outcome', 'Asked about massages, will book later'), rowIn(r.html, 'They wanted to', 'hear the massage options'), r.html.includes('book a massage</td>')], ['gpt-4.1-mini', true, true, false]);
+r = render(ci, gpt({ ...INFO, subject: 'Call Recap: Some Title Case Subject' }));
+check('subject = name/phone + the model outcome, lower-case start', r.subject, 'Call recap: +1 (415) 555-0100, asked about massages, will book later');
+r = render(ci, gpt({ ...INFO, outcome: 'Appointment booked' }));
+check('info call: outcome claiming a booking no tool made -> template', [r.writer, r.html === ci.html], ['template', true]);
+r = render(ci, gpt({ ...INFO, outcome: 'Did not book' }));
+check('info call: "did not book" is fine', [r.writer, rowIn(r.html, 'Outcome', 'Did not book')], ['gpt-4.1-mini', true]);
+r = render(ci, gpt({ ...INFO, they_wanted: 'They wanted to find out the prices.' }));
+check('wanted: repeated label and full stop trimmed', rowIn(r.html, 'They wanted to', 'find out the prices'), true);
+r = render(ci, gpt({ ...INFO, they_wanted: '' }));
+check('wanted: empty -> no row', [r.writer, r.html.includes('>They wanted to</td>'), r.text.includes('They wanted to:')], ['gpt-4.1-mini', false, false]);
+r = render(ci, gpt({ ...INFO, they_wanted: 'find out about every single massage on the menu and also what each one costs today' }));
+check('wanted: too long -> left out', [r.writer, r.html.includes('>They wanted to</td>')], ['gpt-4.1-mini', false]);
+r = render(ci, gpt({ ...INFO, outcome: undefined }));
+check('outcome missing -> template label for the row', [r.writer, rowIn(r.html, 'Outcome', 'Question answered')], ['gpt-4.1-mini', true]);
+// V65: a request-first booking is "requested" - a model saying "booked" loses the row
+const pendC = compose({ event: 'call_analyzed', call: { ...call, call_id: 'call_render0003', transcript_with_tool_calls: [
+  { role: 'tool_call_invocation', tool_call_id: 'q1', name: 'book_appointment', arguments: JSON.stringify({ firstName: 'Test', lastName: 'John', serviceName: 'Couples Massage', startDate: '2026-10-01T13:00:00', endDate: '2026-10-01T14:00:00' }) },
+  { role: 'tool_call_result', tool_call_id: 'q1', content: '{"success":true,"status":"PENDING","requested":true}' }] } });
+r = render(pendC, gpt({ ...INFO, outcome: 'Couples massage requested' }));
+check('requested: the model saying "requested" keeps its row', [r.writer, rowIn(r.html, 'Outcome', 'Couples massage requested')], ['gpt-4.1-mini', true]);
+r = render(pendC, gpt({ ...INFO, outcome: 'Appointment booked' }));
+check('requested: the model saying "booked" -> the tool result wins', rowIn(r.html, 'Outcome', 'Appointment requested'), true);
+r = render(ci, gpt({ ...INFO, they_wanted: 'hear the options, see https://example.com' }));
+check('wanted is checked like the paragraphs (a link -> template)', r.writer, 'template');
+
 console.log('\n' + (failed ? 'FAILED ' + failed : 'all passed'));
 process.exit(failed ? 1 : 0);

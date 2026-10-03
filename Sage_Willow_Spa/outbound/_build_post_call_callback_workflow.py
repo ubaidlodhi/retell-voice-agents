@@ -30,6 +30,7 @@ Flow
              no  -> Skip
              yes -> Retell: Did They Call Back?     (inbound calls from that number since)
                  -> Retell: Already Called Back?    (outbound calls TO that number, last few minutes)
+                 -> Retell: Asked Not To Call?      (any call, either agent, with do_not_call = true)
                  -> Decide
                  -> IF Still Needed?
                       no  -> Skip
@@ -93,7 +94,8 @@ OPENAI_MODEL = "gpt-4.1-mini"
 # Do not ring the same number twice inside this window. Was 5: on 2026-09-18 a
 # lead rang back 3 minutes after our voicemail, hung up on the greeting, and the
 # window was the only thing between them and a third call. Ubaid raised it to 15.
-DEDUP_MINUTES = 15
+# 2026-10-03: Ubaid set it to 10 - "did we already call them?" looks at the last 10 minutes.
+DEDUP_MINUTES = 10
 
 OUT_DIR = Path(__file__).parent
 SNAPSHOT_PATH = OUT_DIR / "post_call_callback_workflow.json"
@@ -343,6 +345,9 @@ return done(needs, `${llm.outcome}: ${String(llm.reason || '').trim()}`);
 
 DECIDE_CODE = r"""
 const OUTBOUND_AGENT_ID = '%(outbound_agent)s';
+// 10 minutes (Ubaid, 2026-10-03). Was 5, then 15: on 2026-09-18 a lead rang back
+// 3 minutes after our voicemail, hung up on the greeting, and the window was the
+// only thing that stopped a third call.
 const DEDUP_MS = %(dedup_ms)d;
 
 const ev = $('Apply Verdict').first().json;
@@ -351,8 +356,17 @@ const asList = (name) => {
   // The HTTP node returns one item per call, or a single item wrapping the array.
   if (items.length === 1 && Array.isArray(items[0])) return items[0];
   if (items.length === 1 && items[0] && Array.isArray(items[0].data)) return items[0].data;
+  // /v3/list-calls wraps the calls in `items`.
+  if (items.length === 1 && items[0] && Array.isArray(items[0].items)) return items[0].items;
   return items.filter(c => c && c.call_id);
 };
+
+// Did this number ever ask not to be called - on this call or any earlier one, inbound
+// or outbound? (Ubaid, 2026-10-03: "this kind of calls will not get the call back".)
+const thisCall = (($('Webhook - Retell call_analyzed').first().json.body || {}).call) || {};
+const saidHere = ((thisCall.call_analysis || {}).custom_analysis_data || {}).do_not_call === true;
+const doNotCall = asList('Retell: Asked Not To Call?')
+  .filter(c => c.from_number === ev.from_number || c.to_number === ev.from_number);
 
 // Did they ring us back themselves after that call ended?
 const redials = asList('Retell: Did They Call Back?')
@@ -366,7 +380,9 @@ const priorCallbacks = asList('Retell: Already Called Back?')
             && Number(c.start_timestamp || 0) > since);
 
 let skipReason = '';
-if (redials.length) skipReason = `caller rang back themselves (${redials[0].call_id})`;
+if (saidHere) skipReason = 'asked not to be called (this call)';
+else if (doNotCall.length) skipReason = `asked not to be called (${doNotCall[0].call_id})`;
+else if (redials.length) skipReason = `caller rang back themselves (${redials[0].call_id})`;
 else if (priorCallbacks.length) skipReason = `already called back within window (${priorCallbacks[0].call_id})`;
 
 return [{ json: {
@@ -375,6 +391,7 @@ return [{ json: {
   skipReason,
   redials: redials.length,
   priorCallbacks: priorCallbacks.length,
+  doNotCall: saidHere || doNotCall.length > 0,
 }}];
 """ % {
     "outbound_agent": OUTBOUND_AGENT_ID,
@@ -422,7 +439,7 @@ def string_eq_if(id_, name, pos, field, value):
 def retell_list_calls(id_, name, pos, filter_expr):
     return node(id_, name, "n8n-nodes-base.httpRequest", 4.2, pos,
                 {"method": "POST",
-                 "url": "https://api.retellai.com/v2/list-calls",
+                 "url": "https://api.retellai.com/v3/list-calls",
                  "authentication": "genericCredentialType",
                  "genericAuthType": "httpBearerAuth",
                  "sendBody": True,
@@ -484,9 +501,9 @@ def build() -> dict:
             "redial", "Retell: Did They Call Back?", [620, 200],
             "={{ JSON.stringify({\n"
             "  filter_criteria: {\n"
-            f"    from_number: [{ev}.from_number],\n"
-            "    direction: ['inbound'],\n"
-            f"    start_timestamp: {{ lower_threshold: {ev}.ended_at_ms + 1 }}\n"
+            f"    from_number: {{ type: 'string', op: 'eq', value: {ev}.from_number }},\n"
+            "    direction: { type: 'enum', op: 'in', value: ['inbound'] },\n"
+            f"    start_timestamp: {{ type: 'number', op: 'gt', value: {ev}.ended_at_ms }}\n"
             "  },\n"
             "  limit: 5, sort_order: 'descending'\n"
             "}) }}"),
@@ -495,11 +512,22 @@ def build() -> dict:
             "dedup", "Retell: Already Called Back?", [840, 200],
             "={{ JSON.stringify({\n"
             "  filter_criteria: {\n"
-            f"    agent_id: ['{OUTBOUND_AGENT_ID}'],\n"
-            f"    to_number: [{ev}.from_number],\n"
-            f"    start_timestamp: {{ lower_threshold: Date.now() - {DEDUP_MINUTES * 60 * 1000} }}\n"
+            f"    agent: [{{ agent_id: '{OUTBOUND_AGENT_ID}' }}],\n"
+            f"    to_number: {{ type: 'string', op: 'eq', value: {ev}.from_number }},\n"
+            f"    start_timestamp: {{ type: 'number', op: 'gt', value: Date.now() - {DEDUP_MINUTES * 60 * 1000} }}\n"
             "  },\n"
             "  limit: 5, sort_order: 'descending'\n"
+            "}) }}"),
+
+        # Everyone who ever asked not to be called; Decide matches the number (a call
+        # has it as from_number when they rang us, to_number when we rang them).
+        retell_list_calls(
+            "dnc", "Retell: Asked Not To Call?", [950, 360],
+            "={{ JSON.stringify({\n"
+            "  filter_criteria: {\n"
+            "    custom_analysis_data: [{ key: 'do_not_call', type: 'boolean', op: 'eq', value: true }]\n"
+            "  },\n"
+            "  limit: 1000, sort_order: 'descending'\n"
             "}) }}"),
 
         node("decide", "Decide", "n8n-nodes-base.code", 2,
@@ -532,7 +560,14 @@ def build() -> dict:
         # ---- Aria's recap e-mail (both agents) ----------------------------------
         node("email-compose", "Compose: Post-Call Email", "n8n-nodes-base.code", 2,
              [-880, 620], {"jsCode": EMAIL_CODE}),
+        # The e-mail chain starts only where no callback is needed (2026-10-03): an
+        # inbound call that gets rung back sends nothing - the callback's own outcome
+        # does (a recap, or a "missed lead" e-mail if it never reaches them).
+        node("email-pass", "Pass: Call Payload", "n8n-nodes-base.code", 2,
+             [400, 620], {"jsCode": "// The webhook item, for the e-mail chain.\n"
+                                    "return $('Webhook - Retell call_analyzed').all();"}),
         bool_if("if-write", "IF: Real Conversation?", [-660, 620], "write"),
+        bool_if("if-missed", "IF: Missed Lead?", [-440, 760], "missed"),
         node("email-write", "Write: Recap (GPT-4.1-mini)", "n8n-nodes-base.httpRequest", 4.2,
              [-440, 560],
              {"method": "POST",
@@ -571,10 +606,12 @@ def build() -> dict:
                                for outs in outputs]}}
 
     connections = {}
-    # The webhook fans out: the callback chain and the e-mail chain run side by side.
-    connections.update(link("Webhook - Retell call_analyzed", [["Prepare Call", "Compose: Post-Call Email"]]))
+    # Callback decision first; the e-mail chain hangs off "no callback needed".
+    connections.update(link("Webhook - Retell call_analyzed", [["Prepare Call"]]))
+    connections.update(link("Pass: Call Payload", [["Compose: Post-Call Email"]]))
     connections.update(link("Compose: Post-Call Email", [["IF: Real Conversation?"]]))
-    connections.update(link("IF: Real Conversation?", [["Write: Recap (GPT-4.1-mini)"], ["Skip: No Email"]]))
+    connections.update(link("IF: Real Conversation?", [["Write: Recap (GPT-4.1-mini)"], ["IF: Missed Lead?"]]))
+    connections.update(link("IF: Missed Lead?", [["Send Email: Post-Call Recap"], ["Skip: No Email"]]))
     connections.update(link("Write: Recap (GPT-4.1-mini)", [["Render: Recap Email"]]))
     connections.update(link("Render: Recap Email", [["IF: Send Email?"]]))
     connections.update(link("IF: Send Email?", [["Send Email: Post-Call Recap"], ["Skip: No Email"]]))
@@ -583,9 +620,10 @@ def build() -> dict:
     connections.update(link("IF: Classify With AI?", [["Classify Call Outcome"], ["Apply Verdict"]]))
     connections.update(link("Classify Call Outcome", [["Apply Verdict"]]))
     connections.update(link("Apply Verdict", [["IF: Needs Callback?"]]))
-    connections.update(link("IF: Needs Callback?", [["Retell: Did They Call Back?"], ["Skip: Nothing To Do"]]))
+    connections.update(link("IF: Needs Callback?", [["Retell: Did They Call Back?"], ["Skip: Nothing To Do", "Pass: Call Payload"]]))
     connections.update(link("Retell: Did They Call Back?", [["Retell: Already Called Back?"]]))
-    connections.update(link("Retell: Already Called Back?", [["Decide"]]))
+    connections.update(link("Retell: Already Called Back?", [["Retell: Asked Not To Call?"]]))
+    connections.update(link("Retell: Asked Not To Call?", [["Decide"]]))
     connections.update(link("Decide", [["IF: Still Needed?"]]))
     connections.update(link("IF: Still Needed?", [["Trigger Outbound Call"], ["Skip: Resolved Itself"]]))
 

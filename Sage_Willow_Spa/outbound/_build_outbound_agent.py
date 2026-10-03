@@ -53,7 +53,7 @@ RETELL_BASE = "https://api.retellai.com"
 
 # Source of truth: the live inbound agent's flow.
 SOURCE_FLOW_ID = "conversation_flow_bdb1968b28ed"
-SOURCE_FLOW_VERSION = 21  # 2026-09-25: V38-V63 (+ reschedule looks up first, cancel asked once)
+SOURCE_FLOW_VERSION = 26  # 2026-10-02: V38-V72 (+ no dead air on a massage with no enhancements) - inbound DRAFT on prod tools
 SOURCE_AGENT_ID = "agent_eceb7448aa1f37e8f436a63a43"
 
 # Dev backend built by _build_outbound_backend_workflow.py (n8n yfbpUaEzZQghelh3).
@@ -101,7 +101,7 @@ LOOKUP_NODES = ("node-status-assistant", "node-cancel-assistant", "node-resched-
 CALLBACK_NUMBER_SPOKEN = "six two eight, two eight six, two two eight one"
 
 # Bump on every meaningful build so the client knows which revision they tested.
-AGENT_VERSION = "V22"
+AGENT_VERSION = "V29"
 
 # A silent line ends after this long (Ubaid, 2026-09-22, after Nicky's "no need
 # to wait almost 3 mins"): 89 s let call_b004eecd sit for 149 s. First 50 s,
@@ -256,7 +256,9 @@ def patch_global_prompt(prompt: str) -> str:
 WEBSITE_FORM_OPENER = ("Hi, this is Aria from Sage and Willow Spa. You submitted a callback form on our "
                        "website - how can I help you today?")
 
-RECORDING_RULE = """A RECORDING IS NOT A PERSON. If what you hear sounds like a machine - a phone number read out, "you've reached", "not available", "can't take your call", "leave a message", "at the tone", a beep - do NOT open. Reply NO_RESPONSE_NEEDED and stay quiet, and keep doing so while the recording runs; the voicemail step takes over on its own. A recording is not echo either: if one cut you off, stay quiet rather than starting the opener again. Only a live person gets the opener."""
+RECORDING_RULE = """A RECORDING IS NOT A PERSON. If what you hear sounds like a machine - a phone number read out, "you've reached", "not available", "can't take your call", "leave a message", "at the tone", a beep - do NOT open. Reply NO_RESPONSE_NEEDED and stay quiet, and keep doing so while the recording runs; the voicemail step takes over on its own. A recording is not echo either: if one cut you off, stay quiet rather than starting the opener again. Only a live person gets the opener.
+
+A CALL SCREENER IS NOT VOICEMAIL. Google Voice and phone assistants ask who is calling before they put the person on - "Please state your name after the tone, and Google Voice will try to connect you", "If you record your name and reason for calling, I'll see if this person is available". Answer it once, in one line: "This is Aria from Sage and Willow Spa, returning your call." Then reply NO_RESPONSE_NEEDED and wait - the person may take a while to come on. When someone says "Hello?" after a screener, that is the live person: give the opener."""
 
 OPENING_NAMED = """The reason for this call is lead_source = "{{lead_source}}" (see Call Context). A missed_call lead never filled out a form, and a website_form lead never rang us - never mix those up.
 
@@ -281,7 +283,7 @@ After that you have introduced yourself. NEVER say either line again, in whole o
 Handle here and wait - do not route:
 - "Hello?" / "Can you hear me?" AFTER you have opened -> website_form: "Yep, I can hear you - how can I help you today?" Otherwise: "Yep, I can hear you - is this {{lead_first_name}}?"
 - "Who is this?" -> website_form: "It's Aria from Sage and Willow Spa - you submitted a callback form on our website." missed_call: "It's Aria from Sage and Willow Spa - you rang us a little earlier."
-- "Is this a robot?" -> "I'm Aria, the virtual receptionist at Sage and Willow Spa - happy to help." Then carry on.
+- "Is this a robot?" / "Is this a real person?" -> "I'm Aria, the AI receptionist at Sage and Willow Spa - not a person, but I can help you right now." Then carry on.
 - They name a massage straight away -> take it and move on.
 - missed_call lead says they never called -> "No problem at all - sorry to bother you. Take care." and end the call.
 
@@ -317,7 +319,7 @@ After that you have introduced yourself. NEVER say the opener again, in whole or
 Handle here and wait - do not route:
 - "Hello?" / "Can you hear me?" AFTER you have opened -> "Yep, I can hear you." then the opener question again, once.
 - "Who is this?" -> website_form: "It's Aria from Sage and Willow Spa - you submitted a callback form on our website." missed_call: "It's Aria from Sage and Willow Spa - you rang us a little earlier." unknown: "It's Aria from Sage and Willow Spa - you reached out to us."
-- "Is this a robot?" -> "I'm Aria, the virtual receptionist at Sage and Willow Spa - happy to help." Then carry on.
+- "Is this a robot?" / "Is this a real person?" -> "I'm Aria, the AI receptionist at Sage and Willow Spa - not a person, but I can help you right now." Then carry on.
 - They name a massage straight away -> take it and move on.
 - missed_call lead says they never called -> "No problem at all - sorry to bother you. Take care." and end the call.
 
@@ -526,7 +528,11 @@ NEW_NODES = [
             "condition": (
                 "The other end is an answering machine or voicemail, not a live person - a "
                 "recorded greeting, an automated 'leave a message after the tone', a beep, or "
-                "a carrier message. Never fires while an actual person is replying to you."
+                "a carrier message. Never fires while an actual person is replying to you. A call "
+                "screener is NOT voicemail - Google Voice or a phone assistant asking the caller to "
+                "state their name ('state your name after the tone, and Google Voice will try to "
+                "connect you', 'record your name and reason for calling, I'll see if this person is "
+                "available') is putting a person through. A 'Hello?' after a screener is that person."
             ),
             "cool_down": 1,
             "positive_finetune_examples": [
@@ -536,6 +542,14 @@ NEW_NODES = [
             "negative_finetune_examples": [
                 {"transcript": [{"role": "user", "content": "Hello?"}]},
                 {"transcript": [{"role": "user", "content": "Yes this is she"}]},
+                # call_2e664e7e (2026-10-02) and call_8e86293d (2026-10-01): a screener, then the
+                # person came on with "Hello?" - both got the voicemail message and were lost.
+                {"transcript": [{"role": "user", "content": "Hello. Please state your name after the tone, and Google Voice will try to connect you."}]},
+                {"transcript": [
+                    {"role": "user", "content": "Hello. Please state your name after the tone, and Google Voice will try to connect you."},
+                    {"role": "agent", "content": "This is Aria from Sage and Willow Spa, returning your call."},
+                    {"role": "user", "content": "Hello?"}]},
+                {"transcript": [{"role": "user", "content": "Hi, if you record your name and reason for calling, I'll see if this person is available."}]},
             ],
         },
     },
@@ -616,6 +630,10 @@ def build_flow(source: dict, target_webhook: str) -> dict:
 
     # The opening keeps its inbound routing and gains the outbound exits.
     nodes["node-greeting"]["edges"] = OPENING_EDGES + nodes["node-greeting"]["edges"]
+    # The inbound greeting's worked examples (V70: staying quiet through a recording)
+    # open with the INBOUND line, which an outbound opener never says. The openers have
+    # their own RECORDING_RULE, and the global rule comes across with the global prompt.
+    nodes["node-greeting"].pop("finetune_conversation_examples", None)
 
     # Twin of the opening for leads whose name we do not have. Same edges, one
     # row down on the canvas; edge ids get a "u-" prefix so they stay unique.
@@ -630,6 +648,10 @@ def build_flow(source: dict, target_webhook: str) -> dict:
     for k in ("skip_response_edge", "always_edge", "else_edge"):
         if unnamed.get(k):
             unnamed[k]["id"] = "u-" + unnamed[k]["id"]
+    # Example ids must be unique across the whole flow too (Retell: "Duplicate example id").
+    for k in ("finetune_conversation_examples", "finetune_transition_examples"):
+        for ex in unnamed.get(k) or []:
+            ex["id"] = "u-" + ex["id"]
     flow["nodes"].append(unnamed)
     nodes["node-greeting-unnamed"] = unnamed
 
@@ -688,18 +710,22 @@ def build_flow(source: dict, target_webhook: str) -> dict:
     # the classic Retell failure - the model has to produce a turn, so it invents
     # one (call_f5943184: "you're all set... male or female therapist?" came from
     # exactly that node). No node, no babble.
-    flow["nodes"] = [n for n in flow["nodes"] if n["id"] != "node-book-phone"]
-    nodes.pop("node-book-phone")
+    # V71 put a code node in front of it ("node-book-phone-say", the number as words);
+    # it goes too.
+    phone_ids = {"node-book-phone", "node-book-phone-say"}
+    flow["nodes"] = [n for n in flow["nodes"] if n["id"] not in phone_ids]
+    for pid in phone_ids:
+        nodes.pop(pid, None)
     for n in flow["nodes"]:
         for e in n.get("edges", []):
-            if e["destination_node_id"] == "node-book-phone":
+            if e["destination_node_id"] in phone_ids:
                 e["destination_node_id"] = "node-book-readback"
         for k in ("skip_response_edge", "always_edge", "else_edge"):
-            if n.get(k) and n[k]["destination_node_id"] == "node-book-phone":
+            if n.get(k) and n[k]["destination_node_id"] in phone_ids:
                 n[k]["destination_node_id"] = "node-book-readback"
         # V58 gave the name node transition examples that name their target.
         for ex in n.get("finetune_transition_examples", []):
-            if ex.get("destination_node_id") == "node-book-phone":
+            if ex.get("destination_node_id") in phone_ids:
                 ex["destination_node_id"] = "node-book-readback"
 
     # Name node: inbound's V58 wording plus the outbound first line.
@@ -831,6 +857,18 @@ def build_flow(source: dict, target_webhook: str) -> dict:
             raise SystemExit(f"{gid} lost the website-form opener")
     if "booking form" in json.dumps([n.get("instruction") for n in flow["nodes"]]) + flow["global_prompt"]:
         raise SystemExit("'booking form' survives somewhere - the form is the callback form")
+    # V64 (inbound): never claims to be a person. call_dbb1eaeae3772ae7d7b63747e81 (outbound v11)
+    # said "I'm a live person!" twice from the Off Topic node.
+    if "You are an AI, not a person." not in flow["global_prompt"]             or "AI receptionist" not in nodes["node-global-offtopic"]["instruction"]["text"]:
+        raise SystemExit("AI honesty line missing - inbound V64 not in the source flow?")
+    if "virtual receptionist" in json.dumps([n.get("instruction") for n in flow["nodes"]]):
+        raise SystemExit("an opener still answers 'are you a robot?' with the old line")
+    # V65 (inbound): two guests at once, and request-first services come back PENDING.
+    if "node-book-requested" not in {n["id"] for n in flow["nodes"]}             or "guests" not in {t["name"]: t for t in flow["tools"]}["get_slots"]["parameters"]["properties"]:
+        raise SystemExit("two-guest / request-first handling missing - inbound V65 not in the source flow?")
+    # V66 (inbound): the guest's name is its own step (web tests 2026-09-28 never asked it).
+    if "node-book-guest-name" not in {n["id"] for n in flow["nodes"]}:
+        raise SystemExit("guest-name step missing - inbound V66 not in the source flow?")
 
     # V58: both openers refuse to talk over a recording, the name node asks for
     # both spellings, and nothing still points at the removed phone node.

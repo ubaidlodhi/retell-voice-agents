@@ -5,7 +5,9 @@
 // (or an error item - that node continues on error). The composed facts and the
 // branded shell come from "Compose: Post-Call Email".
 //
-// GPT-4.1-mini writes the words; this node decides whether they are safe to send.
+// GPT-4.1-mini writes the words - the paragraphs, the subject, and the "Outcome"
+// and "They wanted to" rows of the details card; this node decides whether they
+// are safe to send.
 // Anything it cannot vouch for - no answer, bad JSON, a link, a price, a spam
 // word, a time/date/weekday that is not in the facts, a phone number that is not
 // the caller's - and Nicky gets the template recap instead. She always gets one.
@@ -17,6 +19,8 @@ const SPAM = /\b(for free|free gift|free trial|guarantee[ds]?|urgent|act now|cli
 const FORBIDDEN = /\b(retell|transcript|recording|language model|ai model|openai|gpt|prompt|chatbot|software)\b/i;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const undash = (s) => String(s).replace(/\s*[—–]\s*/g, ', ');
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const wordCount = (s) => String(s).split(/\s+/).filter(Boolean).length;
 
 const base = {
   write: true,
@@ -45,7 +49,10 @@ const tidy = (s) => undash(String(s == null ? '' : s))
   .replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '')   // a list marker at the start
   .replace(/\s+/g, ' ')
   .trim();
-let subject = tidy(out.subject);
+// The two detail rows: short phrases, no full stop, no "They wanted to" repeated inside the value.
+const phrase = (s) => tidy(s).replace(/[.!]+$/, '');
+let outcomeLine = phrase(out.outcome);
+let wanted = phrase(out.they_wanted).replace(/^they wanted to\s+/i, '').replace(/^to\s+/i, '');
 let paras = (Array.isArray(out.paragraphs) ? out.paragraphs : [])
   .map(tidy)
   .filter(Boolean)
@@ -59,11 +66,10 @@ if (paras.length && /\s*(best|thanks|cheers|warmly|regards)[,!]?\s*aria\.?$/i.te
 paras = paras.filter(Boolean);
 
 // ---- 3. checks - any failure means the template goes out instead -------------------------------
-const all = [subject, ...paras].join('\n');
+const all = [outcomeLine, wanted, ...paras].join('\n');
 const words = paras.join(' ').split(/\s+/).filter(Boolean).length;
 if (paras.length < 1 || paras.length > 5) return fallback(`model wrote ${paras.length} paragraphs`);
 if (words < 12 || words > 220) return fallback(`model wrote ${words} words`);
-if (!subject || subject.length > 90) subject = compose.subject;
 if (/https?:\/\/|www\.|\b[\w.-]+@[\w-]+\.\w+|\.com\b/i.test(all)) return fallback('model wrote a link or an address');
 if (SPAM.test(all)) return fallback(`spam-like word: ${all.match(SPAM)[0]}`);
 if (FORBIDDEN.test(all)) return fallback(`mentions ${all.match(FORBIDDEN)[0]}`);
@@ -96,11 +102,55 @@ const badPhone = [...all.matchAll(/(?:\+?\d[\d\s().-]{6,}\d)/g)].map((m) => digi
   .find((d) => d.length >= 7 && !(callerDigits && callerDigits.endsWith(d.slice(-10))));
 if (badPhone) return fallback('phone number not in the facts');
 
-// ---- 4. fill the shell -----------------------------------------------------------------------------
+// ---- 4. the Outcome / They wanted to rows -------------------------------------------------------------
+// The tools have the last word on what changed hands: with a booking, move, cancel,
+// transfer or wrong number on record the outcome must say so; without one it may
+// not claim one.
+const notes = [];
+const verified = String(compose.verified_outcome || '');
+const SAYS = {
+  'appointment booked': /\bbook/i, 'appointment requested': /\brequest/i,
+  'appointment cancelled': /\bcancel/i, 'appointment moved': /\b(mov|reschedul)/i,
+  'transferred to the team': /\btransfer/i, 'wrong person answered': /\bwrong\b/i,
+};
+if (verified) {
+  if (!outcomeLine || outcomeLine.length > 60 || wordCount(outcomeLine) > 8 || !(SAYS[verified] || /./).test(outcomeLine)) {
+    notes.push(`outcome "${outcomeLine}" replaced by the tool result`);
+    outcomeLine = cap(verified);
+  }
+} else {
+  if (/\b(booked|rescheduled|moved|cancell?ed|transferred)\b/i.test(outcomeLine)
+      && !/\b(not|no|never|didn'?t|wasn'?t|without)\b/i.test(outcomeLine)) {
+    return fallback(`outcome claims what no tool did: ${outcomeLine}`);
+  }
+  if (!outcomeLine || outcomeLine.length > 60 || wordCount(outcomeLine) > 8) {
+    notes.push('outcome missing or too long, template label used');
+    outcomeLine = cap(compose.outcome || 'call completed');
+  }
+}
+outcomeLine = cap(outcomeLine);
+if (wanted && (wanted.length > 80 || wordCount(wanted) > 12)) { notes.push('they_wanted too long, left out'); wanted = ''; }
+if (wanted) wanted = wanted.charAt(0).toLowerCase() + wanted.slice(1);
+
+// The subject carries the same outcome as the card, in one fixed shape (the model's own
+// subjects came back in Title Case): "Call recap: Matt Jones, appointment booked".
+const facts = compose.facts || {};
+let subject = `Call recap: ${facts.caller_name || facts.caller_phone || 'caller'}, ${outcomeLine.charAt(0).toLowerCase()}${outcomeLine.slice(1)}`;
+if (subject.length > 90) subject = compose.subject;
+
+// ---- 5. fill the shell -----------------------------------------------------------------------------
+// split/join, not replace: a "$" in the model's words must not act as a replacement pattern.
+const fill = (shell, mark, value) => String(shell).split(mark).join(value);
 const style = compose.para_style || 'margin:0 0 14px;';
 const bodyHtml = paras.map((p) => `<p style="${style}">${esc(p)}</p>`).join('');
-const html = undash(String(compose.html_shell).replace('<!--ARIA_BODY-->', bodyHtml));
-const text = undash(String(compose.text_shell).replace('{{ARIA_BODY}}', paras.join('\n\n')));
-if (html === String(compose.html_shell) || !html.includes(bodyHtml.slice(0, 40))) return fallback('shell had no body marker');
+const row = (label, value) => String(compose.row_tpl || '').split('%%LABEL%%').join(esc(label)).split('%%VALUE%%').join(esc(value));
+const topHtml = row('Outcome', outcomeLine) + (wanted ? row('They wanted to', wanted) : '');
+const topText = [`  Outcome: ${outcomeLine}`, ...(wanted ? [`  They wanted to: ${wanted}`] : [])].join('\n');
+const html = undash(fill(fill(compose.html_shell, '<!--ARIA_BODY-->', bodyHtml), '<!--ARIA_TOP_ROWS-->', topHtml));
+const text = undash(fill(fill(compose.text_shell, '{{ARIA_BODY}}', paras.join('\n\n')), '{{ARIA_TOP_ROWS}}', topText));
+if (!String(compose.html_shell).includes('<!--ARIA_BODY-->') || !html.includes(bodyHtml.slice(0, 40))) return fallback('shell had no body marker');
+if (!compose.row_tpl || !String(compose.html_shell).includes('<!--ARIA_TOP_ROWS-->') || /ARIA_TOP_ROWS|%%LABEL%%|%%VALUE%%/.test(html + text)) {
+  return fallback('shell had no detail-row marker');
+}
 
-return [{ json: { ...base, subject: undash(subject), html, text, writer: 'gpt-4.1-mini', writer_note: '' } }];
+return [{ json: { ...base, outcome: outcomeLine, subject: undash(subject), html, text, writer: 'gpt-4.1-mini', writer_note: notes.join('; ') } }];

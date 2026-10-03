@@ -12,7 +12,7 @@
 // nothing that reads like a promotion.
 //
 // Who writes what (Ubaid, 2026-09-25: "written by gpt-4.1-mini, not hard coded"):
-//   * GPT-4.1-mini writes the subject and the recap paragraphs, from the facts
+//   * GPT-4.1-mini writes the recap paragraphs and the outcome the subject is built from, from the facts
 //     below plus the transcript ("Write: Recap" node, request built here as
 //     openai_body; "Render: Recap Email" checks the result and fills it in).
 //   * This node keeps everything that must be exact: which calls get an e-mail,
@@ -21,6 +21,10 @@
 //     the paragraphs go.
 //   * subject / html / text below are the template version - the fallback the
 //     render step uses if the model is down or writes something it rejects.
+//   * The "Outcome" and "They wanted to" lines are the model's too (Ubaid,
+//     2026-09-25): Retell's caller_intent said "book a massage" for a caller who
+//     only asked about the menu and booked nothing. The shells carry a marker
+//     where those two rows go; the template keeps Retell's labels as fallback.
 
 const INBOUND_AGENT_ID = 'agent_eceb7448aa1f37e8f436a63a43';
 const OUTBOUND_AGENT_ID = 'agent_4ef8160dc71826818c6fd8122b';
@@ -50,7 +54,6 @@ const isInbound = call.agent_id === INBOUND_AGENT_ID;
 const isOutbound = call.agent_id === OUTBOUND_AGENT_ID;
 if (!isInbound && !isOutbound) return skip('not an Aria agent');
 if (call.call_type && call.call_type !== 'phone_call') return skip(`call_type ${call.call_type}`);
-if (call.call_status && call.call_status !== 'ended') return skip(`call_status ${call.call_status}`);
 if (isTestNumber(call.from_number) || isTestNumber(call.to_number)) return skip('test line');
 
 const dr = String(call.disconnection_reason || '');
@@ -62,13 +65,27 @@ const NEVER_A_CONVERSATION = new Set([
   'concurrency_limit_reached', 'no_valid_payment', 'user_declined',
   'error_user_not_joined', 'error_no_audio_received',
 ]);
-if (dr.startsWith('dial_') || NEVER_A_CONVERSATION.has(dr)) return skip(dr);
-if (analysis.in_voicemail === true) return skip('voicemail');
-if (isOutbound && ['voicemail', 'no_answer'].includes(String(custom.reached_lead || ''))) return skip(`reached_lead ${custom.reached_lead}`);
-
+const reached = String(custom.reached_lead || '');
 const turns = Array.isArray(call.transcript_object) ? call.transcript_object : [];
 const callerTurns = turns.filter(t => t && t.role === 'user' && typeof t.content === 'string' && t.content.trim()).length;
-if (callerTurns === 0) return skip('nobody spoke');
+
+// An outbound callback that never reached the person - voicemail, no answer, busy, a call
+// screener that never put them through, a hang-up on "Hello?" - is the one call Nicky must
+// hear about: the inbound call that triggered it sends no recap (the workflow only composes
+// for calls that need no callback), so this "missed lead" e-mail is all she gets about that
+// lead (Ubaid, 2026-10-03). A conversation means they were reached (lead / wrong person)
+// or said at least three things.
+const machine = call.call_status === 'not_connected' || dr.startsWith('dial_') || dr.startsWith('error')
+  || NEVER_A_CONVERSATION.has(dr) || analysis.in_voicemail === true || ['voicemail', 'no_answer'].includes(reached);
+const missedLead = isOutbound && (call.call_status === 'ended' || call.call_status === 'not_connected' || !call.call_status)
+  && (machine || callerTurns === 0 || !(['lead', 'wrong_person'].includes(reached) || callerTurns >= 3));
+
+if (!missedLead) {
+  if (call.call_status && call.call_status !== 'ended') return skip(`call_status ${call.call_status}`);
+  if (dr.startsWith('dial_') || NEVER_A_CONVERSATION.has(dr)) return skip(dr);
+  if (analysis.in_voicemail === true) return skip('voicemail');
+  if (callerTurns === 0) return skip('nobody spoke');
+}
 
 // ---- what happened, from the tools rather than from the model ------------------
 const clean = (s) => String(s == null ? '' : s).trim();
@@ -153,18 +170,43 @@ const INTENT = {
   callback_request: 'ask for a callback', spam: 'sell something', inappropriate: 'an inappropriate request',
   off_topic: 'something unrelated', emergency: 'an emergency', crisis: 'a crisis',
 };
-let outcome = booked ? 'appointment booked' : cancelled ? 'appointment cancelled' : moved ? 'appointment moved'
+// A request-first service (Wix "request first") comes back PENDING: Nicky still
+// has to approve it, so it is a request, never "booked" (V65, 2026-09-27).
+const requested = !!(booked && (booked.out.status === 'PENDING' || booked.out.requested === true));
+const bookedWord = requested ? 'appointment requested' : 'appointment booked';
+let outcome = booked ? bookedWord : cancelled ? 'appointment cancelled' : moved ? 'appointment moved'
   : (isOutbound ? OUTBOUND_OUTCOME[custom.outbound_outcome] : RESOLUTION[custom.resolution_status]) || 'call completed';
 if (dr === 'call_transfer') outcome = 'transferred to the team';
 if (isOutbound && custom.reached_lead === 'wrong_person') outcome = 'wrong person answered';
+// What the tools (or the line itself) prove happened - the model may add to it, never contradict it.
+let verifiedOutcome = booked ? bookedWord : cancelled ? 'appointment cancelled' : moved ? 'appointment moved' : '';
+if (dr === 'call_transfer') verifiedOutcome = 'transferred to the team';
+if (isOutbound && custom.reached_lead === 'wrong_person') verifiedOutcome = 'wrong person answered';
 
 let booking = '';
-if (booked) {
+if (booked && clean(booked.args.guestFirstName)) {
+  // Two people at once (V65): two appointments side by side, one tool call. The
+  // guest's length comes from the booking the backend actually made.
+  const a = booked.args;
+  const guestBk = (Array.isArray(booked.out.bookings) ? booked.out.bookings : []).find(b => b && b.who === 'guest') || {};
+  const mins = minutesBetween(a.startDate, a.endDate);
+  const gMins = minutesBetween(guestBk.startDate || a.startDate, guestBk.endDate) || Number(a.guestDurationInMinutes) || mins;
+  const who1 = [clean(a.firstName), clean(a.lastName)].filter(Boolean).join(' ');
+  const who2 = [clean(a.guestFirstName), clean(a.guestLastName)].filter(Boolean).join(' ');
+  booking = `${localWhen(a.startDate)}, side by side: ${clean(a.serviceName)}, ${durationWords(mins)} for ${who1}, and ` +
+    `${clean(a.guestServiceName) || clean(a.serviceName)}, ${durationWords(gMins)} for their guest ${who2}`;
+} else if (booked) {
   const mins = minutesBetween(booked.args.startDate, booked.args.endDate);
-  booking = [clean(booked.args.serviceName), durationWords(mins), localWhen(booked.args.startDate)].filter(Boolean).join(', ');
-} else if (moved) {
+  // Aria sends numberOfParticipants 2 for the Couples Massage (call_cc43d37f, 2026-09-25).
+  const guests = Math.round(Number(booked.args.numberOfParticipants) || 1);
+  const guestWords = { 2: 'two', 3: 'three', 4: 'four' }[guests] || String(guests);
+  booking = [clean(booked.args.serviceName), durationWords(mins), localWhen(booked.args.startDate),
+    guests > 1 ? `for ${guestWords} guests` : ''].filter(Boolean).join(', ');
+}
+if (booked && requested) booking += ' (a request, waiting for your approval in Wix)';
+if (!booked && moved) {
   booking = ['Moved to', localWhen(moved.args.startDate)].filter(Boolean).join(' ');
-} else if (cancelled) {
+} else if (!booked && cancelled) {
   booking = 'Cancelled';
 }
 
@@ -210,9 +252,10 @@ const subject = `Call recap: ${name || phone || 'caller'}, ${outcome}`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const FONT = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+// Outcome + "They wanted to" come first; GPT's versions replace them in the shells.
+const topRows = [['Outcome', cap(outcome)]];
+if (intent) topRows.push(['They wanted to', intent]);
 const rows = [];
-rows.push(['Outcome', cap(outcome)]);
-if (intent) rows.push(['They wanted to', intent]);
 if (booking) rows.push(['Appointment', booking]);
 if (sentiment) rows.push(['Mood', cap(sentiment)]);
 if (callWhen) rows.push(['When', callWhen]);
@@ -225,11 +268,11 @@ if (source) contactRows.push(['Came from', source === 'website_form' ? 'the webs
 const rowHtml = (r) =>
   `<tr><td style="padding:6px 0;font:13px/1.5 ${FONT};color:#4E5E73;width:120px;vertical-align:top;">${esc(r[0])}</td>` +
   `<td style="padding:6px 0;font:14px/1.5 ${FONT};color:#0F1729;vertical-align:top;">${esc(r[1])}</td></tr>`;
-const card = (title, list) =>
+const card = (title, list, topHtml = '') =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;border:1px solid #E1E7EF;border-radius:10px;margin:0 0 16px;">` +
   `<tr><td style="padding:14px 18px 10px;">` +
   `<div style="font:600 11px/1.4 ${FONT};letter-spacing:.08em;text-transform:uppercase;color:#4E5E73;margin:0 0 4px;">${esc(title)}</div>` +
-  `<table role="presentation" cellpadding="0" cellspacing="0" width="100%">${list.map(rowHtml).join('')}</table>` +
+  `<table role="presentation" cellpadding="0" cellspacing="0" width="100%">${topHtml}${list.map(rowHtml).join('')}</table>` +
   `</td></tr></table>`;
 // One link only: the AIEmply call log, which has the recording and the
 // transcript. No raw recording URL (Ubaid, 2026-09-21).
@@ -239,12 +282,18 @@ if (call.call_id) links.push(`<a href="${esc(DASHBOARD + call.call_id)}" style="
 const PARA_STYLE = `margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;`;
 const BODY_MARK = '<!--ARIA_BODY-->';
 const TEXT_MARK = '{{ARIA_BODY}}';
+const ROWS_MARK = '<!--ARIA_TOP_ROWS-->';
+const TEXT_ROWS_MARK = '{{ARIA_TOP_ROWS}}';
+const topHtml = topRows.map(rowHtml).join('');
+const topText = topRows.map(r => `  ${r[0]}: ${r[1]}`).join('\n');
+// One detail row with blanks for the render step to fill: same styling as every other row.
+const ROW_TPL = rowHtml(['%%LABEL%%', '%%VALUE%%']);
 const templateBody =
   `<p style="${PARA_STYLE}">${esc(intro)}</p>` +
   `<p style="margin:0 0 22px;font:15px/1.6 ${FONT};color:#1C2740;">${esc(summary)}</p>` +
   notes.map(n => `<p style="${PARA_STYLE}">${esc(n)}</p>`).join('');
 
-const shell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title></head>` +
+const shell = (title, bodyHtml, top) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title></head>` +
   `<body style="margin:0;padding:0;background:#F3F6F9;">` +
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F6F9;"><tr><td align="center" style="padding:28px 16px;">` +
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border:1px solid #E1E7EF;border-radius:12px;">` +
@@ -259,7 +308,7 @@ const shell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charset="ut
   `<p style="${PARA_STYLE}">${esc(GREETING)}</p>` +
   bodyHtml +
   `<div style="height:8px;line-height:8px;">&nbsp;</div>` +
-  card('Call details', rows) +
+  card('Call details', rows, top) +
   (contactRows.length ? card('Contact', contactRows) : '') +
   (links.length ? `<p style="margin:4px 0 20px;">${links.join(`<span style="color:#D1DAE5;padding:0 10px;">|</span>`)}</p>` : '') +
   `<p style="margin:0 0 4px;font:15px/1.6 ${FONT};color:#0F1729;">Aria</p>` +
@@ -271,9 +320,9 @@ const shell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charset="ut
   `</td></tr>` +
   `</table></td></tr></table></body></html>`;
 
-const textShell = (body) => {
+const textShell = (body, top) => {
   const lines = [GREETING, '', body, ''];
-  lines.push('Call details');
+  lines.push('Call details', top);
   for (const r of rows) lines.push(`  ${r[0]}: ${r[1]}`);
   if (contactRows.length) { lines.push('', 'Contact'); for (const r of contactRows) lines.push(`  ${r[0]}: ${r[1]}`); }
   if (call.call_id) lines.push('', `Open the call: ${DASHBOARD}${call.call_id}`);
@@ -283,10 +332,58 @@ const textShell = (body) => {
 
 // Template version = the fallback. Belt and braces: nothing long-dashed leaves this node.
 const undash = (s) => s.replace(/[—–]/g, ', ');
-const html = undash(shell(subject, templateBody));
-const text = undash(textShell([intro, summary, ...notes].join('\n\n')));
-const html_shell = undash(shell(subject, BODY_MARK));
-const text_shell = undash(textShell(TEXT_MARK));
+const html = undash(shell(subject, templateBody, topHtml));
+const text = undash(textShell([intro, summary, ...notes].join('\n\n'), topText));
+const html_shell = undash(shell(subject, BODY_MARK, ROWS_MARK));
+const text_shell = undash(textShell(TEXT_MARK, TEXT_ROWS_MARK));
+
+// ---- the callback never reached them: a short "please call them" e-mail, no model ----------
+if (missedLead) {
+  const voicemail = dr === 'voicemail_reached' || dr === 'machine_detected' || analysis.in_voicemail === true || reached === 'voicemail';
+  const result = voicemail ? 'it went to voicemail, so I left a message asking them to call us back'
+    : (dr === 'dial_no_answer' || reached === 'no_answer') ? 'they did not pick up'
+    : dr === 'dial_busy' ? 'the line was busy'
+    : (call.call_status === 'not_connected' || dr.startsWith('dial_') || dr.startsWith('error') || NEVER_A_CONVERSATION.has(dr))
+      ? 'the call did not go through'
+    : 'the line picked up and we never got to talk';
+  const resultRow = voicemail ? 'Voicemail, message left' : (dr === 'dial_no_answer' || reached === 'no_answer') ? 'No answer'
+    : dr === 'dial_busy' ? 'Line busy' : result.startsWith('the call') ? 'Call did not go through' : 'Picked up, never talked';
+  const theirTime = noBraces(clean(dyn.lead_submitted_at));
+  const wanted = noBraces(clean(dyn.inbound_intent));
+  const label = name || phone || 'A caller';
+  const paras = [
+    source === 'website_form'
+      ? `${label} asked for a call back through the website form${theirTime ? ` on ${theirTime}` : ''}.`
+      : `${label} rang the spa${theirTime ? ` on ${theirTime}` : ''}${wanted ? ` about ${wanted}` : ''}, and the call ended before I could help.`,
+    `I called them back${callWhen ? ` on ${callWhen}` : ''}, but ${result}.`,
+    'Could you give them a call when you have a moment?',
+  ].map(noDashes);
+  rows.splice(0, rows.length, ...[
+    theirTime ? [source === 'website_form' ? 'Form sent' : 'Their call', theirTime] : null,
+    callWhen ? ['We called back', callWhen] : null,
+    ['Result', resultRow],
+    wanted ? ['They wanted', wanted] : null,
+  ].filter(Boolean));
+  const missedSubject = undash(`Missed lead: ${name || phone || 'caller'}, please call them back`);
+  const missedTop = [['Outcome', 'Could not reach them']];
+  return [{ json: {
+    write: false,
+    send: false,
+    missed: !dryRun,
+    dryRun,
+    skip_reason: dryRun ? 'dry run (missed lead composed, not sent)' : '',
+    call_id: call.call_id || null,
+    direction: 'outbound',
+    to: TO,
+    cc: CC,
+    subject: missedSubject,
+    html: undash(shell(missedSubject, paras.map(p => `<p style="${PARA_STYLE}">${esc(p)}</p>`).join(''), missedTop.map(rowHtml).join(''))),
+    text: undash(textShell(paras.join('\n\n'), missedTop.map(r => `  ${r[0]}: ${r[1]}`).join('\n'))),
+    outcome: 'could not reach them',
+    name,
+    phone: phoneRaw,
+  } }];
+}
 
 // ---- the request GPT-4.1-mini gets ----------------------------------------------------------
 // Facts are what the tools and the analysis say happened - the writer may not
@@ -299,8 +396,7 @@ const facts = {
   caller_phone: phone,
   call_time: callWhen,
   call_length: callLength,
-  outcome,
-  they_wanted: intent,
+  confirmed_outcome: verifiedOutcome,
   appointment: booking,
   mood: sentiment,
   callback_wanted: callbackWanted,
@@ -326,14 +422,14 @@ const WRITER_PROMPT = `You are Aria, the virtual receptionist at ${SPA} in Novat
 
 You get JSON with "facts" (checked against the booking system, always correct) and "transcript" (what was said on the call).
 
-Return a JSON object: {"subject": "...", "paragraphs": ["...", "..."]}
+Return a JSON object: {"outcome": "...", "they_wanted": "...", "paragraphs": ["...", "..."]}
 
 How to write it:
 - First person, as Aria. Warm, plain and brief, like a note to a colleague. 2 to 4 short paragraphs, 120 words at most in total.
 - Start with who you spoke to and why. Inbound: they called the spa. Outbound: you called them, for the reason in facts.outbound_reason.
 - Then what happened and how it ended. For a booking, a move or a cancellation, use facts.appointment exactly as written. Never change a date, weekday, time, service, length, therapist or name.
 - Point out anything Nicky may want to act on: a callback they want (and why, if facts.callback_reason says), a question you could not answer, a tool error, a wrong number, someone asking not to be called again, an unhappy caller.
-- Call the caller by facts.caller_name when there is one, otherwise "the caller". Never guess a name from the transcript.
+- Call the caller by facts.caller_name when there is one, otherwise "the caller", and "they" after that. Never "he", "she", "him", "his" or "her" for the caller: you do not know how they identify. Never guess a name from the transcript.
 - Only say what the facts or the transcript support. Leave out anything you are not sure of.
 - No greeting and no sign-off: "Hi Nicky," and your signature are added for you.
 - Plain sentences only: no lists, no markdown, no links, no email addresses, no prices, no phone numbers.
@@ -341,7 +437,11 @@ How to write it:
 - Nothing that sounds like marketing: no "free", "guarantee", "urgent", "amazing", "deal", "act now", "limited time". Say a therapist was "available", never "free".
 - Never mention transcripts, recordings, AI, models, prompts or any software.
 
-Subject: "Call recap: " then facts.caller_name (or facts.caller_phone if there is no name), a comma, and the outcome in a few words. Under 70 characters.`;
+If facts.confirmed_outcome is "appointment requested", that service is booked by request: Nicky still has to approve it in Wix. Say so plainly and never call it booked or confirmed.
+
+outcome: how the call ended, 2 to 6 words, starting with a capital letter, no full stop. Judge it from the whole call, not from how it started. If facts.confirmed_outcome is there, say that (you may add a detail such as the number of guests). Never say anything was booked, moved or cancelled unless facts.confirmed_outcome says so.
+
+they_wanted: what the caller was really after on this call, judged from the whole conversation, as a short phrase that finishes "They wanted to ...", so it starts with a verb. 3 to 10 words, lower case, no full stop. If they only asked questions and did not go ahead, say what they asked about, not that they wanted to book. Use "" for a wrong number or when it is unclear.`;
 
 const openai_body = {
   model: 'gpt-4.1-mini',
@@ -369,6 +469,8 @@ return [{ json: {
   html_shell,
   text_shell,
   para_style: PARA_STYLE,
+  row_tpl: ROW_TPL,
+  verified_outcome: verifiedOutcome,
   facts,
   openai_body,
   outcome,
