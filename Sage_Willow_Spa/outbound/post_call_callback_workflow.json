@@ -451,31 +451,42 @@
     {
       "id": "email-send",
       "name": "Send Email: Post-Call Recap",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        220,
-        500
+        224,
+        512
       ],
       "parameters": {
-        "fromEmail": "Aria <engineering@aiemply.com>",
-        "toEmail": "={{ $json.to }}",
-        "subject": "={{ $json.subject }}",
-        "emailFormat": "both",
-        "html": "={{ $json.html }}",
-        "text": "={{ $json.text }}",
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "=aria-postcall-{{ $json.call_id || $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ from: 'Aria AI Employee <aria@notifications.aiemply.com>', to: [$json.to], cc: ['engineering@aiemply.com'], reply_to: 'engineering@aiemply.com', subject: $json.subject, html: $json.html, text: $json.text }) }}",
         "options": {
-          "appendAttribution": false,
-          "replyTo": "engineering@aiemply.com",
-          "ccEmail": "={{ $json.cc }}"
+          "timeout": 30000
         }
       },
       "credentials": {
-        "smtp": {
-          "id": "m0mbibKf6il36id5",
-          "name": "SMTP account"
+        "httpBearerAuth": {
+          "id": "1GhjxZ2552Ym772x",
+          "name": "Resend - notifications.aiemply.com"
         }
       },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "onError": "continueRegularOutput"
     },
     {
@@ -564,6 +575,109 @@
         },
         "options": {}
       }
+    },
+    {
+      "id": "hold-wait",
+      "name": "Wait: 10 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -220,
+        880
+      ],
+      "parameters": {
+        "amount": 10,
+        "unit": "minutes"
+      },
+      "webhookId": "0b9f6c1e-4d2a-4f7b-9a3e-5c8d2e1f7a60"
+    },
+    {
+      "id": "hold-reached",
+      "name": "Retell: Reached Us Since?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        880
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.retellai.com/v3/list-calls",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  filter_criteria: {\n    from_number: { type: 'string', op: 'eq', value: $('Webhook - Retell call_analyzed').first().json.body.call.to_number },\n    direction: { type: 'enum', op: 'in', value: ['inbound'] },\n    start_timestamp: { type: 'number', op: 'gt', value: Number($('Webhook - Retell call_analyzed').first().json.body.call.start_timestamp) - 120000 }\n  },\n  limit: 20, sort_order: 'descending'\n}) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "PCD0SY42490CXB82",
+          "name": "Retell - Sage & Willow workspace"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "hold-decide",
+      "name": "Decide: Still Missed?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        880
+      ],
+      "parameters": {
+        "jsCode": "// \"Decide: Still Missed?\" - n8n Code node body (embedded by\n// _build_post_call_callback_workflow.py, exercised by test_missed_lead_hold.js).\n//\n// A \"Missed lead, please call them back\" e-mail waits 10 minutes (\"Wait: 10 Minutes\") and\n// then goes only if the person has not reached us since. On 2026-10-04 and 2026-10-06 Hilda\n// and Karen rang the spa and booked within minutes of our callback reaching their voicemail,\n// and Nicky got \"please call them back\" and \"appointment booked\" for the same person.\n//\n// Reached us = an inbound call from the number we rang, started after our call began (2-minute\n// margin: they can dial us while ours is still ringing), that\n//   * is still going on (they are talking to Aria right now - that call reports itself), or\n//   * ended with an outcome Nicky hears about anyway: booked, cancelled, rescheduled, a\n//     question answered (those get their own recap) or a message for the team (its own e-mail).\n// A hang-up, or a half-finished call, does not count: that call is not rung back while ours is\n// recent, so this e-mail is the only word Nicky gets. If the look-up fails, the e-mail goes.\n\nconst SERVED = new Set(['booking_created', 'booking_canceled', 'booking_rescheduled',\n                        'info_provided', 'callback_flagged']);\nconst MARGIN_MS = 2 * 60 * 1000;\n\nconst email = $('Compose: Post-Call Email').first().json;\nconst call = (($('Webhook - Retell call_analyzed').first().json.body || {}).call) || {};\n\nconst asList = (name) => {\n  const items = $(name).all().map(i => i.json);\n  if (items.length === 1 && Array.isArray(items[0])) return items[0];\n  if (items.length === 1 && items[0] && Array.isArray(items[0].items)) return items[0].items;\n  return items.filter(c => c && c.call_id);\n};\n\nconst lead = String(call.to_number || '');\n// A missed-call callback was triggered by an inbound call - that one is not \"since\".\nconst triggeredBy = String((call.metadata || {}).inbound_call_id || '');\nconst since = Number(call.start_timestamp || 0) - MARGIN_MS;\n\nconst later = asList('Retell: Reached Us Since?').filter(c =>\n  c.call_id !== call.call_id && c.call_id !== triggeredBy && c.direction === 'inbound'\n  && lead && c.from_number === lead && Number(c.start_timestamp || 0) > since);\n\nconst outcome = (c) => String((((c.call_analysis || {}).custom_analysis_data) || {}).resolution_status || '');\nconst live = later.find(c => ['registered', 'ongoing'].includes(c.call_status));\nconst served = later.find(c => SERVED.has(outcome(c)));\n\nlet reachedUs = '';\nif (live) reachedUs = `on a call with us now (${live.call_id})`;\nelse if (served) reachedUs = `rang us since: ${outcome(served)} (${served.call_id})`;\n\nreturn [{ json: {\n  ...email,\n  missed: email.missed === true && !reachedUs,\n  reached_us: reachedUs,\n  later_inbound_calls: later.length,\n} }];\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "if-still-missed",
+      "name": "IF: Still Missed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        880
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-if-still-missed",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.missed }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "skip-4",
+      "name": "Skip: Reached Us Since",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        660,
+        980
+      ],
+      "parameters": {}
     }
   ],
   "connections": {
@@ -820,7 +934,7 @@
       "main": [
         [
           {
-            "node": "Send Email: Post-Call Recap",
+            "node": "Wait: 10 Minutes",
             "type": "main",
             "index": 0
           }
@@ -828,6 +942,57 @@
         [
           {
             "node": "Skip: No Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait: 10 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Retell: Reached Us Since?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retell: Reached Us Since?": {
+      "main": [
+        [
+          {
+            "node": "Decide: Still Missed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide: Still Missed?": {
+      "main": [
+        [
+          {
+            "node": "IF: Still Missed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Still Missed?": {
+      "main": [
+        [
+          {
+            "node": "Send Email: Post-Call Recap",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip: Reached Us Since",
             "type": "main",
             "index": 0
           }

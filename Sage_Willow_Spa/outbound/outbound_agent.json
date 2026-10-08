@@ -39,22 +39,22 @@
     "mode": "post_call"
   },
   "handbook_config": {
-    "natural_filler_words": true,
-    "ai_disclosure": true,
-    "high_empathy": false,
-    "default_personality": false,
-    "speech_normalization": false,
-    "scope_boundaries": false,
-    "echo_verification": false,
-    "smart_matching": false,
     "conversational_personality": true,
-    "nato_phonetic_alphabet": false
+    "natural_filler_words": true,
+    "smart_matching": false,
+    "ai_disclosure": true,
+    "scope_boundaries": false,
+    "nato_phonetic_alphabet": false,
+    "echo_verification": false,
+    "speech_normalization": false,
+    "default_personality": false,
+    "high_empathy": false
   },
   "agent_name": "Aria - Sage & Willow Spa - Outbound Agent",
   "response_engine": {
     "type": "conversation-flow",
     "conversation_flow_id": "conversation_flow_599a68571a81",
-    "version": 17
+    "version": 20
   },
   "webhook_url": "https://automation.aiemply.com/webhook/sage-willow-post-call",
   "webhook_events": [
@@ -68,8 +68,6 @@
   },
   "post_call_analysis_data": [
     {
-      "name": "caller_intent",
-      "description": "Primary purpose of the call.",
       "choices": [
         "new_booking",
         "cancel",
@@ -85,11 +83,14 @@
         "crisis",
         "other"
       ],
-      "type": "enum"
+      "type": "enum",
+      "description": "Primary purpose of the call.",
+      "name": "caller_intent"
     },
     {
-      "type": "enum",
       "description": "What actually happened on the call.",
+      "type": "enum",
+      "name": "resolution_status",
       "choices": [
         "booking_created",
         "booking_canceled",
@@ -100,8 +101,7 @@
         "inappropriate_deflected",
         "abandoned",
         "other"
-      ],
-      "name": "resolution_status"
+      ]
     },
     {
       "name": "callback_required",
@@ -109,40 +109,40 @@
       "description": "True if a callback was flagged for the team."
     },
     {
-      "name": "callback_reason",
       "type": "string",
+      "name": "callback_reason",
       "description": "Short reason for the callback if one was flagged."
     },
     {
-      "name": "caller_sentiment",
-      "type": "enum",
       "choices": [
         "positive",
         "neutral",
         "frustrated",
         "angry"
       ],
+      "name": "caller_sentiment",
+      "type": "enum",
       "description": "Overall caller sentiment by end of call."
     },
     {
       "description": "Primary language of the conversation.",
       "name": "language_used",
-      "type": "enum",
       "choices": [
         "english",
         "spanish",
         "mixed"
-      ]
+      ],
+      "type": "enum"
     },
     {
-      "type": "boolean",
       "description": "Was this call spam, marketing or solicitation?",
-      "name": "spam_call"
+      "name": "spam_call",
+      "type": "boolean"
     },
     {
       "type": "boolean",
-      "name": "inappropriate_request",
-      "description": "Did the caller request sexual services?"
+      "description": "Did the caller request sexual services?",
+      "name": "inappropriate_request"
     },
     {
       "description": "Did any Wix tool call fail?",

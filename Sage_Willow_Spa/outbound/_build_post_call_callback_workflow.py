@@ -13,13 +13,21 @@ Flow
     Webhook (POST /webhook/sage-willow-post-call)      <- Retell agent webhook, call_analyzed
         -> Compose: Post-Call Email   (outbound/post_call_email.js: real conversation? facts,
                                        branded shell, template fallback, the GPT request)
-             -> IF Real Conversation? -> no  -> Skip: No Email
+             -> IF Real Conversation? -> no  -> IF Missed Lead? -> no  -> Skip: No Email
+                                                                 -> yes -> Wait: 10 Minutes
+                                                                     -> Retell: Reached Us Since?  (inbound calls
+                                                                          from the number we rang)
+                                                                     -> Decide: Still Missed?  (outbound/
+                                                                          missed_lead_hold.js)
+                                                                     -> IF Still Missed? -> yes -> Send Email
+                                                                                         -> no  -> Skip: Reached Us Since
                                       -> yes -> Write: Recap (GPT-4.1-mini)   (OpenAI chat completions,
                                                   JSON out, 3 tries, continues on error)
                                              -> Render: Recap Email  (outbound/post_call_email_render.js:
                                                   checks the words, template if anything is off)
-                                             -> IF Send Email? -> Send Email: Post-Call Recap  (SMTP,
-                                                  Aria <engineering@aiemply.com>, to the spa, CC engineering)
+                                             -> IF Send Email? -> Send Email: Post-Call Recap  (Resend,
+                                                  Aria AI Employee <aria@notifications.aiemply.com>,
+                                                  to the spa, CC engineering)
                                                                -> Skip: No Email   (dry runs)
         -> Prepare Call               (hard facts only: right agent? real caller? transcript?)
         -> IF Classify With AI?
@@ -100,14 +108,24 @@ DEDUP_MINUTES = 10
 OUT_DIR = Path(__file__).parent
 SNAPSHOT_PATH = OUT_DIR / "post_call_callback_workflow.json"
 # The recap e-mail node body lives in its own file so test_post_call_email.js
-# can run the very same code. Same SMTP credential the backend's callback
-# e-mail uses.
+# can run the very same code.
 EMAIL_CODE = (OUT_DIR / "post_call_email.js").read_text(encoding="utf-8")
 # GPT-4.1-mini writes the recap (Ubaid, 2026-09-25); this checks and renders it.
 RENDER_CODE = (OUT_DIR / "post_call_email_render.js").read_text(encoding="utf-8")
-SMTP_CRED = {"id": "m0mbibKf6il36id5", "name": "SMTP account"}
-EMAIL_FROM = "Aria <engineering@aiemply.com>"
-EMAIL_REPLY_TO = "engineering@aiemply.com"
+# "Missed lead" e-mails wait 10 minutes and go only if the person has not reached us since
+# (2026-10-07; harness test_missed_lead_hold.js).
+HOLD_CODE = (OUT_DIR / "missed_lead_hold.js").read_text(encoding="utf-8")
+MISSED_LEAD_HOLD_MINUTES = 10
+# Sent through Resend as "Aria AI Employee" from notifications.aiemply.com, CC engineering
+# (Ubaid, 2026-10-04) - same sender and credential as the backend's callback e-mail.
+import sys  # noqa: E402
+sys.path.insert(0, str(OUT_DIR.parent / "n8n-workflow"))
+import resend_email  # noqa: E402
+RESEND_CRED_ID = "1GhjxZ2552Ym772x"
+EMAIL_REPLY_TO = resend_email.ENGINEERING
+RECAP_EMAIL_FIELDS = ("to: [$json.to], cc: [" + repr(resend_email.ENGINEERING) + "], "
+                      "reply_to: " + repr(EMAIL_REPLY_TO) + ", "
+                      "subject: $json.subject, html: $json.html, text: $json.text")
 
 
 def api_key() -> str:
@@ -586,19 +604,30 @@ def build() -> dict:
         node("email-render", "Render: Recap Email", "n8n-nodes-base.code", 2,
              [-220, 560], {"jsCode": RENDER_CODE}),
         bool_if("if-email", "IF: Send Email?", [0, 560], "send"),
-        node("email-send", "Send Email: Post-Call Recap", "n8n-nodes-base.emailSend", 2.1,
-             [220, 500],
-             {"fromEmail": EMAIL_FROM,
-              "toEmail": "={{ $json.to }}",
-              "subject": "={{ $json.subject }}",
-              "emailFormat": "both",
-              "html": "={{ $json.html }}",
-              "text": "={{ $json.text }}",
-              "options": {"appendAttribution": False, "replyTo": EMAIL_REPLY_TO,
-                          "ccEmail": "={{ $json.cc }}"}},
-             credentials={"smtp": SMTP_CRED},
-             onError="continueRegularOutput"),
+        resend_email.resend_node("email-send", "Send Email: Post-Call Recap", [220, 500],
+                                 RECAP_EMAIL_FIELDS,
+                                 "=aria-postcall-{{ $json.call_id || $execution.id }}",
+                                 RESEND_CRED_ID, "continueRegularOutput"),
         node("skip-3", "Skip: No Email", "n8n-nodes-base.noOp", 1, [220, 720], {}),
+
+        # ---- "Missed lead" waits, then checks whether they reached us meanwhile ----------
+        node("hold-wait", "Wait: 10 Minutes", "n8n-nodes-base.wait", 1.1, [-220, 880],
+             {"amount": MISSED_LEAD_HOLD_MINUTES, "unit": "minutes"},
+             webhookId="0b9f6c1e-4d2a-4f7b-9a3e-5c8d2e1f7a60"),
+        retell_list_calls(
+            "hold-reached", "Retell: Reached Us Since?", [0, 880],
+            "={{ JSON.stringify({\n"
+            "  filter_criteria: {\n"
+            "    from_number: { type: 'string', op: 'eq', value: $('Webhook - Retell call_analyzed').first().json.body.call.to_number },\n"
+            "    direction: { type: 'enum', op: 'in', value: ['inbound'] },\n"
+            "    start_timestamp: { type: 'number', op: 'gt', value: Number($('Webhook - Retell call_analyzed').first().json.body.call.start_timestamp) - 120000 }\n"
+            "  },\n"
+            "  limit: 20, sort_order: 'descending'\n"
+            "}) }}"),
+        node("hold-decide", "Decide: Still Missed?", "n8n-nodes-base.code", 2, [220, 880],
+             {"jsCode": HOLD_CODE}, executeOnce=True),
+        bool_if("if-still-missed", "IF: Still Missed?", [440, 880], "missed"),
+        node("skip-4", "Skip: Reached Us Since", "n8n-nodes-base.noOp", 1, [660, 980], {}),
     ]
 
     def link(src, outputs):
@@ -611,7 +640,11 @@ def build() -> dict:
     connections.update(link("Pass: Call Payload", [["Compose: Post-Call Email"]]))
     connections.update(link("Compose: Post-Call Email", [["IF: Real Conversation?"]]))
     connections.update(link("IF: Real Conversation?", [["Write: Recap (GPT-4.1-mini)"], ["IF: Missed Lead?"]]))
-    connections.update(link("IF: Missed Lead?", [["Send Email: Post-Call Recap"], ["Skip: No Email"]]))
+    connections.update(link("IF: Missed Lead?", [["Wait: 10 Minutes"], ["Skip: No Email"]]))
+    connections.update(link("Wait: 10 Minutes", [["Retell: Reached Us Since?"]]))
+    connections.update(link("Retell: Reached Us Since?", [["Decide: Still Missed?"]]))
+    connections.update(link("Decide: Still Missed?", [["IF: Still Missed?"]]))
+    connections.update(link("IF: Still Missed?", [["Send Email: Post-Call Recap"], ["Skip: Reached Us Since"]]))
     connections.update(link("Write: Recap (GPT-4.1-mini)", [["Render: Recap Email"]]))
     connections.update(link("Render: Recap Email", [["IF: Send Email?"]]))
     connections.update(link("IF: Send Email?", [["Send Email: Post-Call Recap"], ["Skip: No Email"]]))

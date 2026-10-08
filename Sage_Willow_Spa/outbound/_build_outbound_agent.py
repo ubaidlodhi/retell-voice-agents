@@ -53,7 +53,7 @@ RETELL_BASE = "https://api.retellai.com"
 
 # Source of truth: the live inbound agent's flow.
 SOURCE_FLOW_ID = "conversation_flow_bdb1968b28ed"
-SOURCE_FLOW_VERSION = 26  # 2026-10-02: V38-V72 (+ no dead air on a massage with no enhancements) - inbound DRAFT on prod tools
+SOURCE_FLOW_VERSION = 30  # 2026-10-07: V38-V73 (+ spelled names from the letters, a change mid-booking stays in the booking, get_booking always sends a phone; V74 no silent turns; V75 a no to the times is not a goodbye; V76 transfer on their answer) - inbound DRAFT on prod tools
 SOURCE_AGENT_ID = "agent_eceb7448aa1f37e8f436a63a43"
 
 # Dev backend built by _build_outbound_backend_workflow.py (n8n yfbpUaEzZQghelh3).
@@ -101,7 +101,7 @@ LOOKUP_NODES = ("node-status-assistant", "node-cancel-assistant", "node-resched-
 CALLBACK_NUMBER_SPOKEN = "six two eight, two eight six, two two eight one"
 
 # Bump on every meaningful build so the client knows which revision they tested.
-AGENT_VERSION = "V29"
+AGENT_VERSION = "V33"
 
 # A silent line ends after this long (Ubaid, 2026-09-22, after Nicky's "no need
 # to wait almost 3 mins"): 89 s let call_b004eecd sit for 149 s. First 50 s,
@@ -769,15 +769,19 @@ def build_flow(source: dict, target_webhook: str) -> dict:
     for tool in flow["tools"]:
         if tool["name"] == "book_appointment":
             props = tool["parameters"]["properties"]
+            # V73 (inbound): the spelled letters are the name, whatever word was heard beside them
+            # (call_d92679fd booked "Javved" for "j a, v de Victor, e, d").
+            spelled = ("If they spelled it, it is exactly the letters they spelled, joined into one word - even "
+                       "when the transcript shows a different word next to the letters (\"Carter, k a r t e r\" "
+                       "-> Karter; \"v as in Victor\" / \"v de Victor\" is the letter V). Only if they never "
+                       "spelled it, the name as heard.")
             props["firstName"]["description"] = (
                 "The lead's first name. Use the Lead name from the call context when it was given there; "
-                "otherwise exactly the first name they gave on this call, spelled letters joined into the word "
-                "(J-O-H-N -> John). Required - never send an empty string."
+                f"otherwise the first name they gave on this call. {spelled} Required - never send an empty string."
             )
             props["lastName"]["description"] = (
                 "The lead's last name. Use the Lead name from the call context when it was given there; "
-                "otherwise exactly the last name they gave on this call, spelled letters joined into the word "
-                "(T-E-S-T -> Test). Required - never send an empty string."
+                f"otherwise the last name they gave on this call. {spelled} Required - never send an empty string."
             )
 
     # Status / cancel / reschedule all open by looking the caller up on their own
@@ -869,6 +873,11 @@ def build_flow(source: dict, target_webhook: str) -> dict:
     # V66 (inbound): the guest's name is its own step (web tests 2026-09-28 never asked it).
     if "node-book-guest-name" not in {n["id"] for n in flow["nodes"]}:
         raise SystemExit("guest-name step missing - inbound V66 not in the source flow?")
+    # V73 (inbound): a change in the middle of a booking goes to amend, never the reschedule flow
+    # (call_d18cc6ab), and Amend sends a lead without a name to the name gate.
+    if "e-amend-need-name" not in [e["id"] for e in nodes["node-book-amend"]["edges"]] \
+            or "ALREADY HAVE" not in nodes["node-resched-assistant"]["global_node_setting"]["condition"]:
+        raise SystemExit("mid-booking change handling missing - inbound V73 not in the source flow?")
 
     # V58: both openers refuse to talk over a recording, the name node asks for
     # both spellings, and nothing still points at the removed phone node.
@@ -983,9 +992,12 @@ def build_agent(source_agent: dict, flow_id: str, flow_version: int) -> dict:
     agent["voicemail_option"] = {
         "action": {"type": "static_text", "text": VOICEMAIL_MESSAGE}
     }
-    agent["post_call_analysis_data"] = (
-        source_agent.get("post_call_analysis_data", []) + OUTBOUND_ANALYSIS_FIELDS
-    )
+    # Inbound has its own do_not_call since 2026-10-03; Retell refuses a name twice, and the
+    # outbound wording ("the lead") wins.
+    outbound_names = {f["name"] for f in OUTBOUND_ANALYSIS_FIELDS}
+    agent["post_call_analysis_data"] = [
+        f for f in source_agent.get("post_call_analysis_data", []) if f["name"] not in outbound_names
+    ] + OUTBOUND_ANALYSIS_FIELDS
     return agent
 
 
