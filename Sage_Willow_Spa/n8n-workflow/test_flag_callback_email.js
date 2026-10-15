@@ -18,8 +18,10 @@ let r = run({ tool: 'flag-callback', callerPhone: null, args: { callerPhone: '+1
   reason: 'Caller wants to know if there are any current specials or discounts for new clients.',
   questionDetail: 'Do you have the 20% off new client deal?' } });
 check('valid', r._valid === true && r._validationError === '', r);
-check('subject', r._emailSubject === 'Callback request: Zach, (913) 526-9174', r._emailSubject);
-check('html has tel link + button', r._emailHtml.includes('href="tel:+19135269174"') && r._emailHtml.includes('Call Zach back'), '');
+check('subject: name only, no number', r._emailSubject === 'Callback request: Zach', r._emailSubject);
+check('amber panel first, with tel link', r._emailHtml.includes('Callback needed') && r._emailHtml.indexOf('Callback needed') < r._emailHtml.indexOf('Hi Nicky,') && r._emailHtml.includes('href="tel:+19135269174"') && r._emailHtml.includes('#FFF7E8'), '');
+check('one tel link, no button', (r._emailHtml.match(/href="tel:/g) || []).length === 1 && !r._emailHtml.includes('Call Zach back'), '');
+check('text part starts CALLBACK NEEDED', r._emailBody.startsWith('CALLBACK NEEDED'), r._emailBody.slice(0, 40));
 check('html has reason + question', r._emailHtml.includes('current specials or discounts') && r._emailHtml.includes('20% off new client deal'), '');
 check('html greeting + sign-off', r._emailHtml.includes('Hi Nicky,') && r._emailHtml.includes('Virtual receptionist'), '');
 check('text part', r._emailBody.includes('Phone:   (913) 526-9174') && r._emailBody.includes('What they asked'), r._emailBody);
@@ -31,9 +33,9 @@ if (previewDir) fs.writeFileSync(path.join(previewDir, 'callback_email_zach.html
 r = run({ tool: 'flag-callback', args: { callerPhone: '+14157707596', callerName: 'unknown',
   reason: 'Caller wants to speak with a customer service person about tipping options and possibly gift cards.' } });
 check('unknown name -> subject is the phone only', r._emailSubject === 'Callback request: (415) 770-7596', r._emailSubject);
-check('unknown name -> "A caller" + "Not given"', r._emailHtml.includes('A caller asked') && r._emailHtml.includes('Not given'), '');
+check('unknown name -> "A caller" + "Name not given"', r._emailHtml.includes('A caller asked') && r._emailHtml.includes('Name not given'), '');
 check('no question card when no detail', !r._emailHtml.includes('What they asked'), '');
-check('button uses the number', r._emailHtml.includes('Call (415) 770-7596 back'), '');
+check('panel shows the number', r._emailHtml.includes('>(415) 770-7596</a>'), '');
 if (previewDir) fs.writeFileSync(path.join(previewDir, 'callback_email_noname.html'), r._emailHtml);
 
 // 3. HTML injection in model text is escaped.
@@ -46,7 +48,7 @@ check('placeholder phone falls back to call metadata', r._callerPhone === '+1415
 
 // 5. No phone at all.
 r = run({ args: { callerName: 'Jane', reason: 'rebook' } });
-check('no phone: no tel link, no button, says Not available', !r._emailHtml.includes('tel:') && r._emailHtml.includes('Not available') && r._emailSubject === 'Callback request: Jane', r._emailSubject);
+check('no phone: no tel link, says No number given', !r._emailHtml.includes('tel:') && r._emailHtml.includes('No number given') && r._emailSubject === 'Callback request: Jane', r._emailSubject);
 
 // 6. Missing reason is still invalid (unchanged behaviour).
 r = run({ args: { callerName: 'Jane', callerPhone: '+14155550100' } });

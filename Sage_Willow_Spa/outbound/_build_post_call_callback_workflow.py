@@ -31,7 +31,7 @@ Flow
                                                                -> Skip: No Email   (dry runs)
         -> Prepare Call               (hard facts only: right agent? real caller? transcript?)
         -> IF Classify With AI?
-             yes -> Classify Call Outcome   (AI Agent: OpenAI gpt-4.1-mini + structured output)
+             yes -> Classify Call Outcome   (OpenAI gpt-4.1-mini chat completions, strict JSON schema)
              no  -> (straight through)
         -> Apply Verdict              (merge the AI verdict with the call facts)
         -> IF Needs Callback?
@@ -271,11 +271,11 @@ Definitions of "outcome":
 - booking_made: a new appointment was actually created.
 - booking_changed: an existing appointment was actually rescheduled.
 - booking_cancelled: an existing appointment was actually cancelled.
-- question_answered: the caller asked something (hours, prices, services, directions, availability) and got a real answer. Counts even if they hung up abruptly afterwards.
+- question_answered: the caller asked something (hours, prices, services, directions, availability) and got a real answer. Counts even if they hung up abruptly afterwards. Also when Aria offered real open times and the caller turned them all down, said they will call back or look elsewhere, or said no to a call from the team - they heard the options, and ringing them back changes nothing.
 - message_taken: Aria took a message or callback request for the team, or confirmed the team would ring them. The team handles it - no callback from you.
 - transferred: the caller was handed to a person.
 - leave_alone: spam, sales pitch, robocall, wrong number or misdial, inappropriate or sexual request, medical emergency or crisis, an obvious test call, off-topic, or the caller said not to call them.
-- incomplete: the caller wanted something (to book, change, cancel, check, ask, or reach someone) and did NOT get it. Includes: hung up or was cut off mid-flow, silence or noise then a hang-up, Aria looped, misunderstood, or failed, a tool error, the caller gave up.
+- incomplete: the caller wanted something (to book, change, cancel, check, ask, or reach someone) and did NOT get it. Includes: hung up or was cut off mid-flow, silence or noise then a hang-up, Aria looped, misunderstood, or failed, a tool error, the caller gave up because Aria could not help them (not because the times she offered did not suit them).
 
 Hard rules:
 1. needs_callback is true ONLY when outcome is "incomplete". For every other outcome it is false.
@@ -284,7 +284,8 @@ Hard rules:
 4. A call where the caller barely spoke (hello, silence, noise) and then the line dropped is "incomplete" - they reached out and got nothing.
 5. caller_first_name: only a name the CALLER gave for themselves, exactly as said. Never "Aria". Empty string if none.
 6. caller_wanted: a short phrase in plain English describing what they were after, e.g. "booking a deep tissue massage", "moving Saturday's appointment", "asking about prices". Empty if unclear.
-7. reason: one short sentence a spa employee would understand."""
+7. reason: one short sentence a spa employee would understand.
+8. If the tools list shows get_slots returned open times, Aria offered them, and the caller declined them or said they cannot make them ("no", "I can't do this", "I'll look elsewhere"), the outcome is question_answered, never incomplete - a callback would only offer the same times again. Only when open times were actually offered - a caller who hung up without hearing any open time is incomplete."""
 
 OUTPUT_SCHEMA = {
     "type": "object",
@@ -305,6 +306,23 @@ OUTPUT_SCHEMA = {
 }
 
 
+# Request body for "Classify Call Outcome" (OpenAI chat completions, strict JSON schema).
+CLASSIFY_BODY = (
+    "={{ JSON.stringify({\n"
+    f"  model: {json.dumps(OPENAI_MODEL)},\n"
+    "  temperature: 0,\n"
+    "  response_format: { type: 'json_schema', json_schema: { name: 'call_outcome', strict: true, schema: "
+    + json.dumps(OUTPUT_SCHEMA, indent=1) + " } },\n"
+    "  messages: [\n"
+    "    { role: 'system', content: " + json.dumps(SYSTEM_MESSAGE) + " },\n"
+    "    { role: 'user', content: $json.llm_input }\n"
+    "  ]\n"
+    "}) }}"
+)
+# n8n ends an expression at the first "}}" - none may appear inside it (the compact schema had "]}}").
+assert "}}" not in CLASSIFY_BODY[3:-2] and "{{" not in CLASSIFY_BODY[3:-2], "brace pair inside the expression"
+
+
 # -----------------------------------------------------------------------------
 # 3. Apply Verdict - merge the model's answer with the facts
 # -----------------------------------------------------------------------------
@@ -313,8 +331,14 @@ VERDICT_CODE = r"""
 const prep = $('Prepare Call').first().json;
 const item = $input.first().json;
 
-// The AI Agent wraps the parsed JSON in `output`; on the no-model path the item IS prep.
-const llm = item && typeof item.output === 'object' && item.output !== null ? item.output : null;
+// The classifier answers through chat completions: the verdict is the JSON in the message content.
+// On the no-model path the item IS prep.
+let llm = null;
+try {
+  const content = item && item.choices && item.choices[0] && item.choices[0].message && item.choices[0].message.content;
+  const parsed = typeof content === 'string' ? JSON.parse(content) : null;
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) llm = parsed;
+} catch (e) { llm = null; }
 
 const base = {
   call_id: prep.call_id,
@@ -486,29 +510,22 @@ def build() -> dict:
         string_eq_if("if-classify", "IF: Classify With AI?", [-660, 300], "route", "classify"),
 
         # ---- the model -------------------------------------------------------
-        node("classify", "Classify Call Outcome", "@n8n/n8n-nodes-langchain.agent", 3.1,
+        # 2026-10-10: a plain chat-completions call with a strict JSON schema. The LangChain agent +
+        # Structured Output Parser it replaces threw away about 1 run in 5 as "empty response" (the
+        # model's answer was fine, only its wrapper varied) - and a lost verdict is a lost callback.
+        node("classify", "Classify Call Outcome", "n8n-nodes-base.httpRequest", 4.2,
              [-420, 160],
-             {"promptType": "define",
-              "text": "={{ $json.llm_input }}",
-              "hasOutputParser": True,
-              "options": {"systemMessage": SYSTEM_MESSAGE}},
-             retryOnFail=True, maxTries=2, waitBetweenTries=2000,
+             {"method": "POST",
+              "url": "https://api.openai.com/v1/chat/completions",
+              "authentication": "predefinedCredentialType",
+              "nodeCredentialType": "openAiApi",
+              "sendBody": True,
+              "specifyBody": "json",
+              "jsonBody": CLASSIFY_BODY,
+              "options": {"timeout": 30000}},
+             credentials={"openAiApi": OPENAI_CRED},
+             retryOnFail=True, maxTries=3, waitBetweenTries=2000,
              onError="continueRegularOutput"),
-
-        node("openai", "OpenAI Chat Model", "@n8n/n8n-nodes-langchain.lmChatOpenAi", 1.3,
-             [-460, 380],
-             {"model": {"__rl": True, "mode": "id", "value": OPENAI_MODEL},
-              "responsesApiEnabled": False,
-              "options": {"temperature": 0}},
-             credentials={"openAiApi": OPENAI_CRED}),
-
-        node("parser", "Structured Output Parser", "@n8n/n8n-nodes-langchain.outputParserStructured", 1.3,
-             [-260, 380],
-             {"schemaType": "manual",
-              "inputSchema": json.dumps(OUTPUT_SCHEMA, indent=2),
-              # autoFix needs a second model wired to the parser itself; the agent's
-              # retryOnFail already covers a malformed answer.
-              "autoFix": False}),
 
         node("verdict", "Apply Verdict", "n8n-nodes-base.code", 2,
              [-40, 300], {"jsCode": VERDICT_CODE}),
@@ -660,11 +677,6 @@ def build() -> dict:
     connections.update(link("Decide", [["IF: Still Needed?"]]))
     connections.update(link("IF: Still Needed?", [["Trigger Outbound Call"], ["Skip: Resolved Itself"]]))
 
-    # AI sub-node wiring: model and parser plug INTO the agent.
-    connections["OpenAI Chat Model"] = {"ai_languageModel": [[
-        {"node": "Classify Call Outcome", "type": "ai_languageModel", "index": 0}]]}
-    connections["Structured Output Parser"] = {"ai_outputParser": [[
-        {"node": "Classify Call Outcome", "type": "ai_outputParser", "index": 0}]]}
 
     return {
         "name": WORKFLOW_NAME,

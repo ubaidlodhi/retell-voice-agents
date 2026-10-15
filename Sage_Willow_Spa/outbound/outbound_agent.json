@@ -39,22 +39,22 @@
     "mode": "post_call"
   },
   "handbook_config": {
-    "conversational_personality": true,
-    "natural_filler_words": true,
-    "smart_matching": false,
     "ai_disclosure": true,
-    "scope_boundaries": false,
     "nato_phonetic_alphabet": false,
-    "echo_verification": false,
-    "speech_normalization": false,
+    "natural_filler_words": true,
     "default_personality": false,
-    "high_empathy": false
+    "high_empathy": false,
+    "conversational_personality": true,
+    "speech_normalization": false,
+    "echo_verification": false,
+    "smart_matching": false,
+    "scope_boundaries": false
   },
   "agent_name": "Aria - Sage & Willow Spa - Outbound Agent",
   "response_engine": {
     "type": "conversation-flow",
     "conversation_flow_id": "conversation_flow_599a68571a81",
-    "version": 20
+    "version": 21
   },
   "webhook_url": "https://automation.aiemply.com/webhook/sage-willow-post-call",
   "webhook_events": [
@@ -68,6 +68,7 @@
   },
   "post_call_analysis_data": [
     {
+      "type": "enum",
       "choices": [
         "new_booking",
         "cancel",
@@ -83,14 +84,13 @@
         "crisis",
         "other"
       ],
-      "type": "enum",
-      "description": "Primary purpose of the call.",
-      "name": "caller_intent"
+      "name": "caller_intent",
+      "description": "Primary purpose of the call."
     },
     {
+      "name": "resolution_status",
       "description": "What actually happened on the call.",
       "type": "enum",
-      "name": "resolution_status",
       "choices": [
         "booking_created",
         "booking_canceled",
@@ -120,24 +120,24 @@
         "frustrated",
         "angry"
       ],
-      "name": "caller_sentiment",
+      "description": "Overall caller sentiment by end of call.",
       "type": "enum",
-      "description": "Overall caller sentiment by end of call."
+      "name": "caller_sentiment"
     },
     {
-      "description": "Primary language of the conversation.",
       "name": "language_used",
+      "type": "enum",
       "choices": [
         "english",
         "spanish",
         "mixed"
       ],
-      "type": "enum"
+      "description": "Primary language of the conversation."
     },
     {
+      "type": "boolean",
       "description": "Was this call spam, marketing or solicitation?",
-      "name": "spam_call",
-      "type": "boolean"
+      "name": "spam_call"
     },
     {
       "type": "boolean",

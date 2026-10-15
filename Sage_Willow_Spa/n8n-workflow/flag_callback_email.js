@@ -2,11 +2,11 @@
 // _patch_v68_callback_email.py, exercised by test_flag_callback_email.js).
 //
 // Checks the flag_callback args and builds the callback e-mail to the spa.
-// The e-mail matches the post-call recap (post_call_email.js): same AIEmply
-// header, cards, fonts and colours, inline styles only, no images, no long
-// dashes (Ubaid, 2026-10-01: "it should be a proper HTML format like we have
-// for the post call analyzer email"). It goes out while the call is still
-// live, so there is no call link yet - the recap that follows carries it.
+// Same AIEmply header, fonts and footer as the post-call recap (post_call_email.js),
+// inline styles only, no images, no long dashes. It must not look like a recap
+// (Ubaid, 2026-10-15): an amber "Callback needed" panel with the name and a large
+// tap-to-call number comes first, and the subject has no phone number. It goes out
+// while the call is still live, so there is no call link yet - the recap carries it.
 
 const { args, callerPhone } = $input.first().json;
 const errors = [];
@@ -47,11 +47,13 @@ const askedAt = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Ange
 
 const undash = (s) => String(s).replace(/\s*[—–]\s*/g, ', ');
 const who = nameGiven ? rawName : (phoneToContact !== 'Unknown' ? phonePretty : 'a caller');
-const subject = undash(`Callback request: ${[nameGiven ? rawName : '', phoneToContact !== 'Unknown' ? phonePretty : '']
-    .filter(Boolean).join(', ') || 'caller'}`);
+// The number is in the panel; the subject only says who.
+const subject = undash(`Callback request: ${who === 'a caller' ? 'caller' : who}`);
 
 // ---- plain text (fallback part of the e-mail) ------------------------------------------
 const lines = [
+    'CALLBACK NEEDED',
+    '',
     'Hi Nicky,',
     '',
     `${nameGiven ? rawName : 'A caller'} asked for someone from the spa to call them back.`,
@@ -72,33 +74,28 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const FONT = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const SPA = 'Sage & Willow Spa';
 const PARA = `margin:0 0 14px;font:15px/1.6 ${FONT};color:#0F1729;`;
-const rowHtml = (label, valueHtml) =>
-    `<tr><td style="padding:6px 0;font:13px/1.5 ${FONT};color:#4E5E73;width:120px;vertical-align:top;">${esc(label)}</td>` +
-    `<td style="padding:6px 0;font:14px/1.5 ${FONT};color:#0F1729;vertical-align:top;">${valueHtml}</td></tr>`;
 const card = (title, inner) =>
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;border:1px solid #E1E7EF;border-radius:10px;margin:0 0 16px;">` +
     `<tr><td style="padding:14px 18px 10px;">` +
     `<div style="font:600 11px/1.4 ${FONT};letter-spacing:.08em;text-transform:uppercase;color:#4E5E73;margin:0 0 4px;">${esc(title)}</div>` +
     inner + `</td></tr></table>`;
 
-const phoneHtml = phoneTel
-    ? `<a href="tel:${esc(phoneTel)}" style="color:#144EB8;text-decoration:none;font-weight:600;">${esc(phonePretty)}</a>`
-    : esc('Not available');
-const details = card('Callback request',
-    `<table role="presentation" cellpadding="0" cellspacing="0" width="100%">` +
-    rowHtml('Name', esc(nameGiven ? rawName : 'Not given')) +
-    rowHtml('Phone', phoneHtml) +
-    rowHtml('Asked', esc(askedAt)) +
-    rowHtml('Reason', esc(reason)) +
-    `</table>`);
+// The amber panel is what tells this e-mail apart from a recap at a glance.
+const bigPhone = phoneTel
+    ? `<a href="tel:${esc(phoneTel)}" style="color:#0F1729;text-decoration:none;">${esc(phonePretty)}</a>`
+    : esc('No number given');
+const panel =
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF7E8;border:1px solid #F3C677;border-left:5px solid #E08A00;border-radius:10px;margin:0 0 18px;">` +
+    `<tr><td style="padding:16px 20px;">` +
+    `<div style="font:700 12px/1.4 ${FONT};letter-spacing:.1em;text-transform:uppercase;color:#9A5B00;margin:0 0 8px;">Callback needed</div>` +
+    `<div style="font:600 17px/1.4 ${FONT};color:#0F1729;margin:0 0 2px;">${esc(nameGiven ? rawName : 'Name not given')}</div>` +
+    `<div style="font:700 24px/1.3 ${FONT};color:#0F1729;margin:0 0 6px;">${bigPhone}</div>` +
+    `<div style="font:13px/1.5 ${FONT};color:#6B4A12;">Asked ${esc(askedAt)}</div>` +
+    `</td></tr></table>`;
+const details = card('Why they want a call',
+    `<p style="margin:2px 0 6px;font:14px/1.6 ${FONT};color:#0F1729;">${esc(reason)}</p>`);
 const asked = questionDetail
     ? card('What they asked', `<p style="margin:2px 0 6px;font:14px/1.6 ${FONT};color:#0F1729;">${esc(questionDetail)}</p>`)
-    : '';
-const button = phoneTel
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 22px;"><tr>` +
-      `<td style="background:#1563E0;border-radius:8px;">` +
-      `<a href="tel:${esc(phoneTel)}" style="display:inline-block;padding:11px 20px;font:600 14px/1 ${FONT};color:#FFFFFF;text-decoration:none;">Call ${esc(who)} back</a>` +
-      `</td></tr></table>`
     : '';
 
 const html = undash(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(subject)}</title></head>` +
@@ -110,11 +107,11 @@ const html = undash(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name
     `<td style="font:700 16px/1 ${FONT};color:#1563E0;letter-spacing:-.01em;">AIEmply</td>` +
     `<td align="right" style="font:12px/1 ${FONT};color:#4E5E73;">Aria for ${esc(SPA)}</td>` +
     `</tr></table></td></tr>` +
-    `<tr><td style="padding:26px 28px 8px;">` +
+    `<tr><td style="padding:24px 28px 8px;">` +
+    panel +
     `<p style="${PARA}">Hi Nicky,</p>` +
     `<p style="${PARA}">${esc(nameGiven ? rawName : 'A caller')} asked for someone from the spa to call them back.</p>` +
-    `<div style="height:8px;line-height:8px;">&nbsp;</div>` +
-    details + asked + button +
+    details + asked +
     `<p style="margin:0 0 4px;font:15px/1.6 ${FONT};color:#0F1729;">Aria</p>` +
     `<p style="margin:0 0 22px;font:13px/1.5 ${FONT};color:#4E5E73;">Virtual receptionist, ${esc(SPA)}</p>` +
     `</td></tr>` +

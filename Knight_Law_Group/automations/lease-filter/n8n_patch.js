@@ -66,6 +66,13 @@ function patchPrompt(sys, user) {
   return { sys, user };
 }
 
+// Keep the workflow's own settings (timezone, caller policy); the API rejects the read-only extras.
+function keepSettings(s) {
+  const out = { executionOrder: (s && s.executionOrder) || 'v1' };
+  for (const k of ['timezone', 'callerPolicy', 'saveExecutionProgress', 'saveManualExecutions', 'saveDataErrorExecution', 'saveDataSuccessExecution', 'executionTimeout', 'errorWorkflow']) if (s && s[k] !== undefined) out[k] = s[k];
+  return out;
+}
+
 function patchPayload(src) {
   return rep(src, "  'Purchase Condition': c.purchase_condition,", "  'Purchase Condition': c.purchase_condition,\n  'Purchase Type': c.purchase_type,", 'payload Purchase Type');
 }
@@ -73,9 +80,10 @@ function patchPayload(src) {
 (async () => {
   const wf = await (await fetch(`${BASE}/api/v1/workflows/${WF}`, { headers: H })).json();
   const cl = wf.nodes.find((n) => n.name === 'Classify Lead');
-  const ai = wf.nodes.find((n) => n.name === 'AI - Post-Call Extract');
+  // The extract node is the Anthropic node now: system prompt in options.system, user message in messages.values[0].
+  const ai = wf.nodes.find((n) => n.name === 'AI - Post-Call Extract (Sonnet)');
   const bp = wf.nodes.find((n) => n.name === 'Build Payload');
-  const live = { classify: lf(cl.parameters.jsCode), sys: lf(ai.parameters.messages.values[0].content), user: lf(ai.parameters.messages.values[1].content), payload: lf(bp.parameters.jsCode) };
+  const live = { classify: lf(cl.parameters.jsCode), sys: lf(ai.parameters.options.system), user: lf(ai.parameters.messages.values[0].content), payload: lf(bp.parameters.jsCode) };
   const next = { classify: patchClassify(live.classify), payload: patchPayload(live.payload), ...patchPrompt(live.sys, live.user) };
   fs.writeFileSync(path.join(OUT, 'classify_live.js'), live.classify);
   fs.writeFileSync(path.join(OUT, 'classify_new.js'), next.classify);
@@ -88,18 +96,19 @@ function patchPayload(src) {
   if (process.env.APPLY !== '1') { console.log('DRY RUN: nothing pushed'); return; }
 
   cl.parameters.jsCode = next.classify;
-  ai.parameters.messages.values[0].content = next.sys;
-  ai.parameters.messages.values[1].content = next.user;
+  ai.parameters.options.system = next.sys;
+  ai.parameters.messages.values[0].content = next.user;
   bp.parameters.jsCode = next.payload;
-  const put = await fetch(`${BASE}/api/v1/workflows/${WF}`, { method: 'PUT', headers: H, body: JSON.stringify({ name: wf.name, nodes: wf.nodes, connections: wf.connections, settings: { executionOrder: 'v1' } }) });
+  const put = await fetch(`${BASE}/api/v1/workflows/${WF}`, { method: 'PUT', headers: H, body: JSON.stringify({ name: wf.name, nodes: wf.nodes, connections: wf.connections, settings: keepSettings(wf.settings) }) });
   console.log('PUT ' + put.status + (put.ok ? ' OK' : ' ' + (await put.text()).slice(0, 400)));
   const v = await (await fetch(`${BASE}/api/v1/workflows/${WF}`, { headers: H })).json();
   const g = (name) => v.nodes.find((n) => n.name === name).parameters;
   const checks = {
     active: v.active === true,
     classify: lf(g('Classify Lead').jsCode) === next.classify,
-    system: lf(g('AI - Post-Call Extract').messages.values[0].content) === next.sys,
-    user: lf(g('AI - Post-Call Extract').messages.values[1].content) === next.user,
+    system: lf(g('AI - Post-Call Extract (Sonnet)').options.system) === next.sys,
+    user: lf(g('AI - Post-Call Extract (Sonnet)').messages.values[0].content) === next.user,
+    callbackPatchKept: g('Classify Lead').jsCode.indexOf('__flowCb') !== -1,
     payload: lf(g('Build Payload').jsCode) === next.payload,
   };
   console.log('verify: ' + JSON.stringify(checks));

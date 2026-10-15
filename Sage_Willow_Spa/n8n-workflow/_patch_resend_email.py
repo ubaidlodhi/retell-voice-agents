@@ -39,7 +39,9 @@ if set(args) - set(targets) - {"--dry-run", "--cred", CRED}:
     raise SystemExit(__doc__)
 
 CALLBACK_FIELDS = {
-    "prod": ("to: [" + repr(R.SPA) + "], cc: [" + repr(R.ENGINEERING) + "], reply_to: " + repr(R.SPA) + ", "
+    # reply_to stays on the sending organisation's domain: a gmail.com reply-to on mail from
+    # notifications.aiemply.com is a phishing pattern to Gmail, and sent these to spam (2026-10-15).
+    "prod": ("to: [" + repr(R.SPA) + "], cc: [" + repr(R.ENGINEERING) + "], reply_to: " + repr(R.ENGINEERING) + ", "
              "subject: $json._emailSubject, html: $json._emailHtml, text: $json._emailBody"),
     "dev": ("to: [" + repr(R.ENGINEERING) + "], reply_to: " + repr(R.ENGINEERING) + ", "
             "subject: '[DEV] ' + $json._emailSubject, html: $json._emailHtml, text: $json._emailBody"),
