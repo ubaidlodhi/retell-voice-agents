@@ -1,0 +1,35 @@
+INTAKE-V1 T5 callback mid-call, next week (outside window)
+JUDGE: pass
+Alice did not confirm a specific callback day or time; she said the team would contact the caller soon and ended the call. After the caller said she could not talk, Alice stopped questioning and did not push further. She did not speak any stage directions, node names, variables, classifications, or routing logic. She also did not repeat any information request after it was clearly answered.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?
+user: Sure, that's fine.
+  [node -> Opening: Issue Check]
+agent: Great — are you having any issues with the vehicle?
+user: Yes, the brakes are making a loud grinding noise.
+  [node -> Q: California Purchase]
+agent: I’m sorry to hear that — brakes can be really concerning. Did you purchase or lease the vehicle from a dealership in California?
+user: Yes.
+  [node -> Q: Purchase or Lease]
+agent: Got it. Did you purchase the vehicle, or lease it?
+user: I bought it.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"purchased"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: And are you still in possession of the vehicle?
+user: Sorry, I can't talk right now, I'm at work. Can you call me next week?
+  [node -> GLOBAL - Callback Request]
+  [tool GLOBAL - Callback Request ]
+  [result {"callback_day":"next_week","callback_specific_date":"","callback_in_days":0,"callback_in_minutes":0,"callback_time":""}]
+  [node -> Callback: Resolve Time (deterministic)]
+  [tool Callback: Resolve Time (deterministic) {}]
+  [result {"callback_status":"out_of_window","callback_next":"out","callback_tries":"1","callback_ask_en":"","callback_ask_es":"",]
+  [node -> Callback: Route]
+  [node -> End: Callback Outside Window]
+agent: No problem. Our team will contact you soon. Take care!
+  [tool End: Callback Outside Window {}]

@@ -1,0 +1,77 @@
+INTAKE-V1 T7 still-leased Mercedes, then corrects to buyout
+JUDGE: pass
+After the caller corrected the lease status, Alice acknowledged it and continued intake without repeating the rejection. The call concluded with the non-retainer consultation booking-link close. Alice did not speak any internal node/routing details, and she did not re-ask information already clearly provided.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?
+user: Sure, go ahead.
+  [node -> Opening: Issue Check]
+agent: Great — are you having any issues with the vehicle?
+user: Yeah, the engine light keeps coming on and it stalls sometimes.
+  [node -> Q: California Purchase]
+agent: I’m sorry you’re dealing with that — stalling can be scary. Did you purchase or lease the vehicle from a dealership in California?
+user: I leased it.
+  [node -> Q: California Purchase (confirm)]
+agent: And what state was that dealership in?
+user: California.
+  [node -> Q: Purchase or Lease]
+agent: Got it. And is it still leased, or did you later buy it out?
+user: Still leasing it.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"leased"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Okay. And are you still in possession of the vehicle?
+user: Yes, I still have it.
+  [node -> Q: Vehicle Year/Make/Model]
+agent: Got it — what’s the year, make, and model of your vehicle?
+user: It's a 2022 Mercedes-Benz C300.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2022,"vehicle_make":"Mercedes-Benz","vehicle_model":"C300","in_possession":true}]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s a twenty twenty-two Mercedes-Benz C300, is that right?
+user: Yes, that's right.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"ka, e, uve, i, ene. te, e, ese, te","name_spelled_en":"K - E - V - I - N, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"bad","bad_reason":"arbitration_lease","lead_status":"Bad Lead"}]
+  [node -> Route by Outcome]
+  [node -> Route Bad Reason]
+  [node -> Arbitration: Caller Language]
+  [tool Arbitration: Caller Language ]
+  [result {"call_language":"English"}]
+  [node -> Arbitration: Route by Reason + Language]
+  [node -> Disqualify: Arbitration (Lease, English)]
+agent: Since your vehicle is leased, the manufacturer is actually a party to your lease agreement, and that agreement includes a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.
+user: Oh wait, sorry, I actually bought it out last year. It's not leased anymore.
+  [node -> Extract Purchase Type (correction)]
+  [tool Extract Purchase Type (correction) ]
+  [result {"purchase_type_call":"lease_buyout"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"non_retainer","bad_reason":"N/A","lead_status":"Non-Retainer Lead"}]
+  [node -> Route by Outcome]
+  [node -> Non-Retainer: Confirm]
+agent: Got it, thanks for clarifying. I’ve got your name as Kevin Test — is that the same name as it appears on your driver’s license?
+user: Yes, that's correct.
+agent: Great — let me confirm the spelling: K - E - V - I - N, T - E - S - T. Is that right?
+user: Yes, that's right.
+agent: And I’ve got your email as kevin.test at acme dot A I — is it okay if our team reaches you by text and email?
+user: Yes, that's fine.
+  [node -> Extract Confirmed Name (Non-Retainer)]
+  [tool Extract Confirmed Name (Non-Retainer) ]
+  [result {"confirmed_name":"Kevin Test"}]
+  [node -> Non-Retainer: Business Hours? (deterministic)]
+  [tool Non-Retainer: Business Hours? (deterministic) {}]
+  [result {"nonret_hours":"closed"}]
+  [node -> Non-Retainer: Route by Hours]
+  [node -> Speak: Non-Retainer Close]
+agent: Great — we may still be able to help. We’ll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.
+  [node -> End: Non-Retainer]
+  [tool End: Non-Retainer {}]

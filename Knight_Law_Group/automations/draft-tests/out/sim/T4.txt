@@ -1,0 +1,52 @@
+INTAKE-V1 T4 callback from the opening: out-of-hours ask, then change
+JUDGE: pass
+Alice asked for a callback day and time, rejected 7 AM by stating the 8 AM–9 PM Pacific window, confirmed tomorrow at 5 PM and then the revised tomorrow at 6 PM. She did not begin qualification questions after the callback request, ended politely, did not speak any internal directions or logic, and did not redundantly ask for information already clearly provided.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?
+user: I'm driving right now, can you call me back?
+  [node -> GLOBAL - Callback Request]
+  [tool GLOBAL - Callback Request ]
+  [result {"callback_day":"unspecified","callback_specific_date":"","callback_in_days":0,"callback_in_minutes":0,"callback_time":"]
+  [node -> Callback: Resolve Time (deterministic)]
+  [tool Callback: Resolve Time (deterministic) {}]
+  [result {"callback_status":"unclear","callback_next":"reask","callback_tries":"1","callback_ask_en":"No problem at all. What's a]
+  [node -> Callback: Route]
+  [node -> Callback: Ask When]
+agent: No problem at all. What's a good day and time for us to give you a call back?
+user: Tomorrow morning, like 7.
+  [node -> Callback: Extract Time]
+  [tool Callback: Extract Time ]
+  [result {"callback_day":"tomorrow","callback_specific_date":"","callback_in_days":0,"callback_in_minutes":0,"callback_time":"07:]
+  [node -> Callback: Resolve Time (deterministic)]
+  [tool Callback: Resolve Time (deterministic) {}]
+  [result {"callback_status":"outside_hours","callback_next":"reask","callback_tries":"2","callback_ask_en":"We make calls between]
+  [node -> Callback: Route]
+  [node -> Callback: Ask When]
+agent: We make calls between 8 AM and 9 PM Pacific. What time in that window works for you?
+user: Okay, 5 PM then.
+  [node -> Callback: Extract Time]
+  [tool Callback: Extract Time ]
+  [result {"callback_day":"tomorrow","callback_specific_date":"","callback_in_days":0,"callback_in_minutes":0,"callback_time":"17:]
+  [node -> Callback: Resolve Time (deterministic)]
+  [tool Callback: Resolve Time (deterministic) {}]
+  [result {"callback_status":"in_window","callback_next":"confirm","callback_tries":"3","callback_ask_en":"","callback_ask_es":"",]
+  [node -> Callback: Route]
+  [node -> Callback: Confirm]
+agent: Perfect, we'll give you a call tomorrow at 5 PM. Talk to you then!
+user: Actually, make it 6.
+  [node -> Callback: Extract Time]
+  [tool Callback: Extract Time ]
+  [result {"callback_day":"tomorrow","callback_specific_date":"","callback_in_days":0,"callback_in_minutes":0,"callback_time":"18:]
+  [node -> Callback: Resolve Time (deterministic)]
+  [tool Callback: Resolve Time (deterministic) {}]
+  [result {"callback_status":"in_window","callback_next":"confirm","callback_tries":"4","callback_ask_en":"","callback_ask_es":"",]
+  [node -> Callback: Route]
+  [node -> Callback: Confirm]
+agent: Perfect, we'll give you a call tomorrow at 6 PM. Talk to you then!
+user: Great, thanks, bye.
+  [node -> End: Callback Booked]
+agent: Take care!
+  [tool End: Callback Booked {}]

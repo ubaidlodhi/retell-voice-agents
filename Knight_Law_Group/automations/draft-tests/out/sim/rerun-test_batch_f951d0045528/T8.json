@@ -1,0 +1,532 @@
+{
+  "test_case_job_id": "test_job_176f3f8dfdbb",
+  "status": "pass",
+  "result_explanation": "Alice speaks Spanish throughout, uses usted-form language, and never says “vale” or “coche.” She delivers the required arbitration statement exactly. The call ends courteously without restarting qualification. She does not speak any internal labels or routing logic, and she does not repeat a question after the caller clearly answered it.",
+  "creation_timestamp": 1792354078449,
+  "user_modified_timestamp": 1792354110401,
+  "test_case_definition_id": "test_case_caec02356271",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792352866493,
+    "dynamicVariables": {
+      "Email": "juan.test@acme.ai",
+      "Name": "Juan Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "Alice speaks Spanish for the whole call (Latin American: uses \"usted\"; never \"vale\" or \"coche\").",
+      "Alice says this Spanish line word for word: \"Como su vehículo es arrendado, el fabricante en realidad forma parte de su contrato de arrendamiento, y ese contrato incluye una cláusula que exige que las disputas se resuelvan por arbitraje en lugar de una demanda. Nuestra firma solo lleva casos a través de los tribunales, así que lamentablemente este no es un caso que podamos aceptar.\"",
+      "The call ends politely without restarting qualification.",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it."
+    ],
+    "name": "INTAKE-V1 T8 Spanish, still-leased Honda, arbitration line in Spanish",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 1
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_caec02356271",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792352866493,
+    "userPrompt": "Esta es una llamada telefónica saliente hacia usted. Usted solo habla español. Cuando conteste, diga \"¿Bueno?\" y espere a que Alice hable. Usted es Juan Test y tiene un Honda Civic 2023. Problemas: \"Sí, el carro se apaga solo en la calle.\" California: \"Sí, en Los Ángeles.\" Si le pregunta si lo compró o lo arrendó: \"Lo tengo en lease, lo estoy rentando.\" Si pregunta si todavía es arrendado o lo compró después: \"Todavía lo estoy rentando.\" Todavía lo tiene. Dé año, marca y modelo y confirme. Cuando le explique que no pueden tomar el caso, diga \"Ah, bueno, gracias.\" y despídase. Respuestas cortas y naturales, como una persona real por teléfono. Nunca hable en inglés."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-end-bad",
+    "dynamicVariables": {
+      "Email": "juan.test@acme.ai",
+      "Name": "Juan Test",
+      "Phone": "+13105550101",
+      "bad_reason": "arbitration_lease",
+      "call_id": "playground",
+      "call_language": "Spanish",
+      "call_type": "web_call",
+      "current_node": "End: Bad Lead",
+      "in_possession": "true",
+      "lead_language": "",
+      "lead_status": "Bad Lead",
+      "name_spelled_en": "J - U - A - N, T - E - S - T",
+      "name_spelled_es": "jota, u, a, ene. te, e, ese, te",
+      "previous_node": "Disqualify: Arbitration (Lease, Spanish)",
+      "purchase_type_call": "leased",
+      "route": "bad",
+      "said_dealer_repairs": "unknown",
+      "said_new_or_used": "unknown",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "vehicle_make": "Honda",
+      "vehicle_model": "Civic",
+      "vehicle_readback_confirmed": "no",
+      "vehicle_year": "2023"
+    },
+    "knowledgeBaseRetrievedContents": [
+      "{FileName: KnightLaw_FAQs.md}\n{H1: Frequently Asked Questions (Initial Intake Call)}\n### I bought my Tesla/Rivian/Lucid NEW; can you assist me?\n\n**A:** The Tesla cases we’ve had in the past have gone to arbitration because the consumer, at the time of purchase, agreed to go directly into arbitration with Tesla over any conflict. We do not go to arbitration, we file lawsuits. Therefore, we are unable to assist you.\n### Do you help consumers who have used vehicles?\n\n**A:** Only if the vehicle was sold used CPO (Certified pre-owned) or used – dealer demo. If it was used without being CPO or a dealer demo, no, unfortunately we cannot help.\n\n---"
+    ],
+    "transcript": [
+      {
+        "content": "¿Bueno?",
+        "created_timestamp": 1792354088836,
+        "message_id": "message_f30910d1bfcb5c085f0bdcce",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354088837,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_771bf615149ab4d8a130d056",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792354088839,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_e39833a0bc0dec59e788e2a7",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hola, le habla Alice, de Knight Law Group, sobre la consulta que usted envió acerca de su vehículo. Le aviso que soy una asistente de inteligencia artificial y que esta línea está grabada, y puedo comunicarle con una persona de nuestro equipo cuando usted quiera. ¿Me permite hacerle un par de preguntas rápidas sobre el carro?",
+        "created_timestamp": 1792354090166,
+        "message_id": "message_750b8d2a29fd03360564a3f5",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, claro.",
+        "created_timestamp": 1792354090556,
+        "message_id": "message_665a1093ce5ef43ae9faecd3",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354090691,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_5d882fe1fdc9864f5315947b",
+        "new_node_id": "node-intro-issue",
+        "new_node_name": "Opening: Issue Check",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Muy bien — ¿está teniendo problemas con su vehículo?",
+        "created_timestamp": 1792354091728,
+        "message_id": "message_95ddaeeffd93fda414086d2d",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, el carro se apaga solo en la calle.",
+        "created_timestamp": 1792354092141,
+        "message_id": "message_2c88ef93b6633e115655af2c",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354092283,
+        "former_node_id": "node-intro-issue",
+        "former_node_name": "Opening: Issue Check",
+        "message_id": "message_ad4908d3d384bccdae0b1c04",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Uy, eso suena peligroso. Para ubicarlo bien: ¿compró o arrendó su carro en un concesionario de California?",
+        "created_timestamp": 1792354093595,
+        "message_id": "message_891fda665900909bd9159606",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Lo tengo en lease, lo estoy rentando.",
+        "created_timestamp": 1792354093958,
+        "message_id": "message_703a304cbf9a53dca832984c",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354094081,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_34f556797dfcc39a8cc5830d",
+        "new_node_id": "node-q-ca-confirm",
+        "new_node_name": "Q: California Purchase (confirm)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Entiendo. ¿Y ese concesionario en qué estado estaba?",
+        "created_timestamp": 1792354095302,
+        "message_id": "message_65f6249af34be6739bf66a4a",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, en Los Ángeles.",
+        "created_timestamp": 1792354095758,
+        "message_id": "message_bb7b5d39ee9c7c1df4f39bfc",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354095938,
+        "former_node_id": "node-q-ca-confirm",
+        "former_node_name": "Q: California Purchase (confirm)",
+        "message_id": "message_fdc6fd8a4ff9464e753830b2",
+        "new_node_id": "node-q-lease",
+        "new_node_name": "Q: Purchase or Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Perfecto. ¿Y todavía lo tiene arrendado, o después lo compró?",
+        "created_timestamp": 1792354097256,
+        "message_id": "message_ec21b31e84746f20d72e3fd6",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Todavía lo estoy rentando.",
+        "created_timestamp": 1792354097606,
+        "message_id": "message_8cd2c26fd99ea8f59b1ca335",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354097687,
+        "former_node_id": "node-q-lease",
+        "former_node_name": "Q: Purchase or Lease",
+        "message_id": "message_8bc8312edf1af6f1928093fc",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792354098584,
+        "message_id": "message_2cba8a4b7274e36aac200ccb",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_acd767",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"leased\"}",
+        "created_timestamp": 1792354098585,
+        "message_id": "message_ba62e00642c4b3fa7fb138a1",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_acd767"
+      },
+      {
+        "created_timestamp": 1792354098665,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_ea093c4712fa675fa04b16bf",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792354098666,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_1ceaf3862a5b12649023ed58",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Entendido. ¿Y todavía está en posesión del carro?",
+        "created_timestamp": 1792354099729,
+        "message_id": "message_0ad6b1f67e81e6194bb6aabf",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, todavía lo tengo.",
+        "created_timestamp": 1792354100094,
+        "message_id": "message_bf6e087f6468b6aaa3056490",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354100182,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_11f651e46f5ff7d98cb36320",
+        "new_node_id": "node-q-vehicle",
+        "new_node_name": "Q: Vehicle Year/Make/Model",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "De acuerdo — ¿cuál es el año, marca y modelo de su carro?",
+        "created_timestamp": 1792354102404,
+        "message_id": "message_d369d27f3781952f23accfbf",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Es un Honda Civic 2023.",
+        "created_timestamp": 1792354102745,
+        "message_id": "message_63fe953e85f0a42eef2298c3",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354102827,
+        "former_node_id": "node-q-vehicle",
+        "former_node_name": "Q: Vehicle Year/Make/Model",
+        "message_id": "message_bdb9030fbf76299baab4523c",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792354103785,
+        "message_id": "message_009449159c12a9eedd503d8d",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_fb1e4b",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":2023,\"vehicle_make\":\"Honda\",\"vehicle_model\":\"Civic\",\"in_possession\":true,\"said_new_or_used\":\"unknown\",\"said_dealer_repairs\":\"unknown\",\"vehicle_readback_confirmed\":\"no\"}",
+        "created_timestamp": 1792354103786,
+        "message_id": "message_d7ab35f7ccc785b206836694",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_fb1e4b"
+      },
+      {
+        "created_timestamp": 1792354103868,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_aff51879d64190a13695e247",
+        "new_node_id": "node-confirm-vehicle",
+        "new_node_name": "Confirm Vehicle",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Solo para confirmar, es un Honda Civic dos mil veintitrés, ¿correcto?",
+        "created_timestamp": 1792354105091,
+        "message_id": "message_e4fd87b635f702936debc078",
+        "metadata": {
+          "response_id": 8
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, correcto.",
+        "created_timestamp": 1792354105466,
+        "message_id": "message_94ef5bd38d8724edc4546d4b",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354105553,
+        "former_node_id": "node-confirm-vehicle",
+        "former_node_name": "Confirm Vehicle",
+        "message_id": "message_00589461afb58f3dde140892",
+        "new_node_id": "node-code-spell",
+        "new_node_name": "Spell Name (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792354105554,
+        "message_id": "message_8f76a70a3c077aed1dee3c9b",
+        "name": "Spell Name (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_a50ce8",
+        "type": "code"
+      },
+      {
+        "content": "{\"name_spelled_es\":\"jota, u, a, ene. te, e, ese, te\",\"name_spelled_en\":\"J - U - A - N, T - E - S - T\"}",
+        "created_timestamp": 1792354105573,
+        "message_id": "message_9d6830787036f5cef3444d5e",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_a50ce8"
+      },
+      {
+        "created_timestamp": 1792354105655,
+        "former_node_id": "node-code-spell",
+        "former_node_name": "Spell Name (deterministic)",
+        "message_id": "message_ffa1f09c15232b7635094f17",
+        "new_node_id": "node-code-classify",
+        "new_node_name": "Classify Lead (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792354105656,
+        "message_id": "message_c592b70eaf95c46ea8811e42",
+        "name": "Classify Lead (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_44265f",
+        "type": "code"
+      },
+      {
+        "content": "{\"route\":\"bad\",\"bad_reason\":\"arbitration_lease\",\"lead_status\":\"Bad Lead\"}",
+        "created_timestamp": 1792354105675,
+        "message_id": "message_2e3d51e399ccac2a521b35af",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_44265f"
+      },
+      {
+        "created_timestamp": 1792354105754,
+        "former_node_id": "node-code-classify",
+        "former_node_name": "Classify Lead (deterministic)",
+        "message_id": "message_d0e4bb06b57903bc1486a674",
+        "new_node_id": "node-branch-route",
+        "new_node_name": "Route by Outcome",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792354105763,
+        "former_node_id": "node-branch-route",
+        "former_node_name": "Route by Outcome",
+        "message_id": "message_61f6f0ea74e10164a6483135",
+        "new_node_id": "node-branch-bad",
+        "new_node_name": "Route Bad Reason",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792354105770,
+        "former_node_id": "node-branch-bad",
+        "former_node_name": "Route Bad Reason",
+        "message_id": "message_ec70e035b2741ee927c9310a",
+        "new_node_id": "node-arb-lang",
+        "new_node_name": "Arbitration: Caller Language",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792354107130,
+        "message_id": "message_9ea41dde1cd199c1a58a6d96",
+        "name": "Arbitration: Caller Language",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_ac48a1",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"call_language\":\"Spanish\"}",
+        "created_timestamp": 1792354107131,
+        "message_id": "message_6c4a7a39b0a7ca6e4e715162",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_ac48a1"
+      },
+      {
+        "created_timestamp": 1792354107211,
+        "former_node_id": "node-arb-lang",
+        "former_node_name": "Arbitration: Caller Language",
+        "message_id": "message_37b24bcad7cfde162681fc19",
+        "new_node_id": "node-arb-branch",
+        "new_node_name": "Arbitration: Route by Reason + Language",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792354107222,
+        "former_node_id": "node-arb-branch",
+        "former_node_name": "Arbitration: Route by Reason + Language",
+        "message_id": "message_829f0e0c5bfdb1f0f62603a1",
+        "new_node_id": "node-disq-arb-lease-es",
+        "new_node_name": "Disqualify: Arbitration (Lease, Spanish)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Como su vehículo es arrendado, el fabricante en realidad forma parte de su contrato de arrendamiento, y ese contrato incluye una cláusula que exige que las disputas se resuelvan por arbitraje en lugar de una demanda. Nuestra firma solo lleva casos a través de los tribunales, así que lamentablemente este no es un caso que podamos aceptar.",
+        "created_timestamp": 1792354107224,
+        "message_id": "message_b07063f7efdd74e2b9a5fe0e",
+        "metadata": {
+          "response_id": 9
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Ah, bueno, gracias. Que tenga buen día.",
+        "created_timestamp": 1792354107641,
+        "message_id": "message_83ebecd894f0bd15a9b48b61",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792354107733,
+        "former_node_id": "node-disq-arb-lease-es",
+        "former_node_name": "Disqualify: Arbitration (Lease, Spanish)",
+        "message_id": "message_431e205fbd3f6bd9db6d1d01",
+        "new_node_id": "node-end-bad",
+        "new_node_name": "End: Bad Lead",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Gracias por entender. Mantendré sus datos en archivo por si nuestros criterios cambian. Que tenga buen día, y gracias por contactar a Knight Law Group.",
+        "created_timestamp": 1792354109242,
+        "message_id": "message_185a527d39d322c8141bbdc4",
+        "metadata": {
+          "response_id": 10
+        },
+        "role": "agent"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792354109243,
+        "message_id": "message_e015f4fbf20b06bcbdceeaf2",
+        "name": "End: Bad Lead",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_adad1c",
+        "type": "end_call"
+      }
+    ]
+  }
+}

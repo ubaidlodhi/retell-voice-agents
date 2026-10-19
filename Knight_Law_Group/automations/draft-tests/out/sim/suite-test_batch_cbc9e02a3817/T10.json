@@ -1,0 +1,278 @@
+{
+  "test_case_job_id": "test_job_f8b21cb3b793",
+  "status": "pass",
+  "result_explanation": "Alice immediately acknowledged the opt-out, confirmed removal from the contact list and no further contact, and ended the call. She did not argue, re-qualify, ask further questions, offer follow-up, or speak internal routing/stage information. No information was requested twice after being clearly provided.",
+  "creation_timestamp": 1792355126785,
+  "user_modified_timestamp": 1792355149890,
+  "test_case_definition_id": "test_case_550a3e47d82b",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792355126298,
+    "dynamicVariables": {
+      "Email": "nina.test@acme.ai",
+      "Name": "Nina Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "Right after the opt-out request, Alice acknowledges it respectfully and briefly, confirms the caller will be taken off the list / not contacted again, and ends the call.",
+      "After the opt-out request Alice does not argue, does not try to re-qualify, does not ask any further qualification question, does not offer a callback, and does not say a booking link or agreement will be sent.",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it."
+    ],
+    "name": "INTAKE-V1 T10 opt-out mid-call",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 1
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_550a3e47d82b",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792355126298,
+    "userPrompt": "This is an outbound phone call to you. When it connects, answer the way a person picks up the phone (\"Hello?\") and wait for Alice to speak. You are Nina Test. Issues: \"Yeah, the AC stopped working and the engine makes a weird noise.\" California: \"Yes.\" If asked purchase or lease: \"I bought it.\" At the NEXT question after that, say: \"You know what, I'm not interested anymore. Please take me off your list and don't call me again.\" If she says anything else after that, just say \"Bye.\" Keep every reply short and natural, like a real person on the phone (one sentence, often just a few words). Answer only what she asks unless the script below says otherwise. When the call is clearly over, say goodbye."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-global-optout",
+    "dynamicVariables": {
+      "Email": "nina.test@acme.ai",
+      "Name": "Nina Test",
+      "Phone": "+13105550101",
+      "call_id": "playground",
+      "call_type": "web_call",
+      "current_node": "GLOBAL - Opt Out",
+      "lead_language": "",
+      "previous_node": "Q: Possession",
+      "purchase_type_call": "purchased",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles"
+    },
+    "knowledgeBaseRetrievedContents": [],
+    "transcript": [
+      {
+        "content": "Hello?",
+        "created_timestamp": 1792355137552,
+        "message_id": "message_c80a556556f1251db7017439",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355137553,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_32356e22d4fd6274875b1dd8",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792355137555,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_c0ef845b4aad243ba7726369",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?",
+        "created_timestamp": 1792355139018,
+        "message_id": "message_bd2b09bda27bf06c23d19ef0",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sure, go ahead.",
+        "created_timestamp": 1792355139550,
+        "message_id": "message_e0d6af00261f098fb5094afb",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355139687,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_285e1e719b0585dc9d06b064",
+        "new_node_id": "node-intro-issue",
+        "new_node_name": "Opening: Issue Check",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great — are you having any issues with the vehicle?",
+        "created_timestamp": 1792355140695,
+        "message_id": "message_ae1753416b1dc09559e32043",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yeah, the AC stopped working and the engine makes a weird noise.",
+        "created_timestamp": 1792355141265,
+        "message_id": "message_f5feca3e880e75c5d03d1035",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355141347,
+        "former_node_id": "node-intro-issue",
+        "former_node_name": "Opening: Issue Check",
+        "message_id": "message_19629541f7823c22fb9c4c49",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I’m sorry you’re dealing with that. Quick question — did you purchase or lease the vehicle from a dealership in California?",
+        "created_timestamp": 1792355142708,
+        "message_id": "message_0c12f561a24b1a6e35312090",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "I bought it.",
+        "created_timestamp": 1792355143349,
+        "message_id": "message_f1950ee59838cf0bbc5298a0",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355143490,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_5fda1169f9959842a9c6e700",
+        "new_node_id": "node-q-ca-confirm",
+        "new_node_name": "Q: California Purchase (confirm)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "And what state was that dealership in?",
+        "created_timestamp": 1792355144402,
+        "message_id": "message_49259606063e162fe4f4b34f",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "California.",
+        "created_timestamp": 1792355144916,
+        "message_id": "message_0e3fc945696fefca430a76a2",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355145200,
+        "former_node_id": "node-q-ca-confirm",
+        "former_node_name": "Q: California Purchase (confirm)",
+        "message_id": "message_7690e6d1f3909292eaf0dae2",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792355146134,
+        "message_id": "message_95a51472ea4fe5dc028dd7da",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_1da705",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"purchased\"}",
+        "created_timestamp": 1792355146135,
+        "message_id": "message_b6932c7c58999da50468f30e",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_1da705"
+      },
+      {
+        "created_timestamp": 1792355146276,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_3ab35a7677d556aa1dbbd4f4",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792355146278,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_82b22a65a8291048b2f92d6b",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it. And are you still in possession of the vehicle?",
+        "created_timestamp": 1792355147276,
+        "message_id": "message_fba0d927dcef6407715d17cf",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "You know what, I'm not interested anymore. Please take me off your list and don't call me again.",
+        "created_timestamp": 1792355147877,
+        "message_id": "message_dc8898b477c556ffa6da597f",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355147963,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_5cb3d7ce7744bb6e4387ffe5",
+        "new_node_id": "node-global-optout",
+        "new_node_name": "GLOBAL - Opt Out",
+        "role": "node_transition",
+        "transition_type": "global"
+      },
+      {
+        "content": "Understood — I’ll make sure you’re taken off our list and you won’t be contacted again. Take care.",
+        "created_timestamp": 1792355148921,
+        "message_id": "message_556a9be9dfd00225a5413d9d",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792355148922,
+        "message_id": "message_441a810ad8b433e41eaa7003",
+        "name": "GLOBAL - Opt Out",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_60aedd",
+        "type": "end_call"
+      }
+    ]
+  }
+}

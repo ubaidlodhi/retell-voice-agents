@@ -53,7 +53,7 @@ RETELL_BASE = "https://api.retellai.com"
 
 # Source of truth: the live inbound agent's flow.
 SOURCE_FLOW_ID = "conversation_flow_bdb1968b28ed"
-SOURCE_FLOW_VERSION = 31  # 2026-10-15: V79 add-on names in book_appointment; V38-V73 (+ spelled names from the letters, a change mid-booking stays in the booking, get_booking always sends a phone; V74 no silent turns; V75 a no to the times is not a goodbye; V76 transfer on their answer; V77 fully booked not closed) - inbound DRAFT on prod tools
+SOURCE_FLOW_VERSION = 32  # 2026-10-18: V80 hold line before a transfer; 2026-10-15: V79 add-on names in book_appointment; V38-V73 (+ spelled names from the letters, a change mid-booking stays in the booking, get_booking always sends a phone; V74 no silent turns; V75 a no to the times is not a goodbye; V76 transfer on their answer; V77 fully booked not closed) - inbound DRAFT on prod tools
 SOURCE_AGENT_ID = "agent_eceb7448aa1f37e8f436a63a43"
 
 # Dev backend built by _build_outbound_backend_workflow.py (n8n yfbpUaEzZQghelh3).
@@ -101,7 +101,7 @@ LOOKUP_NODES = ("node-status-assistant", "node-cancel-assistant", "node-resched-
 CALLBACK_NUMBER_SPOKEN = "six two eight, two eight six, two two eight one"
 
 # Bump on every meaningful build so the client knows which revision they tested.
-AGENT_VERSION = "V35"
+AGENT_VERSION = "V36"
 
 # A silent line ends after this long (Ubaid, 2026-09-22, after Nicky's "no need
 # to wait almost 3 mins"): 89 s let call_b004eecd sit for 149 s. First 50 s,

@@ -1,0 +1,559 @@
+{
+  "test_case_job_id": "test_job_a73f25ccc812",
+  "status": "pass",
+  "result_explanation": "Alice asks whether it is a lease or loan immediately after the caller says they are making payments. She delivers the required arbitration statement verbatim, responds to the pushback with different language without restarting qualification, and ends politely. She does not speak any internal workflow content, and she does not ask for clearly provided information twice.",
+  "creation_timestamp": 1792355126769,
+  "user_modified_timestamp": 1792355160610,
+  "test_case_definition_id": "test_case_a5ad02ade703",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792352865882,
+    "dynamicVariables": {
+      "Email": "ryan.test@acme.ai",
+      "Name": "Ryan Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "After \"I'm making payments on it\", Alice asks whether it is a lease or a loan to buy it.",
+      "Alice says this line word for word: \"Tesla's purchase and lease agreements include a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.\"",
+      "When the caller pushes back, Alice answers in new words without repeating that whole line again, does not restart qualification, and the call ends politely.",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it."
+    ],
+    "name": "INTAKE-V1 T6 making payments -> loan, Tesla arbitration, pushback",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 1
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_a5ad02ade703",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792355125638,
+    "userPrompt": "This is an outbound phone call to you. When it connects, answer the way a person picks up the phone (\"Hello?\") and wait for Alice to speak. You are Ryan Test with a 2024 Tesla Model Y. Issues: \"The screen keeps turning off.\" California: \"Yes, in San Diego.\" When asked whether you purchased or leased it, say: \"I'm making payments on it.\" If she asks lease or loan, say: \"A loan.\" You still have it. Give year, make, model and confirm. After she explains why the case can't be taken, say: \"Are you sure? There's no other way?\" After her reply say \"Okay, thanks.\" Keep every reply short and natural, like a real person on the phone (one sentence, often just a few words). Answer only what she asks unless the script below says otherwise. When the call is clearly over, say goodbye."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-end-bad",
+    "dynamicVariables": {
+      "Email": "ryan.test@acme.ai",
+      "Name": "Ryan Test",
+      "Phone": "+13105550101",
+      "bad_reason": "arbitration_tesla",
+      "call_id": "playground",
+      "call_language": "English",
+      "call_type": "web_call",
+      "current_node": "End: Bad Lead",
+      "in_possession": "true",
+      "lead_language": "",
+      "lead_status": "Bad Lead",
+      "name_spelled_en": "R - Y - A - N, T - E - S - T",
+      "name_spelled_es": "ere, ye, a, ene. te, e, ese, te",
+      "previous_node": "Disqualify: Arbitration (follow-up)",
+      "purchase_type_call": "purchased",
+      "route": "bad",
+      "said_dealer_repairs": "unknown",
+      "said_new_or_used": "unknown",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "vehicle_make": "Tesla",
+      "vehicle_model": "Model Y",
+      "vehicle_readback_confirmed": "no",
+      "vehicle_year": "2024"
+    },
+    "knowledgeBaseRetrievedContents": [
+      "{FileName: knight-law-group-faqs-14-07-2026.md}\nThe CA Lemon Law changed on July 1, 2025, and the car manufacturers that refused to opt-in to the new law are the companies we can still sue on your behalf if you no longer have possession of the vehicle.\nIf your car manufacturer is one that opted into the new law, then unfortunately we cannot help you.\nHere is a list of the opt-ins and opt-outs:\n**Opted Into the New Law:** Alfa Romeo, Buick, Cadillac, Chevrolet, Chrysler, Dodge, Fiat, Ford, GMC, Hummer, Infiniti, Jaguar, Jeep, Kia, Land Rover, Lincoln, Maserati, Mercedes, Mercury, Mitsubishi, Nissan, Pontiac, RAM, Saturn, Smart, Hyundai, Subaru, Genesis, VinFast\n**Not Opted In (Old Law Applies):** Acura, Audi, Bentley, Harley Davidson, Lexus, Mazda, Mini, Porsche, Rolls Royce, Scion, Suzuki, Tesla, Toyota, Volkswagen, Volvo, Honda, BMW, Polestar, McLaren, Fisker\n---\n14. **Can you recommend me to another firm or lawyer?**\n**A:** Unfortunately, we are unable to provide any referrals.\nYou might consider utilizing search engines like Google or Yelp to seek assistance tailored to your situation.\n---\n15. **My car is not paid off.\nWhat happens to the amount that I owe?**\n**A:** If we can assist, the manufacturer will be responsible for settling the outstanding amount.\nYou would receive a refund of what you’ve paid, while the car manufacturer is responsible for the repayment to the lender.\n---\n16. **How long do these cases take?**\n**A:** Each situation is unique, and because we are fighting for the biggest outcomes, we want you to prepare for a potentially lengthy process.\nTypically, these cases can average between 18 to 24 months.\nThe timeline varies widely depending on how far the car manufacturer is willing to go.\n---\n17. **Do I continue making my car payments?**\n**A:** Yes, you want to continue making payments to your lender.\nYour lender is not the car manufacturer, and they are not the ones that sold you a defective vehicle.",
+      "{FileName: KnightLaw_FAQs.md}\n{H1: Frequently Asked Questions (Initial Intake Call)}\n### How long does it take to review the repair documents?\n\n**A:** We can review your documents within 24-48 hours.\n### I think I had a lemon, but I sold the car. Can I still pursue my California Lemon Law rights?\n\n**A:** It depends on who your car manufacturer is. The CA Lemon Law changed on July 1, 2025, and the car manufacturers that refused to opt-in to the new law are the companies we can still sue on your behalf if you no longer have possession of the vehicle. If your car manufacturer is one that opted into the new law, then unfortunately we cannot help you.\nHere is a list of the opt-ins and opt-outs:",
+      "{FileName: KnightLaw_FAQs.md}\n{H1: Representation Agreement - FAQs}\n### What is “good mileage”?\n\nThis refers to the mileage on your vehicle at the time of your first repair attempt. Manufacturers are entitled to deduct these miles from your buyback amount.\n### Do I need to keep the vehicle?\n\nIf your vehicle is from an “Opt-in” manufacturer under the new law from July 2025, then Yes. You must keep the vehicle until the claim is filed and for 60 days after. If you wish to sell, trade, or dispose of it, notify us 60 days in advance. If your vehicle is from an “Opt-out” manufacturer, no you do not need to maintain possession before your case is filed."
+    ],
+    "transcript": [
+      {
+        "content": "Hello?",
+        "created_timestamp": 1792355137219,
+        "message_id": "message_c4af61f2fece1775f7eb3bfb",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355137220,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_97a0f7659c0aa325da5444b4",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792355137222,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_c1b9ab5fb3b04c12e3aa8418",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?",
+        "created_timestamp": 1792355138774,
+        "message_id": "message_a320d1816c56630d13cb3c27",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sure, go ahead.",
+        "created_timestamp": 1792355139152,
+        "message_id": "message_a4c815b875ebd43146995dd8",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355139358,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_9283e899833969378ffd43e3",
+        "new_node_id": "node-intro-issue",
+        "new_node_name": "Opening: Issue Check",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great — are you having any issues with the vehicle?",
+        "created_timestamp": 1792355140287,
+        "message_id": "message_a29433ffc9c6af1b233335c4",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yeah, the screen keeps turning off.",
+        "created_timestamp": 1792355140672,
+        "message_id": "message_596a739a79770a26d4ed1f32",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355140861,
+        "former_node_id": "node-intro-issue",
+        "former_node_name": "Opening: Issue Check",
+        "message_id": "message_6af2dff53f9531fc0359528f",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I see. And did you purchase or lease the vehicle from a dealership in California?",
+        "created_timestamp": 1792355142057,
+        "message_id": "message_6a7f38fb69c559d5d906a1f0",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "I'm making payments on it.",
+        "created_timestamp": 1792355142525,
+        "message_id": "message_cd25d583d61129b75285b12a",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355142615,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_9fe3adbcea50e12e94d8f78a",
+        "new_node_id": "node-q-ca-confirm",
+        "new_node_name": "Q: California Purchase (confirm)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "And what state was that dealership in?",
+        "created_timestamp": 1792355144001,
+        "message_id": "message_0ac9c6bb8cca29515a7ce39a",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, in San Diego.",
+        "created_timestamp": 1792355144345,
+        "message_id": "message_dee43f80f0b80b8b5a03348b",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355144524,
+        "former_node_id": "node-q-ca-confirm",
+        "former_node_name": "Q: California Purchase (confirm)",
+        "message_id": "message_81c3740ebe9af5d42f4082ed",
+        "new_node_id": "node-q-lease",
+        "new_node_name": "Q: Purchase or Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it — is that a lease, or a loan to buy it?",
+        "created_timestamp": 1792355145699,
+        "message_id": "message_3470d476b65e46de042ec744",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "A loan.",
+        "created_timestamp": 1792355146073,
+        "message_id": "message_de7d3d8e390c04945c48a29e",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355146157,
+        "former_node_id": "node-q-lease",
+        "former_node_name": "Q: Purchase or Lease",
+        "message_id": "message_f5b6c4ab2d3cabaec21415c0",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792355147724,
+        "message_id": "message_ac6dd2f64e9082494528c303",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_3fa3ae",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"purchased\"}",
+        "created_timestamp": 1792355147725,
+        "message_id": "message_c8476b467ab9c21c3ccc68d5",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_3fa3ae"
+      },
+      {
+        "created_timestamp": 1792355147865,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_8cfe4b1eb523a81e788a2993",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792355147867,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_feae5bb148389e83c7d3a22e",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it. And are you still in possession of the vehicle?",
+        "created_timestamp": 1792355149403,
+        "message_id": "message_6e242db6b19455a9c6cdd2fd",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, I still have it.",
+        "created_timestamp": 1792355149824,
+        "message_id": "message_587d93ba228b632b20f7720c",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355149910,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_55c71f12bc6d48be3262cbe7",
+        "new_node_id": "node-q-vehicle",
+        "new_node_name": "Q: Vehicle Year/Make/Model",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it — what’s the year, make, and model of your vehicle?",
+        "created_timestamp": 1792355150809,
+        "message_id": "message_9d2b05ef55b6fbe61751f505",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "content": "It's a 2024 Tesla Model Y.",
+        "created_timestamp": 1792355151203,
+        "message_id": "message_70eecffb1f81dc1841cb841f",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355151284,
+        "former_node_id": "node-q-vehicle",
+        "former_node_name": "Q: Vehicle Year/Make/Model",
+        "message_id": "message_ead6c2e605910aa6ba552d81",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792355152618,
+        "message_id": "message_b521a807ee48b33eb6e7770e",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_61c6f5",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":2024,\"vehicle_make\":\"Tesla\",\"vehicle_model\":\"Model Y\",\"in_possession\":true,\"said_new_or_used\":\"unknown\",\"said_dealer_repairs\":\"unknown\",\"vehicle_readback_confirmed\":\"no\"}",
+        "created_timestamp": 1792355152619,
+        "message_id": "message_5c1cec3a3e55dc0bfe70da4d",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_61c6f5"
+      },
+      {
+        "created_timestamp": 1792355152711,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_db1bb6c35ccef76e11982452",
+        "new_node_id": "node-confirm-vehicle",
+        "new_node_name": "Confirm Vehicle",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Just to confirm, that’s a twenty twenty-four Tesla Model Y, is that right?",
+        "created_timestamp": 1792355153643,
+        "message_id": "message_de3e74aa80d9b7c015f8deb0",
+        "metadata": {
+          "response_id": 8
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's right.",
+        "created_timestamp": 1792355154025,
+        "message_id": "message_36fe7ab86038449cc750c170",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355154163,
+        "former_node_id": "node-confirm-vehicle",
+        "former_node_name": "Confirm Vehicle",
+        "message_id": "message_cb50f7f44c325d46ce26c158",
+        "new_node_id": "node-code-spell",
+        "new_node_name": "Spell Name (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792355154164,
+        "message_id": "message_a343c7b0bccfc2f245743c32",
+        "name": "Spell Name (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_0d3cce",
+        "type": "code"
+      },
+      {
+        "content": "{\"name_spelled_es\":\"ere, ye, a, ene. te, e, ese, te\",\"name_spelled_en\":\"R - Y - A - N, T - E - S - T\"}",
+        "created_timestamp": 1792355154194,
+        "message_id": "message_75fbee789e4421b399244988",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_0d3cce"
+      },
+      {
+        "created_timestamp": 1792355154331,
+        "former_node_id": "node-code-spell",
+        "former_node_name": "Spell Name (deterministic)",
+        "message_id": "message_df04967b2773e9833c4b1a76",
+        "new_node_id": "node-code-classify",
+        "new_node_name": "Classify Lead (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792355154332,
+        "message_id": "message_f32095496dea319a17566795",
+        "name": "Classify Lead (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_78f453",
+        "type": "code"
+      },
+      {
+        "content": "{\"route\":\"bad\",\"bad_reason\":\"arbitration_tesla\",\"lead_status\":\"Bad Lead\"}",
+        "created_timestamp": 1792355154350,
+        "message_id": "message_5fc49f85c9c6cd8ec5283211",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_78f453"
+      },
+      {
+        "created_timestamp": 1792355154492,
+        "former_node_id": "node-code-classify",
+        "former_node_name": "Classify Lead (deterministic)",
+        "message_id": "message_a5c4097d7492e369eec2355e",
+        "new_node_id": "node-branch-route",
+        "new_node_name": "Route by Outcome",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792355154500,
+        "former_node_id": "node-branch-route",
+        "former_node_name": "Route by Outcome",
+        "message_id": "message_b27863871be6e6004a8fd3aa",
+        "new_node_id": "node-branch-bad",
+        "new_node_name": "Route Bad Reason",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792355154513,
+        "former_node_id": "node-branch-bad",
+        "former_node_name": "Route Bad Reason",
+        "message_id": "message_46e3dbcf3cdc822d181fbfda",
+        "new_node_id": "node-arb-lang",
+        "new_node_name": "Arbitration: Caller Language",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792355155206,
+        "message_id": "message_f077106ea0ccfc7d8b346fff",
+        "name": "Arbitration: Caller Language",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_494414",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"call_language\":\"English\"}",
+        "created_timestamp": 1792355155207,
+        "message_id": "message_d087a8c4a7957a9f169c8ed4",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_494414"
+      },
+      {
+        "created_timestamp": 1792355155285,
+        "former_node_id": "node-arb-lang",
+        "former_node_name": "Arbitration: Caller Language",
+        "message_id": "message_48392a4cd9f4473cdb656f2b",
+        "new_node_id": "node-arb-branch",
+        "new_node_name": "Arbitration: Route by Reason + Language",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792355155299,
+        "former_node_id": "node-arb-branch",
+        "former_node_name": "Arbitration: Route by Reason + Language",
+        "message_id": "message_353b65da9723aba6ef81a31c",
+        "new_node_id": "node-disq-arb-tesla-en",
+        "new_node_name": "Disqualify: Arbitration (Tesla, English)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Tesla's purchase and lease agreements include a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.",
+        "created_timestamp": 1792355155301,
+        "message_id": "message_39d4b648d2f51d7b8ba98b08",
+        "metadata": {
+          "response_id": 9
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Are you sure? There's no other way?",
+        "created_timestamp": 1792355155712,
+        "message_id": "message_247736ed43a1ab810ce418d1",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355155854,
+        "former_node_id": "node-disq-arb-tesla-en",
+        "former_node_name": "Disqualify: Arbitration (Tesla, English)",
+        "message_id": "message_dc46d4883cec599735c4d29b",
+        "new_node_id": "node-disq-arb-after",
+        "new_node_name": "Disqualify: Arbitration (follow-up)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I understand — it’s frustrating. For our firm, this vehicle falls outside what we’re able to accept, so we can’t move forward with a claim here. Is there anything else I can help answer?",
+        "created_timestamp": 1792355157664,
+        "message_id": "message_2d96a29e834785260ae90e0a",
+        "metadata": {
+          "response_id": 10
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Okay, thanks. Goodbye.",
+        "created_timestamp": 1792355158026,
+        "message_id": "message_16bb6c2b0e4b24e2acb3fe22",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792355158166,
+        "former_node_id": "node-disq-arb-after",
+        "former_node_name": "Disqualify: Arbitration (follow-up)",
+        "message_id": "message_d6ff5397e01b4a0686c95263",
+        "new_node_id": "node-end-bad",
+        "new_node_name": "End: Bad Lead",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Thank you for understanding. I’ll keep your details on file in case our criteria change. Have a good day, and thanks for contacting Knight Law Group.",
+        "created_timestamp": 1792355159450,
+        "message_id": "message_c302c626ed923349ba47e6e2",
+        "metadata": {
+          "response_id": 11
+        },
+        "role": "agent"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792355159451,
+        "message_id": "message_0da1e9b5d15b4f8a1fde6288",
+        "name": "End: Bad Lead",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_0d51f0",
+        "type": "end_call"
+      }
+    ]
+  }
+}

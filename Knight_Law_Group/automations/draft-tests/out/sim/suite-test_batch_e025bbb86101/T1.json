@@ -1,0 +1,801 @@
+{
+  "test_case_job_id": "test_job_7163c43b685f",
+  "status": "fail",
+  "result_explanation": "Criterion 4 fails. After the caller says, “that's all, and yes, it's my truck,” Alice responds only, “Got it.” Her next turn does not end with a question and does not move directly to the name/contact step. The other criteria are met: she does not repeat the already-provided purchase/new/repair facts; gives the correct no-out-of-pocket cost explanation; uses distinct check-in questions after both FAQ answers; sends the agreement via tool before handoff; makes no premature signing claim; does not verbalize internal routing; and does not otherwise repeat clearly provided information.",
+  "creation_timestamp": 1792366233666,
+  "user_modified_timestamp": 1792366287405,
+  "test_case_definition_id": "test_case_0b3d5237485d",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792352864202,
+    "dynamicVariables": {
+      "Email": "john.test@acme.ai",
+      "Name": "John Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "Alice does NOT ask whether the vehicle was purchased or leased, whether it was new or used, or whether it has been taken to the dealer for repairs, because the caller already said he bought it brand new and it has been at the dealer three times.",
+      "During the intake part (before the agreement is sent), on cost Alice says the caller pays nothing / the manufacturer pays the attorney fees, and does not say fees come out of the caller's recovery or call it a contingency fee. (Later, a 50/50 split of money ABOVE the buyback is the firm's real term and is correct.)",
+      "After EACH of the caller's two questions, Alice ends her answer with a short check-in question (\"does that help?\" / \"anything else?\"), worded differently the second time.",
+      "After the caller says \"that's all, and yes, it's my truck\", Alice does not ask the owner question again and her next turn ends with a question (she moves on to the name / contact step).",
+      "Before the call is handed off, Alice says she will text and email the representation agreement, and the send_agreement tool is called (the lead is qualified as a retainer lead).",
+      "After the hand-off, the agent never thanks the caller for signing or says it is done unless the caller actually said they signed or submitted it, and never speaks an internal note such as \"call ended\" or \"closing the call\".",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it."
+    ],
+    "name": "INTAKE-V1 T1 retainer path, skip known answers, FAQ check-in",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 1
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_0b3d5237485d",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792366233255,
+    "userPrompt": "This is an outbound phone call to you. When it connects, answer the way a person picks up the phone (\"Hello?\") and wait for Alice to speak. You are John Test. You filled in a form on the Knight Law Group website about your truck: a 2023 Ford F-150. When Alice asks whether you have issues with the vehicle, say in one go: \"Yeah, the transmission keeps slipping, and it's been at the dealer three times already.\" When she asks about California, say: \"Yes, I bought it brand new in Los Angeles.\" If she asks whether you still have it, say: \"It's at the dealer right now, actually.\" Give the year, make and model when asked and confirm her read-back. The FIRST time she asks whether you are the owner or the one who signed the contract, do not answer yet: ask \"Wait, how much is this going to cost me?\" After her answer ask \"How long does the whole thing take?\" After that answer say, in one breath: \"No, that's all. And yes, it's my truck.\" If she still asks about the owner, say \"Yes.\" Your name is John Test; your email john.test@acme.ai is correct; texts and emails are fine. If she spells your name, say yes. When she says she is sending the agreement, say \"Okay, sounds good.\" Keep every reply short and natural, like a real person on the phone (one sentence, often just a few words). Answer only what she asks unless the script below says otherwise. When the call is clearly over, say goodbye."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "dynamicVariables": {
+      "Email": "john.test@acme.ai",
+      "Name": "John Test",
+      "Phone": "+13105550101",
+      "bad_reason": "N/A",
+      "call_id": "playground",
+      "call_type": "web_call",
+      "contact_id": "",
+      "current_node": "Retainer: Hand off to Immediate Agent",
+      "email": "john.test@acme.ai",
+      "entry_mode": "immediate_handoff",
+      "first_name": "John",
+      "full_name": "John Test",
+      "greeting": "Okay John — that agreement just went out to your phone and email. Pull it up while we're on and I'll walk you through the key points and answer anything you've got. In the meantime, I can start by walking you through the main aspects of it if you're ready. Just let me know.",
+      "in_possession": "true",
+      "lead_language": "",
+      "lead_status": "Retainer Pending",
+      "name_spelled_en": "J - O - H - N, T - E - S - T",
+      "name_spelled_es": "jota, o, hache, ene. te, e, ese, te",
+      "phone": "+13105550101",
+      "previous_node": "Retainer: Handoff Prep (set vars)",
+      "purchase_type_call": "purchased",
+      "route": "retainer",
+      "said_dealer_repairs": "yes",
+      "said_new_or_used": "new",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "vehicle_make": "Ford",
+      "vehicle_model": "F-150",
+      "vehicle_readback_confirmed": "no",
+      "vehicle_year": "2023"
+    },
+    "knowledgeBaseRetrievedContents": [
+      "{FileName: kb_faqs.txt}\nThey give us a detailed timeline of your dealership visits and the work performed on the vehicle.\nThey document the steps the dealer has taken to address issues, which helps determine how to proceed.\n### How do I send in my repair documents\\*?\n**A:** There are three ways you can submit your repair documents to us.\nText: 800-243-8711, Fax: (855) 355-8422, Email: intakedocs@knightlaw.com\n_\\*If the agent is capable to collect documents, then the instructions should be to receive repair documents via the channel where the lead engaged with (usually SMS or Email)_\n### What is the fee that I will be charged?\n**A:** The benefit of the California Lemon Law is that the car manufacturer is responsible for paying all attorney’s fees and costs.\nYou do not send our firm any money or receive a bill from us.\n### I got an offer from the car manufacturer.\nShould I accept it?\n**A:** Before you accept an offer, we can review it to determine if they are reimbursing all the money you are owed.\nFor us to review the offer, we will need a copy of your repair orders, a copy of the sales contract/lease agreement, and the actual offer.\nOnce everything is received, we can have an answer typically within (1) business day.\n### How long does it take to review the repair documents?\n**A:** We can review your documents within 24-48 hours.\n### I think I had a lemon, but I sold the car.\nCan I still pursue my California Lemon Law rights?\n**A:** It depends on who your car manufacturer is.\nThe CA Lemon Law changed on July 1, 2025, and the car manufacturers that refused to opt-in to the new law are the companies we can still sue on your behalf if you no longer have possession of the vehicle.\nIf your car manufacturer is one that opted into the new law, then unfortunately we cannot help you.\nHere is a list of the opt-ins and opt-outs:\n### Can you recommend me to another firm or lawyer?\n**A:** Unfortunately, we are unable to provide any referrals.",
+      "{FileName: kb_supp.txt}\n{H1: Alice Retainer — Knowledge Base Supplement (California Lemon Law representation agreement)}\n## The process\n- Step one, before any lawsuit: a written buyback request to the manufacturer (required under the lemon law). If the manufacturer agrees → buyback completed, no lawsuit. If it refuses → the firm files a lawsuit.\n- The roughly 90-day hold before filing is deliberate — a strategic method the managing partner applies to position the case best. It is not a delay to worry about.\n## Timeline & participation\n- Cases average 18–24 months. Most participation is early (submitting evidence, supporting the buyback request); after filing it is largely a waiting period, but later participation is still required.\n- Possible participation: depositions (client prepped in advance and accompanied by a firm attorney), interrogatories (written questionnaires), a vehicle inspection (the firm's expert picks up and returns the vehicle — the client need not attend), and court hearings (rare). About 99% of cases settle before trial.",
+      "{FileName: kb_supp.txt}\n{H1: Alice Retainer — Knowledge Base Supplement (California Lemon Law representation agreement)}\n# Alice Retainer — Knowledge Base Supplement (California Lemon Law representation agreement)\n\nReference facts Alice uses to answer less-common questions about the representation agreement. All statements are factual and must be stated exactly. Never guarantee a specific dollar amount or outcome — frame any example as \"for the sake of argument.\"\n## Typical outcomes (state as typical, never guaranteed)\n- Most clients leave with more than 100% of what they paid — often closer to 200%.\n- Largest result: a trial verdict of about 128 times the purchase price of a Ford Super Duty, over $8 million. Use only as a proof point, never as a promise.\n- The firm's success rate is over 90%; it only takes cases it believes it can win, and in practice these cases settle. There is always some risk of loss."
+    ],
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "transcript": [
+      {
+        "content": "Hello?",
+        "created_timestamp": 1792366244099,
+        "message_id": "message_fbe137c55dc4b76524fe5994",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366244100,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_5ee1524e24931cc35b2351d7",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792366244102,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_4d3cecf9577903a9d007beac",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?",
+        "created_timestamp": 1792366245844,
+        "message_id": "message_853cf93493efa6a38cec3d2d",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sure, go ahead.",
+        "created_timestamp": 1792366246176,
+        "message_id": "message_af87e80139894eb1f6b0bbd1",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366246318,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_a0b2ee7f17db39338ac6b928",
+        "new_node_id": "node-intro-issue",
+        "new_node_name": "Opening: Issue Check",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great — are you having any issues with the vehicle?",
+        "created_timestamp": 1792366247185,
+        "message_id": "message_fb1450b35248b5f3bdf253b5",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yeah, the transmission keeps slipping, and it's been at the dealer three times already.",
+        "created_timestamp": 1792366247691,
+        "message_id": "message_2af713985320531772664875",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366247773,
+        "former_node_id": "node-intro-issue",
+        "former_node_name": "Opening: Issue Check",
+        "message_id": "message_e9052e753d583b00b91f97c9",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I’m sorry you’re dealing with that — transmission issues are really frustrating. Did you purchase or lease the vehicle from a dealership in California?",
+        "created_timestamp": 1792366248952,
+        "message_id": "message_e7662be3afbe65386de0e8e7",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, I bought it brand new in Los Angeles.",
+        "created_timestamp": 1792366249376,
+        "message_id": "message_600dbfc0196e4bf66e90521c",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366249541,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_ad884abc4e99313ef2b943b1",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792366250493,
+        "message_id": "message_1174b1536f333c464e7209e4",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_c04936",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"purchased\"}",
+        "created_timestamp": 1792366250494,
+        "message_id": "message_c90858410c1f32acff32508d",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_c04936"
+      },
+      {
+        "created_timestamp": 1792366250574,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_48acfeea3b015df4d7350acb",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792366250652,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_fbb6b298f2fafbc8d1d6752a",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it. And are you still in possession of the vehicle?",
+        "created_timestamp": 1792366251877,
+        "message_id": "message_9a02d842314ad7ebe90764c3",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "It's at the dealer right now, actually.",
+        "created_timestamp": 1792366252275,
+        "message_id": "message_f71b37cdcc55ac7d4698698b",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366252356,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_4bbc4f110cb164f1b04c54e3",
+        "new_node_id": "node-q-vehicle",
+        "new_node_name": "Q: Vehicle Year/Make/Model",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it — what’s the year, make, and model of your vehicle?",
+        "created_timestamp": 1792366254024,
+        "message_id": "message_f57b08db42e7e38e626cfd6d",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "It's a 2023 Ford F-150.",
+        "created_timestamp": 1792366254388,
+        "message_id": "message_536862774b761b347ca2c881",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366254470,
+        "former_node_id": "node-q-vehicle",
+        "former_node_name": "Q: Vehicle Year/Make/Model",
+        "message_id": "message_4a24c995787945ad80c47503",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792366255944,
+        "message_id": "message_b796f3bdfa77bec8f431a755",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_bae1ed",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":2023,\"vehicle_make\":\"Ford\",\"vehicle_model\":\"F-150\",\"in_possession\":true,\"said_new_or_used\":\"new\",\"said_dealer_repairs\":\"yes\",\"vehicle_readback_confirmed\":\"no\"}",
+        "created_timestamp": 1792366255945,
+        "message_id": "message_023f2cea0dc13e328d85e8de",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_bae1ed"
+      },
+      {
+        "created_timestamp": 1792366256026,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_128110d747b82ac064cd9ba6",
+        "new_node_id": "node-confirm-vehicle",
+        "new_node_name": "Confirm Vehicle",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Just to confirm, that’s a twenty twenty-three Ford F-150, is that right?",
+        "created_timestamp": 1792366257312,
+        "message_id": "message_6d57355154d378291eb8793a",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's right.",
+        "created_timestamp": 1792366257695,
+        "message_id": "message_288241f49c2f390cb6a87b52",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366257784,
+        "former_node_id": "node-confirm-vehicle",
+        "former_node_name": "Confirm Vehicle",
+        "message_id": "message_3a2b645e53f2944eb10e27ff",
+        "new_node_id": "node-code-spell",
+        "new_node_name": "Spell Name (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792366257785,
+        "message_id": "message_ddc1b37a230b30d5da2887bd",
+        "name": "Spell Name (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_0452d0",
+        "type": "code"
+      },
+      {
+        "content": "{\"name_spelled_es\":\"jota, o, hache, ene. te, e, ese, te\",\"name_spelled_en\":\"J - O - H - N, T - E - S - T\"}",
+        "created_timestamp": 1792366257821,
+        "message_id": "message_3b7221b2daec7593927da6ca",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_0452d0"
+      },
+      {
+        "created_timestamp": 1792366257906,
+        "former_node_id": "node-code-spell",
+        "former_node_name": "Spell Name (deterministic)",
+        "message_id": "message_8b3a48b73f68ec3604f2e72b",
+        "new_node_id": "node-code-classify",
+        "new_node_name": "Classify Lead (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792366257907,
+        "message_id": "message_383a99188980882850e64d9e",
+        "name": "Classify Lead (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_7d6b01",
+        "type": "code"
+      },
+      {
+        "content": "{\"route\":\"retainer\",\"bad_reason\":\"N/A\",\"lead_status\":\"Retainer Pending\"}",
+        "created_timestamp": 1792366257926,
+        "message_id": "message_5556a67d2b9bb68ab0f6a6a9",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_7d6b01"
+      },
+      {
+        "created_timestamp": 1792366258005,
+        "former_node_id": "node-code-classify",
+        "former_node_name": "Classify Lead (deterministic)",
+        "message_id": "message_443dd3d63e938f7ffd510554",
+        "new_node_id": "node-branch-route",
+        "new_node_name": "Route by Outcome",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792366258009,
+        "former_node_id": "node-branch-route",
+        "former_node_name": "Route by Outcome",
+        "message_id": "message_911a6ed6a3591fc80084c75c",
+        "new_node_id": "node-ret-skip-newused",
+        "new_node_name": "Retainer: New/Used already said?",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792366258012,
+        "former_node_id": "node-ret-skip-newused",
+        "former_node_name": "Retainer: New/Used already said?",
+        "message_id": "message_4f99965b30476a22fafc1a9a",
+        "new_node_id": "node-ret-skip-repairs",
+        "new_node_name": "Retainer: Repairs already said?",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792366258091,
+        "former_node_id": "node-ret-skip-repairs",
+        "former_node_name": "Retainer: Repairs already said?",
+        "message_id": "message_f333804027c07ea70efbbc97",
+        "new_node_id": "node-ret-owner",
+        "new_node_name": "Retainer: Ownership",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "And just to confirm, are you the owner of the car, or did you sign the sales or lease contract?",
+        "created_timestamp": 1792366259353,
+        "message_id": "message_d4f76f0a9696e53cc5f57cca",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Wait, how much is this going to cost me?",
+        "created_timestamp": 1792366259742,
+        "message_id": "message_5ab6fdb213e05c69b0094478",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366259831,
+        "former_node_id": "node-ret-owner",
+        "former_node_name": "Retainer: Ownership",
+        "message_id": "message_bd5d3c680a7b750561e2d85b",
+        "new_node_id": "node-global-faq",
+        "new_node_name": "GLOBAL - FAQ Handler",
+        "role": "node_transition",
+        "transition_type": "global"
+      },
+      {
+        "content": "Under California Lemon Law, the manufacturer is responsible for paying our attorney’s fees and costs. You don’t pay us out of pocket, and you won’t get a bill from us. Does that help?",
+        "created_timestamp": 1792366261379,
+        "message_id": "message_d858f6e4ce161852cc484099",
+        "metadata": {
+          "response_id": 8
+        },
+        "role": "agent"
+      },
+      {
+        "content": "How long does the whole thing take?",
+        "created_timestamp": 1792366261783,
+        "message_id": "message_950a62036422959e2bb72fad",
+        "role": "user"
+      },
+      {
+        "content": "Each case is different, but these can often take around eighteen to twenty-four months. The timeline depends a lot on how far the manufacturer is willing to go. Did that answer it?",
+        "created_timestamp": 1792366263730,
+        "message_id": "message_ef6ca2dfdfc1b1a25c848ece",
+        "metadata": {
+          "response_id": 9
+        },
+        "role": "agent"
+      },
+      {
+        "content": "No, that's all. And yes, it's my truck.",
+        "created_timestamp": 1792366264082,
+        "message_id": "message_7c0809a5e136e880868fb9f0",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366264162,
+        "former_node_id": "node-global-faq",
+        "former_node_name": "GLOBAL - FAQ Handler",
+        "message_id": "message_82c9263188ed76af8cd30f71",
+        "new_node_id": "node-ret-owner",
+        "new_node_name": "Retainer: Ownership",
+        "role": "node_transition",
+        "transition_type": "global_go_back"
+      },
+      {
+        "content": "Got it.",
+        "created_timestamp": 1792366265194,
+        "message_id": "message_ee6e6e8480d14109e2ff18cd",
+        "metadata": {
+          "response_id": 10
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes.",
+        "created_timestamp": 1792366265588,
+        "message_id": "message_d70aa8f6e18520dd3613323b",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366265682,
+        "former_node_id": "node-ret-owner",
+        "former_node_name": "Retainer: Ownership",
+        "message_id": "message_e96ea3394ee6e05a3d796545",
+        "new_node_id": "node-ret-contact",
+        "new_node_name": "Retainer: Contact Collection",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I’ve got your name as John Test — is that the same name as it appears on your driver’s license?",
+        "created_timestamp": 1792366267046,
+        "message_id": "message_6f63f56c34df684247c12f3b",
+        "metadata": {
+          "response_id": 11
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes.",
+        "created_timestamp": 1792366267432,
+        "message_id": "message_ef42b02d466448e13fd78248",
+        "role": "user"
+      },
+      {
+        "content": "Great — let me confirm the spelling: J - O - H - N, T - E - S - T. Is that right?",
+        "created_timestamp": 1792366268857,
+        "message_id": "message_57536b44748d3ce97b86a8b4",
+        "metadata": {
+          "response_id": 12
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's correct.",
+        "created_timestamp": 1792366269650,
+        "message_id": "message_66c171603731608fabe65e07",
+        "role": "user"
+      },
+      {
+        "content": "And I’ve got your email as john.test at acme dot A I — is it okay if our team reaches you by text and email?",
+        "created_timestamp": 1792366271020,
+        "message_id": "message_c1c5fa2f4879002dbd0e06c2",
+        "metadata": {
+          "response_id": 13
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's fine.",
+        "created_timestamp": 1792366271389,
+        "message_id": "message_b4b32ff13f9215c290869f16",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792366271472,
+        "former_node_id": "node-ret-contact",
+        "former_node_name": "Retainer: Contact Collection",
+        "message_id": "message_f4173d92fec81e863c759738",
+        "new_node_id": "node-ret-process",
+        "new_node_name": "Retainer: Process",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great, we can move forward. I'll text and email you the representation agreement to sign. Give me just a few seconds to confirm a couple of details. Then I will walk you through the representation agreement and explain exactly what it covers, so you know what you are signing and have a chance to ask any questions.",
+        "created_timestamp": 1792366272961,
+        "message_id": "message_cc46dd6d2d5560f5b5c972ea",
+        "metadata": {
+          "response_id": 14
+        },
+        "role": "agent"
+      },
+      {
+        "created_timestamp": 1792366272962,
+        "former_node_id": "node-ret-process",
+        "former_node_name": "Retainer: Process",
+        "message_id": "message_db5fc41af8d566640b1d52c5",
+        "new_node_id": "node-ret-send",
+        "new_node_name": "Retainer: Send Agreement",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{\"email\":\"john.test@acme.ai\",\"full_name\":\"John Test\",\"lead_language\":\"English\",\"phone\":\"+13105550101\"}",
+        "created_timestamp": 1792366274510,
+        "message_id": "message_7b901897c0fedf9232b38898",
+        "name": "send_agreement",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_0ff638",
+        "type": "custom"
+      },
+      {
+        "content": "{\"status\":\"Success\"}",
+        "created_timestamp": 1792366274511,
+        "message_id": "message_e90db3bcd192fcd5605ee66d",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_0ff638"
+      },
+      {
+        "created_timestamp": 1792366274595,
+        "former_node_id": "node-ret-send",
+        "former_node_name": "Retainer: Send Agreement",
+        "message_id": "message_aa8045bbb08d0fdf989bffe1",
+        "new_node_id": "node-ret-handoff-prep",
+        "new_node_name": "Retainer: Handoff Prep (set vars)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792366274596,
+        "message_id": "message_e4ebab976049bbea06ba301a",
+        "name": "Retainer: Handoff Prep (set vars)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_9e7a8b",
+        "type": "code"
+      },
+      {
+        "content": "{\"greeting\":\"Okay John — that agreement just went out to your phone and email. Pull it up while we're on and I'll walk you through the key points and answer anything you've got. In the meantime, I can start by walking you through the main aspects of it if you're ready. Just let me know.\",\"first_name\":\"John\",\"full_name\":\"John Test\",\"phone\":\"+13105550101\",\"email\":\"john.test@acme.ai\",\"lead_language\":\"\",\"contact_id\":\"\",\"entry_mode\":\"immediate_handoff\"}",
+        "created_timestamp": 1792366274620,
+        "message_id": "message_320ff1439e9416760b73cf9a",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_9e7a8b"
+      },
+      {
+        "created_timestamp": 1792366274709,
+        "former_node_id": "node-ret-handoff-prep",
+        "former_node_name": "Retainer: Handoff Prep (set vars)",
+        "message_id": "message_0aa29d308f8773ea0af3c5e8",
+        "new_node_id": "node-ret-swap",
+        "new_node_name": "Retainer: Hand off to Immediate Agent",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{\"agent_id\":\"agent_7540b5be1e12d28fe1e937a832\",\"agent_version\":5,\"post_call_analysis_setting\":\"both_agents\",\"webhook_setting\":\"both_agents\",\"keep_current_voice\":true,\"keep_current_language\":true}",
+        "created_timestamp": 1792366274710,
+        "message_id": "message_c118ceb374f64a0a4b8966ed",
+        "metadata": {
+          "agentId": "agent_7540b5be1e12d28fe1e937a832",
+          "agentVersion": 5,
+          "keepCurrentLanguage": true,
+          "keepCurrentVoice": true,
+          "postCallAnalysisSetting": "both_agents",
+          "webhookSetting": "both_agents"
+        },
+        "name": "Retainer: Hand off to Immediate Agent",
+        "role": "tool_call_invocation",
+        "tool_call_id": "agent_swap_8929db",
+        "type": "agent_swap"
+      },
+      {
+        "content": "{\"status\":\"ASSISTANT HANDOFF SUCCESSFUL. You are a *new* assistant joining an *ongoing conversation* and the previous assistant has now exited. Your job is to pick up where the last assistant left off and respond *in your own voice*. DO NOT repeat the previous assistant's words, DO NOT mention that you just took over, and DO NOT repeat greetings. Address the user's last request immediately.\",\"successful\":true,\"resolvedAgentVersion\":5}",
+        "created_timestamp": 1792366274745,
+        "message_id": "message_928ae89e17452e8f76979726",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "agent_swap_8929db"
+      },
+      {
+        "content": "Okay John — that agreement just went out to your phone and email. Pull it up while we're on and I'll walk you through the key points and answer anything you've got. In the meantime, I can start by walking you through the main aspects of it if you're ready. Just let me know.",
+        "created_timestamp": 1792366275510,
+        "message_id": "message_e9d54dc605c35da9cfa735f9",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Okay, sounds good.",
+        "created_timestamp": 1792366275910,
+        "message_id": "message_8e6f57bc58ef73b4e92ab8da",
+        "role": "user"
+      },
+      {
+        "content": "Perfect. The big picture is this: first, the buyback means the manufacturer takes the truck back and refunds what you paid toward it. Second, their fees get paid by the manufacturer, so you don't get a bill from us. Third, only money above the buyback gets split. For the sake of argument, if the buyback were fifty thousand and the case settled for a hundred, the first fifty is all yours, and the extra fifty gets split fifty-fifty, so you'd get seventy-five total. Last piece is the mileage offset. That's a fixed deduction set by the lemon law based on the miles before the problem first showed up, and it doesn't keep growing during the case. That's the whole thing in a nutshell. What questions can I answer before I walk you through signing?",
+        "created_timestamp": 1792366277359,
+        "message_id": "message_eb6df75d0f7b2de1ad5c420a",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "No questions, I'm good.",
+        "created_timestamp": 1792366277814,
+        "message_id": "message_c22176df1465f5c5246f5cb0",
+        "role": "user"
+      },
+      {
+        "content": "You should already have the agreement in your text and email — did it come through?",
+        "created_timestamp": 1792366278257,
+        "message_id": "message_3d1ef5d43d73e8392b35d575",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yeah, I just got it.",
+        "created_timestamp": 1792366278681,
+        "message_id": "message_d37b1d185c5cef6704ee7efc",
+        "role": "user"
+      },
+      {
+        "content": "Great, pull it up while we're on. Take a second with the actual damages section — that's your buyback — and I'm right here if anything in the fees section raises a question.",
+        "created_timestamp": 1792366280783,
+        "message_id": "message_f596f7a0717ef0bd1d051182",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Okay, I'm looking at it now.",
+        "created_timestamp": 1792366281230,
+        "message_id": "message_6a68899fee2abd313b46364a",
+        "role": "user"
+      },
+      {
+        "content": "Of course — take your time, I'm right here.",
+        "created_timestamp": 1792366281732,
+        "message_id": "message_a9fed3c4c4a69951dcd8ce67",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Thanks.",
+        "created_timestamp": 1792366282458,
+        "message_id": "message_0e346355579c9d12f1d3a659",
+        "role": "user"
+      },
+      {
+        "content": "You're welcome.",
+        "created_timestamp": 1792366283481,
+        "message_id": "message_b4bffe636b59510b36f08b18",
+        "role": "user"
+      },
+      {
+        "content": "Alright, I think I'm all set.",
+        "created_timestamp": 1792366284347,
+        "message_id": "message_0e8076ace6a70762e4aa4091",
+        "role": "user"
+      },
+      {
+        "content": "Did you get a chance to hit submit?",
+        "created_timestamp": 1792366284843,
+        "message_id": "message_24522dc93259915167c232a0",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, I just submitted it.",
+        "created_timestamp": 1792366285175,
+        "message_id": "message_0df43c896c950c0ce70ba77f",
+        "role": "user"
+      },
+      {
+        "content": "Thanks for getting that done. Our team will review it on our side and reach out if anything else is needed. From there we get your buyback request moving to the manufacturer. Thanks for your time today, John — take care.",
+        "created_timestamp": 1792366285870,
+        "message_id": "message_49526f839ead00dadca3749b",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792366285871,
+        "message_id": "message_b0a409b6b20e48647dca7f46",
+        "name": "end_call",
+        "role": "tool_call_invocation",
+        "tool_call_id": "call_0a7f48e8f0675e388a24f9f889c68b9b",
+        "type": "end_call"
+      }
+    ]
+  }
+}

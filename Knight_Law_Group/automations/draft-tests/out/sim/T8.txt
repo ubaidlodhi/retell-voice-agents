@@ -1,0 +1,55 @@
+INTAKE-V1 T8 Spanish, still-leased Honda, arbitration line in Spanish
+JUDGE: pass
+Alice speaks Spanish throughout, uses usted-formal language, and does not say “vale” or “coche.” She delivers the required arbitration statement verbatim. The call concludes politely without requalifying the caller. She does not speak any system/node/tool/routing content aloud, and she does not repeat a question after the caller clearly provided the information.
+
+user: ¿Bueno?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hola, le habla Alice, de Knight Law Group, sobre la consulta que usted envió acerca de su vehículo. Le aviso que soy una asistente de inteligencia artificial y que esta línea está grabada, y puedo comunicarle con una persona de nuestro equipo cuando usted quiera. ¿Me permite hacerle un par de preguntas rápidas sobre el carro?
+user: Sí, claro.
+  [node -> Opening: Issue Check]
+agent: Muy bien — ¿está teniendo problemas con su vehículo?
+user: Sí, el carro se apaga solo en la calle.
+  [node -> Q: California Purchase]
+agent: Entiendo, eso suena peligroso. ¿Compró o arrendó su carro en un concesionario de California?
+user: Lo tengo en lease, lo estoy rentando.
+  [node -> Q: California Purchase (confirm)]
+agent: ¿Y ese concesionario en qué estado estaba?
+user: Sí, en California, en Los Ángeles.
+  [node -> Q: Purchase or Lease]
+agent: Perfecto. ¿Y todavía lo tiene arrendado, o después lo compró?
+user: Todavía lo estoy rentando.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"leased"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Entiendo. ¿Y todavía tiene el carro en su posesión?
+user: Sí, todavía lo tengo. Es un Honda Civic 2023.
+  [node -> Q: Vehicle Year/Make/Model]
+agent: Perfecto, entonces tengo un Honda Civic dos mil veintitrés. ¿Es correcto?
+user: Sí, es correcto.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2023,"vehicle_make":"Honda","vehicle_model":"Civic","in_possession":true}]
+  [node -> Confirm Vehicle]
+agent: Perfecto, lo tengo.
+user: Ajá.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"jota, u, a, ene. te, e, ese, te","name_spelled_en":"J - U - A - N, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"bad","bad_reason":"arbitration_lease","lead_status":"Bad Lead"}]
+  [node -> Route by Outcome]
+  [node -> Route Bad Reason]
+  [node -> Arbitration: Caller Language]
+  [tool Arbitration: Caller Language ]
+  [result {"call_language":"Spanish"}]
+  [node -> Arbitration: Route by Reason + Language]
+  [node -> Disqualify: Arbitration (Lease, Spanish)]
+agent: Como su vehículo es arrendado, el fabricante en realidad forma parte de su contrato de arrendamiento, y ese contrato incluye una cláusula que exige que las disputas se resuelvan por arbitraje en lugar de una demanda. Nuestra firma solo lleva casos a través de los tribunales, así que lamentablemente este no es un caso que podamos aceptar.
+user: Ah, bueno, gracias. Que tenga buen día.
+  [node -> End: Bad Lead]
+agent: Gracias por entender. Mantendré sus datos en archivo por si nuestros criterios cambian. Que tenga buen día, y gracias por contactar a Knight Law Group.
+  [tool End: Bad Lead {}]

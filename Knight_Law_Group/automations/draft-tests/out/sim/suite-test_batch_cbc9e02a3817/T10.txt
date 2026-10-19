@@ -1,0 +1,28 @@
+INTAKE-V1 T10 opt-out mid-call
+JUDGE: pass
+Alice immediately acknowledged the opt-out, confirmed removal from the contact list and no further contact, and ended the call. She did not argue, re-qualify, ask further questions, offer follow-up, or speak internal routing/stage information. No information was requested twice after being clearly provided.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?
+user: Sure, go ahead.
+  [node -> Opening: Issue Check]
+agent: Great — are you having any issues with the vehicle?
+user: Yeah, the AC stopped working and the engine makes a weird noise.
+  [node -> Q: California Purchase]
+agent: I’m sorry you’re dealing with that. Quick question — did you purchase or lease the vehicle from a dealership in California?
+user: I bought it.
+  [node -> Q: California Purchase (confirm)]
+agent: And what state was that dealership in?
+user: California.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"purchased"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Got it. And are you still in possession of the vehicle?
+user: You know what, I'm not interested anymore. Please take me off your list and don't call me again.
+  [node -> GLOBAL - Opt Out]
+agent: Understood — I’ll make sure you’re taken off our list and you won’t be contacted again. Take care.
+  [tool GLOBAL - Opt Out {}]

@@ -1,0 +1,22 @@
+{
+  "created": "2026-10-18T19:47:46.578Z",
+  "engine": {
+    "type": "conversation-flow",
+    "conversation_flow_id": "conversation_flow_b4e1b9683eaf",
+    "version": 1
+  },
+  "ids": [
+    "test_case_0b3d5237485d",
+    "test_case_fc3d35121776",
+    "test_case_68a92607331c",
+    "test_case_33ca4e131391",
+    "test_case_e449c1f82a08",
+    "test_case_a5ad02ade703",
+    "test_case_4590d26833f6",
+    "test_case_caec02356271",
+    "test_case_2c45a5c0b7cc",
+    "test_case_550a3e47d82b"
+  ],
+  "batch": "test_batch_e025bbb86101",
+  "dir": "suite-test_batch_e025bbb86101"
+}

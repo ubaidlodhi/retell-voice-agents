@@ -1,0 +1,615 @@
+{
+  "test_case_job_id": "test_job_a9bbca6d2f53",
+  "status": "pass",
+  "result_explanation": "Alice asked whether the lease was still active or bought out immediately after confirming the California dealership, before other substantive questions. She gave no arbitration explanation or rejection, skipped retainer-only questions, and ended with the booking-link consultation close. She did not speak any internal routing/node content, and did not repeat information already clearly provided.",
+  "creation_timestamp": 1792353816388,
+  "user_modified_timestamp": 1792353855125,
+  "test_case_definition_id": "test_case_68a92607331c",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792352864845,
+    "dynamicVariables": {
+      "Email": "mark.test@acme.ai",
+      "Name": "Mark Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "After the bare answer \"I leased it\", Alice asks whether it is still leased or was bought out, BEFORE moving on to other questions.",
+      "Alice does NOT read an arbitration explanation and does NOT tell the caller the case can't be taken (a BMW lease buyout is not an arbitration case).",
+      "Alice does not ask the retainer-only questions (new or used, CPO, dealer repairs, owner) and ends on the consultation booking-link close.",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it."
+    ],
+    "name": "INTAKE-V1 T3 lease buyout BMW, follow-up required, non-retainer",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 1
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_68a92607331c",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792352864845,
+    "userPrompt": "This is an outbound phone call to you. When it connects, answer the way a person picks up the phone (\"Hello?\") and wait for Alice to speak. You are Mark Test with a 2022 BMW X5. Issues: \"The screen keeps going black while I drive.\" California: \"Yes.\" When asked whether you purchased or leased it, say ONLY \"I leased it.\" and stop. If she then asks whether it is still leased or you bought it out, say \"I bought it out last year.\" You still have it. Give year, make, model and confirm. Your name is Mark Test, email mark.test@acme.ai is right, texts and emails are fine. If she offers to connect you to someone now, say \"Yes, please.\" Keep every reply short and natural, like a real person on the phone (one sentence, often just a few words). Answer only what she asks unless the script below says otherwise. When the call is clearly over, say goodbye."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-end-nonret",
+    "dynamicVariables": {
+      "Email": "mark.test@acme.ai",
+      "Name": "Mark Test",
+      "Phone": "+13105550101",
+      "bad_reason": "N/A",
+      "call_id": "playground",
+      "call_type": "web_call",
+      "confirmed_name": "Mark Test",
+      "current_node": "End: Non-Retainer",
+      "in_possession": "true",
+      "lead_language": "",
+      "lead_status": "Non-Retainer Lead",
+      "name_spelled_en": "M - A - R - K, T - E - S - T",
+      "name_spelled_es": "eme, a, ere, ka. te, e, ese, te",
+      "nonret_hours": "closed",
+      "previous_node": "Speak: Non-Retainer Close",
+      "purchase_type_call": "lease_buyout",
+      "route": "non_retainer",
+      "said_dealer_repairs": "unknown",
+      "said_new_or_used": "unknown",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "vehicle_make": "BMW",
+      "vehicle_model": "X5",
+      "vehicle_readback_confirmed": "no",
+      "vehicle_year": "2022"
+    },
+    "knowledgeBaseRetrievedContents": [],
+    "transcript": [
+      {
+        "content": "Hello?",
+        "created_timestamp": 1792353827006,
+        "message_id": "message_eba11157ebaedf5070561679",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353827007,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_cc4416b9a19b91bd9d7cb9d3",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792353827010,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_2832f0c6c5dd056659d06234",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?",
+        "created_timestamp": 1792353828266,
+        "message_id": "message_16cf404f23e70c4095b99e17",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sure, go ahead.",
+        "created_timestamp": 1792353828684,
+        "message_id": "message_fd677cdaea45f8fd4be7793f",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353828827,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_2d79cb58fb9b2c464dc5d6a3",
+        "new_node_id": "node-intro-issue",
+        "new_node_name": "Opening: Issue Check",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great — are you having any issues with the vehicle?",
+        "created_timestamp": 1792353829935,
+        "message_id": "message_5f64d148c485dac1c563c5c2",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, the screen keeps going black while I drive.",
+        "created_timestamp": 1792353830366,
+        "message_id": "message_c5df39e8359dfa7ad9ee8f8e",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353830513,
+        "former_node_id": "node-intro-issue",
+        "former_node_name": "Opening: Issue Check",
+        "message_id": "message_11f141dbc60ea7228c20ffc5",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I see — that sounds frustrating. Did you purchase or lease the vehicle from a dealership in California?",
+        "created_timestamp": 1792353831976,
+        "message_id": "message_556e96a88eb1bfa8d811223f",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "I leased it.",
+        "created_timestamp": 1792353832330,
+        "message_id": "message_6ec9728b1d2c9b725173be08",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353832446,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_38823c818c106aee06bc7a3a",
+        "new_node_id": "node-q-ca-confirm",
+        "new_node_name": "Q: California Purchase (confirm)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "And what state was that dealership in?",
+        "created_timestamp": 1792353833562,
+        "message_id": "message_e0a393e77db37b34583f52bf",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "California.",
+        "created_timestamp": 1792353833907,
+        "message_id": "message_3d6ed09ddbfa2665ef1650e9",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353834107,
+        "former_node_id": "node-q-ca-confirm",
+        "former_node_name": "Q: California Purchase (confirm)",
+        "message_id": "message_900c0685e09b2f4ad0c75a86",
+        "new_node_id": "node-q-lease",
+        "new_node_name": "Q: Purchase or Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it. And is it still leased, or did you later buy it out?",
+        "created_timestamp": 1792353835278,
+        "message_id": "message_7757af4081ed932351d04f7b",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "I bought it out last year.",
+        "created_timestamp": 1792353835701,
+        "message_id": "message_0da1945c0827356bf0a49edb",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353835783,
+        "former_node_id": "node-q-lease",
+        "former_node_name": "Q: Purchase or Lease",
+        "message_id": "message_9c1bfc22ee6918c51b4fd7e5",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792353836957,
+        "message_id": "message_d79a28c2d554f61befc8b1fd",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_3f0218",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"lease_buyout\"}",
+        "created_timestamp": 1792353836958,
+        "message_id": "message_9a8516403fcaf22dca553198",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_3f0218"
+      },
+      {
+        "created_timestamp": 1792353837158,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_b34a3ae25aff81a6de3c2ce1",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792353837160,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_7d3cfa9f9dd790ded12aa4a7",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it. And are you still in possession of the vehicle?",
+        "created_timestamp": 1792353838049,
+        "message_id": "message_ea2056f2731724da34a4a9a7",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, I still have it.",
+        "created_timestamp": 1792353838452,
+        "message_id": "message_858805d873dbdd714f7bd9be",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353838607,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_acbc559bd2ac3bb54d026d0d",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792353839771,
+        "message_id": "message_bc04be797b2de1e504cbdc62",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_3bdc66",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":0,\"vehicle_make\":\"Acura\",\"vehicle_model\":\"\",\"in_possession\":true,\"said_new_or_used\":\"unknown\",\"said_dealer_repairs\":\"unknown\",\"vehicle_readback_confirmed\":\"no\"}",
+        "created_timestamp": 1792353839772,
+        "message_id": "message_c3aa1b01f772fa58e5c3638e",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_3bdc66"
+      },
+      {
+        "created_timestamp": 1792353839896,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_906630a4aa59bbd8c95a8f0f",
+        "new_node_id": "node-confirm-vehicle",
+        "new_node_name": "Confirm Vehicle",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Just to confirm, that’s an Acura, is that right?",
+        "created_timestamp": 1792353841192,
+        "message_id": "message_2b93c6c598f36b6e12c2c951",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "content": "No, it's a 2022 BMW X5.",
+        "created_timestamp": 1792353841631,
+        "message_id": "message_e1a0dec0449014e0414c752d",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353841765,
+        "former_node_id": "node-confirm-vehicle",
+        "former_node_name": "Confirm Vehicle",
+        "message_id": "message_c7cea8d4a46931d736f80ed2",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792353843303,
+        "message_id": "message_9ee8c9555e53867cfe87d2ee",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_a1125c",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":2022,\"vehicle_make\":\"BMW\",\"vehicle_model\":\"X5\",\"in_possession\":true,\"said_new_or_used\":\"unknown\",\"said_dealer_repairs\":\"unknown\",\"vehicle_readback_confirmed\":\"no\"}",
+        "created_timestamp": 1792353843304,
+        "message_id": "message_035cd33048fb51d1e7ceff76",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_a1125c"
+      },
+      {
+        "created_timestamp": 1792353843389,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_7fb7cadeed7e9fe15912ae3b",
+        "new_node_id": "node-confirm-vehicle",
+        "new_node_name": "Confirm Vehicle",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Just to confirm, that’s a twenty twenty-two BMW X5, is that right?",
+        "created_timestamp": 1792353844677,
+        "message_id": "message_88f95ded42a654eeb2c68e0a",
+        "metadata": {
+          "response_id": 8
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's right.",
+        "created_timestamp": 1792353845261,
+        "message_id": "message_27c245bc47280db5e9e45ebe",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353845351,
+        "former_node_id": "node-confirm-vehicle",
+        "former_node_name": "Confirm Vehicle",
+        "message_id": "message_917db8447e8e12c4481fe034",
+        "new_node_id": "node-code-spell",
+        "new_node_name": "Spell Name (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792353845352,
+        "message_id": "message_88ca1983558a4dba31960783",
+        "name": "Spell Name (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_60af61",
+        "type": "code"
+      },
+      {
+        "content": "{\"name_spelled_es\":\"eme, a, ere, ka. te, e, ese, te\",\"name_spelled_en\":\"M - A - R - K, T - E - S - T\"}",
+        "created_timestamp": 1792353845374,
+        "message_id": "message_8e80de98abe891ec1d15a5ab",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_60af61"
+      },
+      {
+        "created_timestamp": 1792353845521,
+        "former_node_id": "node-code-spell",
+        "former_node_name": "Spell Name (deterministic)",
+        "message_id": "message_13ee282af2c010dc3151efc1",
+        "new_node_id": "node-code-classify",
+        "new_node_name": "Classify Lead (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792353845522,
+        "message_id": "message_95eefa49d4ebc5421401e704",
+        "name": "Classify Lead (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_7e9724",
+        "type": "code"
+      },
+      {
+        "content": "{\"route\":\"non_retainer\",\"bad_reason\":\"N/A\",\"lead_status\":\"Non-Retainer Lead\"}",
+        "created_timestamp": 1792353845547,
+        "message_id": "message_832e3c001f59004530bd1f6a",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_7e9724"
+      },
+      {
+        "created_timestamp": 1792353845626,
+        "former_node_id": "node-code-classify",
+        "former_node_name": "Classify Lead (deterministic)",
+        "message_id": "message_7d22f769f70d43a03c767569",
+        "new_node_id": "node-branch-route",
+        "new_node_name": "Route by Outcome",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792353845632,
+        "former_node_id": "node-branch-route",
+        "former_node_name": "Route by Outcome",
+        "message_id": "message_65d64f27726ec0dcbf287ddc",
+        "new_node_id": "node-nonret-confirm",
+        "new_node_name": "Non-Retainer: Confirm",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I’ve got your name as Mark Test — is that the same name as it appears on your driver’s license?",
+        "created_timestamp": 1792353846932,
+        "message_id": "message_2f9f9cab864718242456d337",
+        "metadata": {
+          "response_id": 9
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's correct.",
+        "created_timestamp": 1792353847489,
+        "message_id": "message_fd1f3e81d1a714a7e8c408d1",
+        "role": "user"
+      },
+      {
+        "content": "Great — let me confirm the spelling: M - A - R - K, T - E - S - T. Is that right?",
+        "created_timestamp": 1792353848959,
+        "message_id": "message_44037b9e0bb24c4f01c4e818",
+        "metadata": {
+          "response_id": 10
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's right.",
+        "created_timestamp": 1792353849323,
+        "message_id": "message_09773d89cd449c9625ce9999",
+        "role": "user"
+      },
+      {
+        "content": "And I’ve got your email as mark.test@acme.ai — is it okay if our team reaches you by text and email?",
+        "created_timestamp": 1792353850593,
+        "message_id": "message_29e66da1f7a6dd21410fcfcc",
+        "metadata": {
+          "response_id": 11
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's fine.",
+        "created_timestamp": 1792353850941,
+        "message_id": "message_43f36e86d07dbcfc7cadef52",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792353851022,
+        "former_node_id": "node-nonret-confirm",
+        "former_node_name": "Non-Retainer: Confirm",
+        "message_id": "message_50317c0c89a07981be805bcc",
+        "new_node_id": "node-extract-name-nr",
+        "new_node_name": "Extract Confirmed Name (Non-Retainer)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792353852344,
+        "message_id": "message_a6ddceba63eb973faa282048",
+        "name": "Extract Confirmed Name (Non-Retainer)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_f17ffa",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"confirmed_name\":\"Mark Test\"}",
+        "created_timestamp": 1792353852345,
+        "message_id": "message_d124e87d2bc99a363c2724e3",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_f17ffa"
+      },
+      {
+        "created_timestamp": 1792353852485,
+        "former_node_id": "node-extract-name-nr",
+        "former_node_name": "Extract Confirmed Name (Non-Retainer)",
+        "message_id": "message_c889b234a1872c4029de9de1",
+        "new_node_id": "node-nonret-hours",
+        "new_node_name": "Non-Retainer: Business Hours? (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792353852486,
+        "message_id": "message_c1e30a2b5f9f6045b0f13b77",
+        "name": "Non-Retainer: Business Hours? (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_2d4a78",
+        "type": "code"
+      },
+      {
+        "content": "{\"nonret_hours\":\"closed\"}",
+        "created_timestamp": 1792353852515,
+        "message_id": "message_366ab458d8cf23d264e1b66f",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_2d4a78"
+      },
+      {
+        "created_timestamp": 1792353852595,
+        "former_node_id": "node-nonret-hours",
+        "former_node_name": "Non-Retainer: Business Hours? (deterministic)",
+        "message_id": "message_0cb80463618b2f0b0b95dca1",
+        "new_node_id": "node-nonret-hours-branch",
+        "new_node_name": "Non-Retainer: Route by Hours",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792353852598,
+        "former_node_id": "node-nonret-hours-branch",
+        "former_node_name": "Non-Retainer: Route by Hours",
+        "message_id": "message_45f4bf1deb34c5a0ccf7079b",
+        "new_node_id": "node-speak-nonret-close",
+        "new_node_name": "Speak: Non-Retainer Close",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great — we may still be able to help. We’ll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.",
+        "created_timestamp": 1792353854127,
+        "message_id": "message_ee6da7b4be503bd987106967",
+        "metadata": {
+          "response_id": 12
+        },
+        "role": "agent"
+      },
+      {
+        "created_timestamp": 1792353854128,
+        "former_node_id": "node-speak-nonret-close",
+        "former_node_name": "Speak: Non-Retainer Close",
+        "message_id": "message_c254657a7b869544343d54a3",
+        "new_node_id": "node-end-nonret",
+        "new_node_name": "End: Non-Retainer",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792353854129,
+        "message_id": "message_b6356398f6e81eaf74fd6f31",
+        "name": "End: Non-Retainer",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_090e13",
+        "type": "end_call"
+      }
+    ]
+  }
+}

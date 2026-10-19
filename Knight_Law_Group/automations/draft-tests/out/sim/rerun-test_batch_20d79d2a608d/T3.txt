@@ -1,0 +1,65 @@
+INTAKE-V1 T3 lease buyout BMW, follow-up required, non-retainer
+JUDGE: pass
+Alice asked whether the lease was still active or bought out immediately after confirming the California dealership, before other substantive questions. She gave no arbitration explanation or rejection, skipped retainer-only questions, and ended with the booking-link consultation close. She did not speak any internal routing/node content, and did not repeat information already clearly provided.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?
+user: Sure, go ahead.
+  [node -> Opening: Issue Check]
+agent: Great — are you having any issues with the vehicle?
+user: Yes, the screen keeps going black while I drive.
+  [node -> Q: California Purchase]
+agent: I see — that sounds frustrating. Did you purchase or lease the vehicle from a dealership in California?
+user: I leased it.
+  [node -> Q: California Purchase (confirm)]
+agent: And what state was that dealership in?
+user: California.
+  [node -> Q: Purchase or Lease]
+agent: Got it. And is it still leased, or did you later buy it out?
+user: I bought it out last year.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"lease_buyout"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Got it. And are you still in possession of the vehicle?
+user: Yes, I still have it.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":0,"vehicle_make":"Acura","vehicle_model":"","in_possession":true,"said_new_or_used":"unknown","said_deal]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s an Acura, is that right?
+user: No, it's a 2022 BMW X5.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2022,"vehicle_make":"BMW","vehicle_model":"X5","in_possession":true,"said_new_or_used":"unknown","said_d]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s a twenty twenty-two BMW X5, is that right?
+user: Yes, that's right.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"eme, a, ere, ka. te, e, ese, te","name_spelled_en":"M - A - R - K, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"non_retainer","bad_reason":"N/A","lead_status":"Non-Retainer Lead"}]
+  [node -> Route by Outcome]
+  [node -> Non-Retainer: Confirm]
+agent: I’ve got your name as Mark Test — is that the same name as it appears on your driver’s license?
+user: Yes, that's correct.
+agent: Great — let me confirm the spelling: M - A - R - K, T - E - S - T. Is that right?
+user: Yes, that's right.
+agent: And I’ve got your email as mark.test@acme.ai — is it okay if our team reaches you by text and email?
+user: Yes, that's fine.
+  [node -> Extract Confirmed Name (Non-Retainer)]
+  [tool Extract Confirmed Name (Non-Retainer) ]
+  [result {"confirmed_name":"Mark Test"}]
+  [node -> Non-Retainer: Business Hours? (deterministic)]
+  [tool Non-Retainer: Business Hours? (deterministic) {}]
+  [result {"nonret_hours":"closed"}]
+  [node -> Non-Retainer: Route by Hours]
+  [node -> Speak: Non-Retainer Close]
+agent: Great — we may still be able to help. We’ll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.
+  [node -> End: Non-Retainer]
+  [tool End: Non-Retainer {}]

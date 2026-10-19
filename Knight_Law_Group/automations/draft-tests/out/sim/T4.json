@@ -1,0 +1,512 @@
+{
+  "test_case_job_id": "test_job_59dceed3b060",
+  "status": "pass",
+  "result_explanation": "Alice asked for a callback day and time, rejected 7 AM by stating the 8 AM–9 PM Pacific window, confirmed tomorrow at 5 PM and then the revised tomorrow at 6 PM. She did not begin qualification questions after the callback request, ended politely, did not speak any internal directions or logic, and did not redundantly ask for information already clearly provided.",
+  "creation_timestamp": 1792352867152,
+  "user_modified_timestamp": 1792352896558,
+  "test_case_definition_id": "test_case_33ca4e131391",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792352865152,
+    "dynamicVariables": {
+      "Email": "paul.test@acme.ai",
+      "Name": "Paul Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "Alice asks for a day and time instead of just ending the call.",
+      "For \"tomorrow at 7 AM\" Alice explains calls are made between 8 AM and 9 PM Pacific and asks for a time in that window; she does not confirm 7 AM.",
+      "Alice confirms \"tomorrow at 5 PM\", then after the change confirms \"tomorrow at 6 PM\" (not 5 PM, not another day).",
+      "Alice does not start the qualification questions and the call ends politely.",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it."
+    ],
+    "name": "INTAKE-V1 T4 callback from the opening: out-of-hours ask, then change",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 1
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_33ca4e131391",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792352865152,
+    "userPrompt": "This is an outbound phone call to you. When it connects, answer the way a person picks up the phone (\"Hello?\") and wait for Alice to speak. You are Paul Test and you are driving. As soon as Alice introduces herself, say: \"I'm driving right now, can you call me back?\" When she asks when, say: \"Tomorrow morning, like 7.\" If she says that time doesn't work, say: \"Okay, 5 PM then.\" After she confirms 5 PM, say: \"Actually, make it 6.\" After she confirms again, say \"Great, thanks, bye.\" Keep every reply short and natural, like a real person on the phone (one sentence, often just a few words). Answer only what she asks unless the script below says otherwise. When the call is clearly over, say goodbye."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-cb-end",
+    "dynamicVariables": {
+      "Email": "paul.test@acme.ai",
+      "Name": "Paul Test",
+      "Phone": "+13105550101",
+      "call_id": "playground",
+      "call_type": "web_call",
+      "callback_ask_en": "",
+      "callback_ask_es": "",
+      "callback_at_iso": "2026-10-19T18:00:00.000-07:00",
+      "callback_at_pacific": "10-19-2026 06:00 PM",
+      "callback_day": "tomorrow",
+      "callback_in_days": "0",
+      "callback_in_minutes": "0",
+      "callback_next": "confirm",
+      "callback_specific_date": "",
+      "callback_status": "in_window",
+      "callback_time": "18:00",
+      "callback_tries": "4",
+      "callback_when_en": "tomorrow at 6 PM",
+      "callback_when_es": "mañana a las 6 de la tarde",
+      "current_node": "End: Callback Booked",
+      "lead_language": "",
+      "previous_node": "Callback: Confirm",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles"
+    },
+    "knowledgeBaseRetrievedContents": [],
+    "transcript": [
+      {
+        "content": "Hello?",
+        "created_timestamp": 1792352877719,
+        "message_id": "message_d3594a183eb0afa00b75836b",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792352877720,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_c4f8747d75e92c893fddb568",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792352877722,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_08252a64675c5bc0478a15ad",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?",
+        "created_timestamp": 1792352879059,
+        "message_id": "message_50674a2bb8ce772ffb2ef761",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "I'm driving right now, can you call me back?",
+        "created_timestamp": 1792352879472,
+        "message_id": "message_e7dc65843c9ac21504e6c4d6",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792352879702,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_8fdc52c337166298c0e8fbb3",
+        "new_node_id": "node-global-stop",
+        "new_node_name": "GLOBAL - Callback Request",
+        "role": "node_transition",
+        "transition_type": "global"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792352881213,
+        "message_id": "message_355d22f8391180a1e9b61a84",
+        "name": "GLOBAL - Callback Request",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_33bcaf",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"callback_day\":\"unspecified\",\"callback_specific_date\":\"\",\"callback_in_days\":0,\"callback_in_minutes\":0,\"callback_time\":\"\"}",
+        "created_timestamp": 1792352881214,
+        "message_id": "message_1264e4936ef4974727313a9a",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_33bcaf"
+      },
+      {
+        "created_timestamp": 1792352881352,
+        "former_node_id": "node-global-stop",
+        "former_node_name": "GLOBAL - Callback Request",
+        "message_id": "message_672acead621e06b254a039dd",
+        "new_node_id": "node-cb-compute",
+        "new_node_name": "Callback: Resolve Time (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792352881353,
+        "message_id": "message_47fc3487cf827b21fe802828",
+        "name": "Callback: Resolve Time (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_b05b35",
+        "type": "code"
+      },
+      {
+        "content": "{\"callback_status\":\"unclear\",\"callback_next\":\"reask\",\"callback_tries\":\"1\",\"callback_ask_en\":\"No problem at all. What's a good day and time for us to give you a call back?\",\"callback_ask_es\":\"No hay problema. ¿Qué día y a qué hora le podemos volver a llamar?\",\"callback_when_en\":\"\",\"callback_when_es\":\"\",\"callback_at_iso\":\"\",\"callback_at_pacific\":\"\"}",
+        "created_timestamp": 1792352881388,
+        "message_id": "message_feadd1c4e180abb77795ebf6",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_b05b35"
+      },
+      {
+        "created_timestamp": 1792352881527,
+        "former_node_id": "node-cb-compute",
+        "former_node_name": "Callback: Resolve Time (deterministic)",
+        "message_id": "message_c7376cb791ecdf707853c284",
+        "new_node_id": "node-cb-branch",
+        "new_node_name": "Callback: Route",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792352881535,
+        "former_node_id": "node-cb-branch",
+        "former_node_name": "Callback: Route",
+        "message_id": "message_41d2bd47555b39d3ccd8a05b",
+        "new_node_id": "node-cb-reask",
+        "new_node_name": "Callback: Ask When",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "No problem at all. What's a good day and time for us to give you a call back?",
+        "created_timestamp": 1792352882891,
+        "message_id": "message_e16c7054455b93ad0a1131f0",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Tomorrow morning, like 7.",
+        "created_timestamp": 1792352883512,
+        "message_id": "message_5d9ce55bf9414ec34adc7cd8",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792352883647,
+        "former_node_id": "node-cb-reask",
+        "former_node_name": "Callback: Ask When",
+        "message_id": "message_1575141ff40355c2cc12f77c",
+        "new_node_id": "node-cb-extract",
+        "new_node_name": "Callback: Extract Time",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792352885259,
+        "message_id": "message_b1abfc56308137bedd74c545",
+        "name": "Callback: Extract Time",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_63fce0",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"callback_day\":\"tomorrow\",\"callback_specific_date\":\"\",\"callback_in_days\":0,\"callback_in_minutes\":0,\"callback_time\":\"07:00\"}",
+        "created_timestamp": 1792352885260,
+        "message_id": "message_0cbac801f227219845d63be0",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_63fce0"
+      },
+      {
+        "created_timestamp": 1792352885340,
+        "former_node_id": "node-cb-extract",
+        "former_node_name": "Callback: Extract Time",
+        "message_id": "message_efdfd9d0f8e735604a5e16d1",
+        "new_node_id": "node-cb-compute",
+        "new_node_name": "Callback: Resolve Time (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792352885341,
+        "message_id": "message_3f28d55f5659b5e46bdfb3ef",
+        "name": "Callback: Resolve Time (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_6ac5d0",
+        "type": "code"
+      },
+      {
+        "content": "{\"callback_status\":\"outside_hours\",\"callback_next\":\"reask\",\"callback_tries\":\"2\",\"callback_ask_en\":\"We make calls between 8 AM and 9 PM Pacific. What time in that window works for you?\",\"callback_ask_es\":\"Hacemos llamadas entre las 8 de la mañana y las 9 de la noche, hora del Pacífico. ¿Qué hora en ese horario le funciona?\",\"callback_when_en\":\"\",\"callback_when_es\":\"\",\"callback_at_iso\":\"\",\"callback_at_pacific\":\"\"}",
+        "created_timestamp": 1792352885368,
+        "message_id": "message_d14aee37b37db5f3c48fb23c",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_6ac5d0"
+      },
+      {
+        "created_timestamp": 1792352885447,
+        "former_node_id": "node-cb-compute",
+        "former_node_name": "Callback: Resolve Time (deterministic)",
+        "message_id": "message_3333b4f1a32dbbd0367cf7d9",
+        "new_node_id": "node-cb-branch",
+        "new_node_name": "Callback: Route",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792352885456,
+        "former_node_id": "node-cb-branch",
+        "former_node_name": "Callback: Route",
+        "message_id": "message_4cc6c306629eae9cf1682e25",
+        "new_node_id": "node-cb-reask",
+        "new_node_name": "Callback: Ask When",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "We make calls between 8 AM and 9 PM Pacific. What time in that window works for you?",
+        "created_timestamp": 1792352886558,
+        "message_id": "message_af9fe6a58eeca726239c3317",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Okay, 5 PM then.",
+        "created_timestamp": 1792352886969,
+        "message_id": "message_867c9e9ca198b4ab7260edf0",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792352887115,
+        "former_node_id": "node-cb-reask",
+        "former_node_name": "Callback: Ask When",
+        "message_id": "message_6a2f50e9ad5c019553a9d0d8",
+        "new_node_id": "node-cb-extract",
+        "new_node_name": "Callback: Extract Time",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792352888485,
+        "message_id": "message_a9461fb72a6e77ce4fcf656f",
+        "name": "Callback: Extract Time",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_a0b128",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"callback_day\":\"tomorrow\",\"callback_specific_date\":\"\",\"callback_in_days\":0,\"callback_in_minutes\":0,\"callback_time\":\"17:00\"}",
+        "created_timestamp": 1792352888486,
+        "message_id": "message_96d879d771d6e49b4fad0349",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_a0b128"
+      },
+      {
+        "created_timestamp": 1792352888645,
+        "former_node_id": "node-cb-extract",
+        "former_node_name": "Callback: Extract Time",
+        "message_id": "message_b5a6aa1b6cf6d6647c8f2f3f",
+        "new_node_id": "node-cb-compute",
+        "new_node_name": "Callback: Resolve Time (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792352888646,
+        "message_id": "message_e5c50dfe15cc6cead98efbab",
+        "name": "Callback: Resolve Time (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_fe8a47",
+        "type": "code"
+      },
+      {
+        "content": "{\"callback_status\":\"in_window\",\"callback_next\":\"confirm\",\"callback_tries\":\"3\",\"callback_ask_en\":\"\",\"callback_ask_es\":\"\",\"callback_when_en\":\"tomorrow at 5 PM\",\"callback_when_es\":\"mañana a las 5 de la tarde\",\"callback_at_iso\":\"2026-10-19T17:00:00.000-07:00\",\"callback_at_pacific\":\"10-19-2026 05:00 PM\"}",
+        "created_timestamp": 1792352888809,
+        "message_id": "message_eab9652ae382c30044d36691",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_fe8a47"
+      },
+      {
+        "created_timestamp": 1792352888890,
+        "former_node_id": "node-cb-compute",
+        "former_node_name": "Callback: Resolve Time (deterministic)",
+        "message_id": "message_99e57fbb0366deddfc3e9167",
+        "new_node_id": "node-cb-branch",
+        "new_node_name": "Callback: Route",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792352888893,
+        "former_node_id": "node-cb-branch",
+        "former_node_name": "Callback: Route",
+        "message_id": "message_57754734db0caef6fe4d3480",
+        "new_node_id": "node-cb-confirm",
+        "new_node_name": "Callback: Confirm",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Perfect, we'll give you a call tomorrow at 5 PM. Talk to you then!",
+        "created_timestamp": 1792352890068,
+        "message_id": "message_5090c962e4a284388510a582",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Actually, make it 6.",
+        "created_timestamp": 1792352890485,
+        "message_id": "message_b1a725b91946cf00442f0c36",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792352890624,
+        "former_node_id": "node-cb-confirm",
+        "former_node_name": "Callback: Confirm",
+        "message_id": "message_9a1e75e75c85b6c1474909b6",
+        "new_node_id": "node-cb-extract",
+        "new_node_name": "Callback: Extract Time",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792352892028,
+        "message_id": "message_4e35d3b4e0b0033602aeb881",
+        "name": "Callback: Extract Time",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_253e8a",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"callback_day\":\"tomorrow\",\"callback_specific_date\":\"\",\"callback_in_days\":0,\"callback_in_minutes\":0,\"callback_time\":\"18:00\"}",
+        "created_timestamp": 1792352892029,
+        "message_id": "message_b9b9ebb70e31fc1dda2e3c1e",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_253e8a"
+      },
+      {
+        "created_timestamp": 1792352892170,
+        "former_node_id": "node-cb-extract",
+        "former_node_name": "Callback: Extract Time",
+        "message_id": "message_b73b485d45c31a97146b8b42",
+        "new_node_id": "node-cb-compute",
+        "new_node_name": "Callback: Resolve Time (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792352892171,
+        "message_id": "message_a36e7d7230a20a2e6dafbafb",
+        "name": "Callback: Resolve Time (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_836fe4",
+        "type": "code"
+      },
+      {
+        "content": "{\"callback_status\":\"in_window\",\"callback_next\":\"confirm\",\"callback_tries\":\"4\",\"callback_ask_en\":\"\",\"callback_ask_es\":\"\",\"callback_when_en\":\"tomorrow at 6 PM\",\"callback_when_es\":\"mañana a las 6 de la tarde\",\"callback_at_iso\":\"2026-10-19T18:00:00.000-07:00\",\"callback_at_pacific\":\"10-19-2026 06:00 PM\"}",
+        "created_timestamp": 1792352892193,
+        "message_id": "message_d2cec35ceca9fead80aba842",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_836fe4"
+      },
+      {
+        "created_timestamp": 1792352892293,
+        "former_node_id": "node-cb-compute",
+        "former_node_name": "Callback: Resolve Time (deterministic)",
+        "message_id": "message_75f8cd41b1364120b00a268c",
+        "new_node_id": "node-cb-branch",
+        "new_node_name": "Callback: Route",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792352892297,
+        "former_node_id": "node-cb-branch",
+        "former_node_name": "Callback: Route",
+        "message_id": "message_ee58ce556941d62635f56c0b",
+        "new_node_id": "node-cb-confirm",
+        "new_node_name": "Callback: Confirm",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Perfect, we'll give you a call tomorrow at 6 PM. Talk to you then!",
+        "created_timestamp": 1792352893773,
+        "message_id": "message_32cb03bb84550f4d968ddeb7",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Great, thanks, bye.",
+        "created_timestamp": 1792352894191,
+        "message_id": "message_6786d5c254b72738d752b71b",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792352894288,
+        "former_node_id": "node-cb-confirm",
+        "former_node_name": "Callback: Confirm",
+        "message_id": "message_163d1938ef07c618248c9a71",
+        "new_node_id": "node-cb-end",
+        "new_node_name": "End: Callback Booked",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Take care!",
+        "created_timestamp": 1792352895431,
+        "message_id": "message_01a36fc3dd984f074442043f",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792352895432,
+        "message_id": "message_6462d422dd00faa8eabe41d6",
+        "name": "End: Callback Booked",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_2903c5",
+        "type": "end_call"
+      }
+    ]
+  }
+}
