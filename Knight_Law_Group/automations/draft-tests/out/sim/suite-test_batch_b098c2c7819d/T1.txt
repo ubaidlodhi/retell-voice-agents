@@ -1,0 +1,73 @@
+INTAKE-V1 T1 retainer path, skip known answers, FAQ check-in
+JUDGE: fail
+Fails criterion 8: after the caller says, “that's all, and yes, it's my truck,” Alice responds only “Got it.” Her next turn does not end with a question and she does not move directly into the name/contact step. Fails criterion 14: after the one permitted driver's-license name check, the handoff agent says “Thanks for your time today, John,” repeating the caller’s name. The other listed requirements are met.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted for your vehicle. Just a heads-up, I'm an AI assistant and this line is recorded. I can connect you to someone on our team anytime you'd like. I'm guessing you're reaching out because you're having issues with your vehicle, so let me get a little information about the car.
+  [node -> Q: California Purchase]
+agent: So, quick question — did you purchase or lease your vehicle from a dealership in California?
+user: Yes, I bought it brand new in Los Angeles. It's at the dealer right now, actually, third time for the same transmission problem.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"purchased","said_at_dealer":"yes"}]
+  [node -> Route After Lease]
+  [node -> Q: Vehicle (already at the dealer)]
+agent: Got it, so it’s with the dealer now. What’s the year, make, and model of your vehicle?
+user: It's a 2023 Ford F-150.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2023,"vehicle_make":"Ford","vehicle_model":"F-150","in_possession":true,"said_new_or_used":"new","said_d]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s a twenty twenty-three Ford F-one-fifty, is that right?
+user: Yes, that's right.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"jota, o, hache, ene. te, e, ese, te","name_spelled_en":"J - O - H - N, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"retainer","bad_reason":"N/A","lead_status":"Retainer Pending"}]
+  [node -> Route by Outcome]
+  [node -> Retainer: New/Used already said?]
+  [node -> Retainer: Repairs already said?]
+  [node -> Retainer: Ownership]
+agent: And just to confirm, are you the owner of the car, or did you sign the sales or lease contract?
+user: Wait, how much is this going to cost me?
+  [node -> GLOBAL - FAQ Handler]
+agent: Under California Lemon Law, the manufacturer pays our attorney’s fees and costs, so you don’t pay us and you won’t get a bill from us. Does that answer your question?
+user: How long does the whole thing take?
+agent: Each case is different, but these cases often average around eighteen to twenty-four months. The timeline can vary depending on how the manufacturer responds. Did that answer it?
+user: No, that's all. And yes, it's my truck.
+  [node -> Retainer: Ownership]
+agent: Got it.
+user: Yes.
+  [node -> Retainer: Contact Collection]
+agent: I’ve got your name as John Test — is that the same name as it appears on your driver’s license?
+user: Yes.
+agent: Great — let me confirm the spelling: J - O - H - N, T - E - S - T. Is that right?
+user: Yes, that's correct.
+agent: And I’ve got your email as john.test at acme dot A I — is that right?
+user: Yes, that's right.
+  [node -> Retainer: Process]
+agent: Great, we can move forward. I'll text and email you the representation agreement to sign. Give me just a few seconds to confirm a couple of details. Then I will walk you through the representation agreement and explain exactly what it covers, so you know what you are signing and have a chance to ask any questions.
+  [node -> Retainer: Send Agreement]
+  [tool send_agreement {"email":"john.test@acme.ai","full_name":"John Test","lead_language":"English","phone":"+13105550101"}]
+  [result {"status":"Success"}]
+  [node -> Retainer: Handoff Prep (set vars)]
+  [tool Retainer: Handoff Prep (set vars) {}]
+  [result {"greeting":"Okay, thank you, I just sent you the agreement by text and email. Pull it up while we're on and I'll walk y]
+  [node -> Retainer: Hand off to Immediate Agent]
+  [tool Retainer: Hand off to Immediate Agent {"agent_id":"agent_7540b5be1e12d28fe1e937a832","agent_version":6,"post_call_analysis_setting":"both_agents","webhook_setting":"both_agents","keep_current_voice":true,"keep_current_language":true}]
+  [result {"status":"ASSISTANT HANDOFF SUCCESSFUL. You are a *new* assistant joining an *ongoing conversation* and the previous as]
+agent: Okay, thank you, I just sent you the agreement by text and email. Pull it up while we're on and I'll walk you through the key points and answer anything you've got. In the meantime, I can start by walking you through the main aspects of it if you're ready. Just let me know.
+user: Sure, go ahead.
+agent: A buyback is where the manufacturer takes the vehicle back and refunds the money you paid toward it, your down payment, monthly payments, tax, interest, and registration if it's on the face of the sales contract, minus a mileage deduction based on the miles you drove before the problems first emerged. They convert those miles into dollars using a formula in the Lemon Law, and that comes off your refund. Our fees and costs are paid by the manufacturer, not by you, so you never get a bill from us. If we recover additional damages, meaning money above and beyond your refund, that amount is split fifty-fifty between you and the firm. That's the whole thing in a nutshell. What questions can I answer before I walk you through signing?
+user: No, I think that covers it.
+agent: You should already have the agreement in your text and email — did it come through?
+user: Yes, I'm opening it now, give me a minute.
+agent: Of course, take your time, I'll wait.
+user: Okay, I just signed and submitted it.
+agent: Thanks for getting that done. Our team will review it on our side and reach out if anything else is needed. From there we get your buyback request moving to the manufacturer. Thanks for your time today, John — take care.
+user: Thanks, you too. Bye.
+  [tool end_call {}]

@@ -1,0 +1,55 @@
+INTAKE-V1 T11 inbound new caller, non-retainer Toyota, consent kept
+JUDGE: fail
+Criterion 1/6 fails: although the required greeting, disclosure, and immediate California question are present, Alice says, “I'm guessing you're reaching out because you're having issues with your vehicle,” which is prohibited by the criteria. The remaining criteria are met: she asks for text/email consent, correctly follows the non-retainer booking-link path after the caller declines transfer, does not speak internal routing text, does not redundantly ask for provided information, and uses the caller’s name only for the permitted driver’s-license check.
+
+user: Hi, I'm calling about my car.
+  [node -> Inbound Router]
+  [node -> Introduction]
+agent: Thanks for calling Knight Law Group, this is Alice. Just a heads-up, I'm an AI assistant and this line is recorded. I can connect you to someone on our team anytime you'd like. I'm guessing you're reaching out because you're having issues with your vehicle, so let me get a little information about the car.
+  [node -> Q: California Purchase]
+agent: So, quick question — did you purchase or lease your vehicle from a dealership in California?
+user: Yes, I bought it in San Diego.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"purchased","said_at_dealer":"unknown"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Got it. And are you still in possession of the vehicle?
+user: Yes, I still have it.
+  [node -> Q: Vehicle Year/Make/Model]
+agent: Got it — what’s the year, make, and model of your vehicle?
+user: It's a 2022 Toyota Camry.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2022,"vehicle_make":"Toyota","vehicle_model":"Camry","in_possession":true,"said_new_or_used":"unknown","]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s a twenty twenty-two Toyota Camry, is that right?
+user: Yes, that's right.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"pe, a, u, ele, a. te, e, ese, te","name_spelled_en":"P - A - U - L - A, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"non_retainer","bad_reason":"N/A","lead_status":"Non-Retainer Lead"}]
+  [node -> Route by Outcome]
+  [node -> Non-Retainer: Confirm]
+agent: I’ve got your name as Paula Test — is that the same name as it appears on your driver’s license?
+user: Yes, that's correct.
+agent: Great — let me confirm the spelling: P - A - U - L - A, T - E - S - T. Is that right?
+user: Yes, that's right.
+agent: And I’ve got your email as paula.test at acme dot A I — is it okay if our team reaches you by text and email?
+user: Yes, that's fine.
+  [node -> Extract Confirmed Name (Non-Retainer)]
+  [tool Extract Confirmed Name (Non-Retainer) ]
+  [result {"confirmed_name":"Paula Test"}]
+  [node -> Non-Retainer: Business Hours? (deterministic)]
+  [tool Non-Retainer: Business Hours? (deterministic) {}]
+  [result {"nonret_hours":"open"}]
+  [node -> Non-Retainer: Route by Hours]
+  [node -> Non-Retainer: Offer Live Transfer]
+agent: Great news, we may be able to help. One of our Intake Analysts is available right now to go over your case and set up your consultation — would you like me to connect you now?
+user: No thanks, just send me the link.
+  [node -> Speak: Non-Retainer Close]
+agent: Great — we may still be able to help. We’ll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.
+  [node -> End: Non-Retainer]
+  [tool End: Non-Retainer {}]

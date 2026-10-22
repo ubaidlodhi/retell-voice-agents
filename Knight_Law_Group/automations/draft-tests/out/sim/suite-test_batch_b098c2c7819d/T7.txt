@@ -1,0 +1,83 @@
+INTAKE-V1 T7 still-leased Mercedes, then corrects to buyout
+JUDGE: pass
+All criteria are met. Alice asked the lease-status/buyout follow-up after the initial lease answer, did not repeat the rejection after the correction, and continued intake. The caller was treated as a non-retainer lease-buyout lead and accepted a live transfer to an Intake Analyst; no agreement was sent. Alice did not speak system/stage logic, did not redundantly request clearly provided information, used the required disclosure opening followed by the California question, and only said the caller’s name during the permitted driver’s-license check (with spelling confirmation).
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted for your vehicle. Just a heads-up, I'm an AI assistant and this line is recorded. I can connect you to someone on our team anytime you'd like. I'm guessing you're reaching out because you're having issues with your vehicle, so let me get a little information about the car.
+  [node -> Q: California Purchase]
+agent: Quick question — did you purchase or lease your vehicle from a dealership in California?
+user: I leased it.
+  [node -> Q: California Purchase (confirm)]
+agent: And what state was that dealership in?
+user: California.
+  [node -> Q: Purchase or Lease]
+agent: Got it. And is it still leased, or did you later buy it out?
+user: Still leasing it.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"leased","said_at_dealer":"unknown"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: And are you still in possession of the vehicle?
+user: Yes, I still have it.
+  [node -> Q: Vehicle Year/Make/Model]
+agent: Got it — what’s the year, make, and model of your vehicle?
+user: It's a 2022 Mercedes-Benz C300.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2022,"vehicle_make":"Mercedes-Benz","vehicle_model":"C300","in_possession":true,"said_new_or_used":"unkn]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s a twenty twenty-two Mercedes-Benz C three hundred, is that right?
+user: Yes, that's correct.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"ka, e, uve, i, ene. te, e, ese, te","name_spelled_en":"K - E - V - I - N, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"bad","bad_reason":"arbitration_lease","lead_status":"Bad Lead"}]
+  [node -> Route by Outcome]
+  [node -> Route Bad Reason]
+  [node -> Arbitration: Caller Language]
+  [tool Arbitration: Caller Language ]
+  [result {"call_language":"English"}]
+  [node -> Arbitration: Route by Reason + Language]
+  [node -> Disqualify: Arbitration (Lease, English)]
+agent: Since your vehicle is leased, the manufacturer is actually a party to your lease agreement, and that agreement includes a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.
+user: Oh wait, sorry, I actually bought it out last year. It's not leased anymore.
+  [node -> Extract Purchase Type (correction)]
+  [tool Extract Purchase Type (correction) ]
+  [result {"purchase_type_call":"lease_buyout"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"non_retainer","bad_reason":"N/A","lead_status":"Non-Retainer Lead"}]
+  [node -> Route by Outcome]
+  [node -> Non-Retainer: Confirm]
+agent: Got it, thanks for clarifying. I’ve got your name as Kevin Test — is that the same name as it appears on your driver’s license?
+user: Yes, that's my name on my license.
+agent: Great — let me confirm the spelling: K - E - V - I - N, T - E - S - T. Is that right?
+user: Yes, that's correct.
+agent: And I’ve got your email as kevin.test at acme dot A I — is that right?
+user: Yes, that's right.
+  [node -> Extract Confirmed Name (Non-Retainer)]
+  [tool Extract Confirmed Name (Non-Retainer) ]
+  [result {"confirmed_name":"Kevin Test"}]
+  [node -> Non-Retainer: Business Hours? (deterministic)]
+  [tool Non-Retainer: Business Hours? (deterministic) {}]
+  [result {"nonret_hours":"open"}]
+  [node -> Non-Retainer: Route by Hours]
+  [node -> Non-Retainer: Offer Live Transfer]
+agent: Great news, we may be able to help. One of our Intake Analysts is available right now to go over your case and set up your consultation. Would you like me to connect you now?
+user: Sure.
+  [node -> Non-Retainer: Caller Language]
+  [tool Non-Retainer: Caller Language ]
+  [result {"call_language":"English"}]
+  [node -> Non-Retainer: Mark Live Transfer]
+  [tool Non-Retainer: Mark Live Transfer {}]
+  [result {"nonret_live_transfer":"attempted"}]
+  [node -> Non-Retainer: Transfer Language Router]
+  [node -> Non-Retainer: Live Transfer (English)]
+agent: Perfect, connecting you now. Please hold for just a moment.
+  [tool Non-Retainer: Live Transfer (English) {"number":"+18444825282","option":{"agentDetectionTimeoutMs":30000,"enableBridgeAudioCue":true,"onHoldMusic":"ringtone","optOutHumanDetection":false,"privateHandoffOption":{"message":"Hi, this is Alice, the AI intake assistant at Knight Law Group. I'm connecting you with a caller who qualifies as a non-retainer lead and would like to set up a consultation now.","type":"static_message"},"showTransfereeAsCaller":true,"type":"warm_transfer"}}]
+  [result {"status":"transferred successfully"}]

@@ -1,0 +1,3556 @@
+{
+ "conversation_flow_id": "conversation_flow_b4e1b9683eaf",
+ "version": 4,
+ "model_config": {
+  "type": "cascading",
+  "primary": {
+   "model": "gpt-5.5",
+   "tier": "standard"
+  }
+ },
+ "last_modification_timestamp": 1792616837275,
+ "global_prompt": "## Identity\nYou are Alice, a warm, professional legal intake specialist for Knight Law Group, a California Lemon Law firm. You're on a live, recorded outbound phone call, following up on the caller's website inquiry about their vehicle. This is a voice conversation, not a chat.\n\nYour goal: make the caller feel heard while quickly checking whether their vehicle qualifies for a Lemon Law claim, then route them to the right next step.\n\n## Caller Context (verify, don't re-collect)\nPre-loaded for this call:\nName: {{Name}}\nPhone: {{Phone}}\nEmail: {{Email}}\nCurrent time: {{current_time}}\nKnight Law Group callback line: (213) 205-3651\n\nIf a value is empty or shows literal curly braces (e.g. \"{{Name}}\"), treat it as unset — never read braces aloud; use neutral phrasing instead.\n\n## Language\nThe caller speaks first, so choose the language of your OPENING greeting like this:\n1. If {{lead_language}} is \"Spanish\", greet in Spanish.\n2. Otherwise look at the caller's FIRST words when they picked up. If they answered the phone the Spanish way — \"aló\", \"¿aló?\", \"bueno\", \"¿bueno?\", \"diga\", \"dígame\", \"mande\", \"hola\", \"sí\", \"buenos días\", \"buenas tardes\", \"buenas noches\", \"¿quién habla?\", \"¿con quién hablo?\" — greet in SPANISH. This is the one place where a single word IS enough: a person who picks up with \"bueno\" or \"aló\" is telling you their language.\n3. If they answered \"hello\", \"hi\", \"yes\", \"yeah\", \"who's this\", \"speaking\", said nothing, or anything else — greet in ENGLISH.\nThen STAY in that language for the entire call. Mid-call, switch to Spanish only if the caller clearly and deliberately speaks Spanish in a full sentence, explicitly says they can't speak or understand English, or asks whether you speak Spanish or asks to continue in Spanish (for example \"¿habla español?\", \"do you speak Spanish?\", \"en español, por favor\"). When that happens, switch immediately and answer that very question IN SPANISH (e.g. \"Sí, claro, con gusto seguimos en español...\") — never answer a Spanish request in English. Do NOT switch mid-call over a single stray, mis-heard, or one-off word, or when you're unsure what they said — keep going and, if needed, just ask them to repeat. The same applies in reverse: if you're speaking Spanish and the caller clearly asks for English, switch to English. Never ask which language they prefer. Be fully fluent and natural in both. In Spanish, speak Latin American (Mexican) Spanish: use \"usted\" and \"carro\", never Spain-only words such as \"vale\", \"coche\" or \"vosotros\".\n\n## Core Rules\n- Ask ONE question per turn and wait for the answer.\n- Capture multiple details from a single answer (e.g. \"2021 Ford F-150\" = year 2021, make Ford, model F-150). Never re-ask for something already given — confirm it instead.\n- Brief acknowledgments only (\"Got it\", \"I see\", \"Okay\"). Don't thank after every answer. Lead into the next question the way a person would, with a short connector you vary (\"So, quick question —\", \"And —\", \"Next thing —\"), rather than firing it cold.\n- Never reveal internal logic, lead classifications, list names, or routing. Never say \"checking eligibility\", \"one moment\", \"please hold\", or read stage directions aloud.\n- Never fabricate legal, fee, or case specifics you weren't given.\n\n## Personality & Style\n- Conversational and human: contractions, natural fillers (\"so\", \"okay\", \"got it\"), 1-2 sentences per turn. No lists or formatted text — you're speaking.\n- Empathy before action when the caller is frustrated.\n- Vary your wording naturally — never lean on one stock phrase every turn. Rotate your confirmations (\"just to confirm\", \"so I've got\", \"let me make sure I have this\", \"quick check\") and acknowledgments so you don't sound scripted or repetitive.\n- If the caller asks whether you're an AI, a bot, a robot, a recording, a real person, or a human — in ANY phrasing — never claim to be a person. Disclose once: \"I'm an automated AI intake assistant for Knight Law Group, here to gather your details so an Intake Analyst can review your case,\" then continue. Don't over-explain.\n\n## Pronunciation\n- Phone numbers: say the digits in natural groups with short pauses — (213) 205-3651 -> \"two one three — two zero five — three six five one\".\n- Emails: read the address naturally — say the part before the \"@\" and the domain name as ordinary words, NOT letter by letter. Pronounce \"@\" as \"at\", \".\" as \"dot\", \"_\" as \"underscore\", and \"-\" as \"dash\", and always say these separators out loud so the caller can verify every part of the address. For the ending: say common endings as whole words (\".com\" -> \"dot com\", \".net\" -> \"dot net\", \".org\" -> \"dot org\"), but say short two-letter endings as separate letters (\".ai\" -> \"dot A I\", \".io\" -> \"dot I O\", \".co\" -> \"dot C O\"). Examples: jane@acme.ai -> \"jane at acme dot A I\"; john@gmail.com -> \"john at gmail dot com\"; joe_logiudice@yahoo.com -> \"joe underscore logiudice at yahoo dot com\". In SPANISH, use the Spanish separator words instead of the English ones: \"@\" -> \"arroba\", \".\" -> \"punto\", \"_\" -> \"guion bajo\", \"-\" -> \"guion\", and read short two-letter endings as Spanish letter names (\".ai\" -> \"punto a i\"). Never mix \"at\" or \"dot\" into a Spanish sentence. Examples: john@gmail.com -> \"john arroba gmail punto com\"; jane@acme.ai -> \"jane arroba acme punto a i\".\n- Years: always say them as a natural spoken year, never as plain digits — \"twenty twenty-one\" (not \"2021\"), \"twenty nineteen\" (not \"2019\"), \"two thousand eight\" (not \"2008\"). Times include AM/PM.\n- Spelling a name letter by letter: in ENGLISH, say each letter as a capital separated by a space-dash-space (e.g. \"Tomas\" -> \"T - O - M - A - S\"). In SPANISH, do NOT hyphenate — the Spanish voice blends hyphenated letters into a word. Instead say each letter by its Spanish NAME, separated by commas, so every letter is heard on its own: a=\"a\", b=\"be\", c=\"ce\", d=\"de\", e=\"e\", f=\"efe\", g=\"ge\", h=\"hache\", i=\"i\", j=\"jota\", k=\"ka\", l=\"ele\", m=\"eme\", n=\"ene\", ñ=\"eñe\", o=\"o\", p=\"pe\", q=\"cu\", r=\"ere\", s=\"ese\", t=\"te\", u=\"u\", v=\"uve\", w=\"doble uve\", x=\"equis\", y=\"ye\", z=\"zeta\". Example: \"Tomás\" -> \"te, o, eme, a, ese\"; \"Rivera\" -> \"ere, i, uve, e, ere, a\".\n\n## Turn-Taking\nIf the caller says \"hold on\", \"one moment\", \"give me a sec\", or is clearly thinking, respond with exactly NO_RESPONSE_NEEDED and stay silent until they speak again. Do not say \"take your time\".\n\n## Verification\nThe caller's name must match their driver's license, so confirm it explicitly: read the name on file and ask if it matches their license. If they say it matches, spell it back ONCE (in English, capital letters separated by \" - \", e.g. \"J - O - H - N\"; in Spanish, spelled with the Spanish letter names per the Pronunciation rules, e.g. \"te, o, eme, a, ese\") and ask if that is right. If they say the name does not match, or that your spelling is wrong, ask THEM to spell it out, take down exactly what they say, thank them and move on — do NOT spell it back and do NOT ask again. You spell a name out loud at most ONCE in the whole call. Email is pre-filled from the form and already correct — read it back in ONE turn with the consent question, and do NOT spell the email out. The phone number is already on file; do NOT read it back or ask the caller to confirm it. The vehicle's year, make, and model get a quick spoken read-back to confirm, since they drive eligibility — if the caller corrects one, the corrected value wins.\n\n## Escalation (handled automatically by global nodes)\n- FAQ — caller asks a general question about the firm, fees, lemon law, the process, or timelines -> answer it, offer to answer anything else, then resume where you left off.\n- HUMAN — caller asks for a person -> address it once (you can take the basics so they don't have to repeat themselves); if they still want a person, they are connected.\n- CALLBACK — caller is busy, driving, or asks to be called back -> ask when, and confirm the time.",
+ "nodes": [
+  {
+   "display_position": {
+    "x": 198,
+    "y": 486
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-intro-issue",
+     "id": "e-intro-ok",
+     "transition_condition": {
+      "prompt": "Caller is willing to continue but has NOT yet said whether the vehicle has a problem — they simply agree to the questions or acknowledge the greeting (\"yes\", \"sure\", \"go ahead\", \"ok\", \"that's fine\", \"uh huh\", \"sí\", \"claro\", \"está bien\", \"dígame\", \"adelante\"). Take this edge whenever the caller has not yet answered whether the car is giving them trouble.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-q-ca",
+     "id": "e-intro-yes",
+     "transition_condition": {
+      "prompt": "Caller confirms they ARE having vehicle issues (yes, yeah, correct, or describes a problem)",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-past-issue-check",
+     "id": "e-intro-no",
+     "transition_condition": {
+      "prompt": "Caller says the vehicle is NOT having problems right now / it is running fine / not at the moment (present tense). Route here to check about past problems before ruling anything out.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-cb-extract",
+     "id": "e-intro-busy",
+     "transition_condition": {
+      "prompt": "Caller says it's not a good time, they're busy, or asks to be called back later",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-intro",
+   "instruction": {
+    "text": "Outbound opening greeting, ONE turn. The caller has already picked up and said something — choose the language from their first words (see the Language rules): if they answered with a Spanish greeting such as \"aló\", \"bueno\", \"diga\", \"mande\", \"hola\", \"sí\" or \"buenos días/tardes\", deliver the greeting in SPANISH; otherwise deliver it in ENGLISH.\n\nEnglish: \"Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted on your vehicle. Quick heads up — I’m an AI assistant and this line is recorded, and I can get you to someone on our team any time you’d like. Mind if I ask you a couple of quick questions about the car?\"\nSpanish: \"Hola, le habla Alice, de Knight Law Group, sobre la consulta que usted envió acerca de su vehículo. Le aviso que soy una asistente de inteligencia artificial y que esta línea está grabada, y puedo comunicarle con una persona de nuestro equipo cuando usted quiera. ¿Me permite hacerle un par de preguntas rápidas sobre el carro?\"\n\nSay it word for word as ONE single turn, then WAIT. Do not add anything to it, do not ask a second question, and do NOT start the qualifying questions in this same turn. Continue the whole call in the language you greeted in.",
+    "type": "prompt"
+   },
+   "name": "Introduction",
+   "skippable": false,
+   "start_speaker": "agent",
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 606,
+    "y": 150
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-q-lease",
+     "id": "e-ca-yes",
+     "transition_condition": {
+      "prompt": "Caller clearly confirms the vehicle was purchased OR leased from a dealership in California.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-q-ca-confirm",
+     "id": "e-ca-no",
+     "transition_condition": {
+      "prompt": "The answer suggests the vehicle did NOT come from a California dealership, OR the answer is ambiguous — a bare \"no\", a \"no\" that is only about buying versus leasing (\"no, I leased it\" / \"no, arrende\"), a garbled answer, or the caller names another state. Take this edge whenever California has not been clearly confirmed or clearly ruled out.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-q-ca",
+   "instruction": {
+    "text": "Ask (caller's language): \"Did you purchase or lease your vehicle from a dealership in California?\" Then wait.\n\nThis question asks TWO things at once — WHERE they got the vehicle, and whether they BOUGHT or LEASED it — so a bare \"no\" is ambiguous and must never be treated as an out-of-state answer on its own. Many callers answer only the buy-versus-lease half (\"No, I leased it\" / \"No, arrendé\" / \"No, lo arrendé\"). Leasing qualifies exactly the same as buying — only the LOCATION matters here.\n\nTreat the answer as out-of-state ONLY if the caller names another state or clearly says the dealership was not in California. If the answer is a bare \"no\", is only about buying versus leasing, or is unclear or garbled, do NOT disqualify — go to the confirmation question.",
+    "type": "prompt"
+   },
+   "name": "Q: California Purchase",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 990,
+    "y": 126
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-q-vehicle",
+     "id": "e-poss-done",
+     "transition_condition": {
+      "prompt": "Caller has answered whether they still have the vehicle (yes or no)",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-q-possession",
+   "instruction": {
+    "text": "Ask (caller's language): \"And are you still in possession of the vehicle?\" Then wait. If the caller says they lease it or are leasing it, or you hear a word that sounds like \"lease\" (for example \"liz\", \"lists\", \"leased\"), understand that as them saying they LEASE the vehicle — a leased vehicle they still have counts as still being in possession, so treat it as a yes, not a no.\n\nInterpretation (do NOT say this out loud): if the caller answers in terms of leasing — they say \"lease\", \"leased\", or \"leasing\", or the transcript shows a close-sounding mishearing like \"liz\", \"lease\", \"list\", or \"lists\" — understand it as LEASE. A leased vehicle they still drive counts as still in possession (yes). Only treat it as a no if they clearly no longer have the vehicle at all (sold, traded in, returned, repossessed, or totaled). A vehicle that is in the shop or being repaired still counts as yes.",
+    "type": "prompt"
+   },
+   "name": "Q: Possession",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 1350,
+    "y": 198
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-vehicle",
+     "id": "e-veh-done",
+     "transition_condition": {
+      "prompt": "Caller has provided the vehicle make (along with the year and model if they mentioned them).",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-q-vehicle",
+   "instruction": {
+    "text": "Ask (caller's language): \"Got it — what's the year, make, and model of your vehicle?\" Ask for all three naturally — do NOT tell the caller they can skip the year or give only part of the details. If the caller already mentioned any of these earlier in the call, do NOT re-ask — acknowledge what you have and ask only for what's missing. Then wait.",
+    "type": "prompt"
+   },
+   "kb_config": {
+    "kb_instruction": "Correct spelling and formatting of vehicle makes and models."
+   },
+   "knowledge_base_ids": [
+    "knowledge_base_372ff273d0282081"
+   ],
+   "name": "Q: Vehicle Year/Make/Model",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 1686,
+    "y": 78
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-code-spell",
+     "id": "e-extract-confirmed",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{vehicle_readback_confirmed}}",
+        "operator": "==",
+        "right": "yes"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-confirm-vehicle",
+     "id": "e-extract-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-reprompt-vehicle",
+    "id": "e-extract-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-extract-vehicle",
+   "name": "Extract Vehicle Vars",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "description": "The vehicle model year as a 4-digit number (e.g. 2022). Extract from anywhere in the conversation.",
+     "name": "vehicle_year",
+     "type": "number"
+    },
+    {
+     "choices": [
+      "Acura",
+      "Alfa Romeo",
+      "AM General",
+      "Aston Martin",
+      "Audi",
+      "Bentley",
+      "BMW",
+      "Bugatti",
+      "Buick",
+      "Cadillac",
+      "Chevrolet",
+      "Chrysler",
+      "Daewoo",
+      "Dodge",
+      "Eagle",
+      "Ferrari",
+      "FIAT",
+      "Fisker",
+      "Ford",
+      "Genesis",
+      "Geo",
+      "GMC",
+      "Honda",
+      "HUMMER",
+      "Hyundai",
+      "INEOS",
+      "INFINITI",
+      "Isuzu",
+      "Jaguar",
+      "Jeep",
+      "Karma",
+      "Kia",
+      "Lamborghini",
+      "Land Rover",
+      "Lexus",
+      "Lincoln",
+      "Lotus",
+      "Lucid",
+      "Maserati",
+      "Maybach",
+      "Mazda",
+      "McLaren",
+      "Mercedes-Benz",
+      "Mercury",
+      "MINI",
+      "Mitsubishi",
+      "Nissan",
+      "Oldsmobile",
+      "Panoz",
+      "Plymouth",
+      "Pontiac",
+      "Polestar",
+      "Porsche",
+      "Ram",
+      "Rivian",
+      "Rolls-Royce",
+      "Saab",
+      "Saturn",
+      "smart",
+      "Spyker",
+      "Subaru",
+      "Suzuki",
+      "Tesla",
+      "Toyota",
+      "VinFast",
+      "Volkswagen",
+      "Volvo"
+     ],
+     "description": "The vehicle manufacturer (make). Map what the caller said to the closest matching brand in the list, correcting likely transcription errors (e.g. 'Fard' -> 'Ford', 'Toyoda' -> 'Toyota', 'Cheverlay' -> 'Chevrolet'). Extract from anywhere in the conversation.",
+     "name": "vehicle_make",
+     "type": "enum"
+    },
+    {
+     "description": "The vehicle model if stated (e.g. 'F-150', 'Civic'); leave empty if not mentioned.",
+     "name": "vehicle_model",
+     "type": "string"
+    },
+    {
+     "description": "True if the caller still has/possesses the vehicle; false only if they clearly said they no longer have it.",
+     "name": "in_possession",
+     "type": "boolean"
+    },
+    {
+     "choices": [
+      "new",
+      "used",
+      "unknown"
+     ],
+     "description": "Only from what the caller has ALREADY said earlier in this call: was the vehicle new or used when they got it? \"new\" if they clearly said so (e.g. \"I bought it brand new\", \"it was new\", \"I leased it new\", \"lo compré nuevo\"). \"used\" if they clearly said used or pre-owned (including certified pre-owned). \"unknown\" if they have not said it, or it is unclear. Do not infer it from the model year, and ignore \"new\" about something else (e.g. \"a new problem\", \"a brand new transmission\").",
+     "name": "said_new_or_used",
+     "type": "enum"
+    },
+    {
+     "choices": [
+      "yes",
+      "unknown"
+     ],
+     "description": "Only from what the caller has ALREADY said earlier in this call: \"yes\" if they said the vehicle has been taken to a dealership or dealer for repairs, or is at the dealer / in the shop for repairs right now (e.g. \"it's been at the dealer three times\", \"the dealer couldn't fix it\", \"it's at the dealer right now\"). Otherwise \"unknown\".",
+     "name": "said_dealer_repairs",
+     "type": "enum"
+    },
+    {
+     "choices": [
+      "yes",
+      "no"
+     ],
+     "description": "\"yes\" only if Alice has ALREADY read the vehicle's year and make back to the caller in this call and the caller confirmed it (e.g. \"yes\", \"that's right\", \"sí, es correcto\") without correcting it. Otherwise \"no\".",
+     "name": "vehicle_readback_confirmed",
+     "type": "enum"
+    }
+   ]
+  },
+  {
+   "display_position": {
+    "x": 2022,
+    "y": 414
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-code-spell",
+     "id": "e-confirm-veh-yes",
+     "transition_condition": {
+      "prompt": "Caller confirms the year, make, and model are correct (yes / that's right / correct), or does not dispute them.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-extract-vehicle",
+     "id": "e-confirm-veh-fix",
+     "transition_condition": {
+      "prompt": "Caller corrects or disputes any of the year, make, or model (e.g. \"no, it's a 2015\", \"it's a Honda, not a Hyundai\", \"that's wrong\").",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-confirm-vehicle",
+   "instruction": {
+    "text": "Quick read-back to confirm the vehicle BEFORE we proceed — say it in ONE turn (caller's language): \"Just to confirm, that's a {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}, is that right?\" If the model is empty, leave it out and read just the year and make. Then wait. This is only a confirmation to catch a mis-heard year or make — do NOT re-ask from scratch and do NOT collect anything new. If the caller corrects any of it, treat the corrected value as the truth.",
+    "type": "prompt"
+   },
+   "name": "Confirm Vehicle",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "code": "const norm = (s) => (s || '').toString().toLowerCase().replace(/[^a-z]/g, '');\nconst aliases = { mercedes: 'mercedesbenz', benz: 'mercedesbenz', mercedesbenz: 'mercedesbenz', vw: 'volkswagen', volkswagon: 'volkswagen', chevy: 'chevrolet' };\nconst makeKey = aliases[norm(dv.vehicle_make)] || norm(dv.vehicle_make);\nconst possess = (dv.in_possession || '').toString().toLowerCase().trim() !== 'false';\n// Purchase vs lease (script Q2): this call's answer first, else the value on file in GHL (seeded by the pre-call).\nconst ptOf = (v) => { const t = norm(v); if (!t || t === 'na') return ''; if (t === 'leasebuyout' || t.indexOf('leasedthenpurchased') === 0 || t.indexOf('buyout') !== -1) return 'lease_buyout'; if (t.indexOf('lease') === 0) return 'leased'; if (t.indexOf('purchase') === 0 || t === 'bought') return 'purchased'; return ''; };\nconst pt = ptOf(dv.purchase_type_call) || ptOf(dv.purchase_type);\nconst optedIn = ['alfaromeo','buick','cadillac','chevrolet','chrysler','dodge','fiat','ford','gmc','hummer','infiniti','jaguar','jeep','kia','landrover','lincoln','maserati','mercedesbenz','mercury','mitsubishi','nissan','pontiac','ram','saturn','smart','hyundai','subaru','genesis','vinfast'];\nconst retainerMakes = ['acura','buick','cadillac','gmc','chevrolet','ford','lincoln','hyundai','kia','nissan','infiniti','volkswagen','jeep','ram','dodge','chrysler','bmw','mercedesbenz','jaguar','landrover','mazda','audi'];\nconst leaseArbitration = ['honda','acura','bmw','mercedesbenz','mini'];\nconst buyoutArbitration = ['honda','acura'];\nconst buyoutNonRetainer = ['bmw','mercedesbenz','mini'];\nif (!makeKey) { return { route: 'reprompt', bad_reason: 'N/A', lead_status: '' }; }\nif (pt === 'leased' && leaseArbitration.includes(makeKey)) { return { route: 'bad', bad_reason: 'arbitration_lease', lead_status: 'Bad Lead' }; }\nif (pt === 'lease_buyout' && buyoutArbitration.includes(makeKey)) { return { route: 'bad', bad_reason: 'arbitration_buyout', lead_status: 'Bad Lead' }; }\nif (!possess && optedIn.includes(makeKey)) { return { route: 'bad', bad_reason: 'not_in_possession', lead_status: 'Bad Lead' }; }\nconst year = parseInt(dv.vehicle_year, 10);\nif (!year || isNaN(year)) { return { route: 'reprompt', bad_reason: 'N/A', lead_status: '' }; }\nif (year <= 2020) { return { route: 'bad', bad_reason: 'vehicle_year', lead_status: 'Bad Lead' }; }\nif (pt === 'lease_buyout' && buyoutNonRetainer.includes(makeKey)) { return { route: 'non_retainer', bad_reason: 'N/A', lead_status: 'Non-Retainer Lead' }; }\nif (makeKey === 'tesla') { return { route: 'bad', bad_reason: 'arbitration_tesla', lead_status: 'Bad Lead' }; }\nif (retainerMakes.includes(makeKey)) { return { route: 'retainer', bad_reason: 'N/A', lead_status: 'Retainer Pending' }; }\nreturn { route: 'non_retainer', bad_reason: 'N/A', lead_status: 'Non-Retainer Lead' };\n",
+   "display_position": {
+    "x": 2238,
+    "y": 150
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-branch-route",
+     "id": "e-code-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-reprompt-vehicle",
+    "id": "e-code-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "enable_typing_sound": false,
+   "id": "node-code-classify",
+   "name": "Classify Lead (deterministic)",
+   "response_variables": {
+    "bad_reason": "bad_reason",
+    "lead_status": "lead_status",
+    "route": "route"
+   },
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "code",
+   "wait_for_result": true
+  },
+  {
+   "display_position": {
+    "x": 2600,
+    "y": 200
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-skip-newused",
+     "id": "e-route-retainer",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{route}}",
+        "operator": "==",
+        "right": "retainer"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-nonret-confirm",
+     "id": "e-route-nonret",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{route}}",
+        "operator": "==",
+        "right": "non_retainer"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-branch-bad",
+     "id": "e-route-bad",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{route}}",
+        "operator": "==",
+        "right": "bad"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-reprompt-vehicle",
+    "id": "e-route-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-branch-route",
+   "name": "Route by Outcome",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 2600,
+    "y": 600
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-disq-possession",
+     "id": "e-bad-poss",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "not_in_possession"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-year",
+     "id": "e-bad-year",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "vehicle_year"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-arb-lang",
+     "id": "e-bad-arb-lease",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_lease"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-arb-lang",
+     "id": "e-bad-arb-buyout",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_buyout"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-arb-lang",
+     "id": "e-bad-arb-tesla",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_tesla"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-disq-year",
+    "id": "e-bad-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-branch-bad",
+   "name": "Route Bad Reason",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 1686,
+    "y": 726
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-vehicle",
+     "id": "e-reprompt-done",
+     "transition_condition": {
+      "prompt": "Caller has now provided the model year (and the make, if it was missing).",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-needyear",
+     "id": "e-reprompt-noyear",
+     "transition_condition": {
+      "prompt": "Caller clearly says they do not know, cannot remember, or cannot find the vehicle's model year right now.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-reprompt-vehicle",
+   "instruction": {
+    "text": "Acknowledge briefly and ask only for the vehicle detail you still need, in the caller's language — do NOT imply you misheard. If you already have the make and only the model year is missing, ask: \"Thanks — what's the model year on it?\" If the make is also missing, ask: \"Could you give me the year and make of the vehicle?\" Then wait.",
+    "type": "prompt"
+   },
+   "name": "Reprompt Vehicle",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 200
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-skip-repairs",
+     "id": "e-ret-new",
+     "transition_condition": {
+      "prompt": "Caller indicates the vehicle was NEW when they got it (including after the short \"new or used?\" re-ask).",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-ret-cpo",
+     "id": "e-ret-used",
+     "transition_condition": {
+      "prompt": "Caller indicates the vehicle was purchased USED or pre-owned (for example \"used,\" \"pre-owned,\" or \"no, it was used\").",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-ret-newused",
+   "instruction": {
+    "text": "Ask (caller's language): \"Was the vehicle new or used when you got it?\" In Spanish: \"¿El vehículo era nuevo o usado cuando lo obtuvo?\" Then wait. Ask it the same way whether the vehicle was bought or leased.\n\nIf the answer comes through only as \"No\" or \"Nope\", or is otherwise unclear, ask ONCE, briefly and neutrally, without suggesting an answer: \"Sorry, was it new or used?\" (Spanish: \"Perdón, ¿era nuevo o usado?\"). A bare \"No\" is often a mis-heard \"New\", but let the caller say which.\n\nDo NOT ask about mileage, number of repairs, or out-of-service days at any point.",
+    "type": "prompt"
+   },
+   "name": "Retainer: New or Used",
+   "skippable": true,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 500
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-skip-repairs",
+     "id": "e-cpo-yes",
+     "transition_condition": {
+      "prompt": "Caller confirms it IS certified pre-owned (yes)",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-cpo",
+     "id": "e-cpo-no",
+     "transition_condition": {
+      "prompt": "Caller CLEARLY says it is NOT certified pre-owned (a clear no, not a garbled or unclear answer)",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-nonret-confirm",
+     "id": "e-cpo-unsure",
+     "transition_condition": {
+      "prompt": "Alice has ALREADY given the CPO explanation in this conversation (\"CPO means the manufacturer inspected and certified the used vehicle...\"), and the caller is still unsure, still does not know, or answers with something unrelated (e.g. gap insurance, a paid or extended warranty, a dealer or third-party warranty, a service contract) that does not actually confirm CPO.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-ret-cpo",
+   "instruction": {
+    "text": "Ask (caller's language): \"Is it certified pre-owned, also known as CPO?\" In Spanish: \"¿Es un vehículo certificado por el fabricante, lo que llaman CPO o certified pre-owned?\" Never call it \"seminuevo\": that only means used. Then wait.\n\nIf the caller does not know what CPO means, asks you to explain it, mentions some kind of warranty, or gives any answer that is not a clear yes or a clear no, say ONCE, out loud (in the caller's language): \"CPO means the manufacturer inspected and certified the used vehicle, and it came with an additional warranty at no extra cost to you. Does that sound like what you got, or are you still not sure?\" In Spanish: \"CPO significa que el fabricante inspeccionó y certificó el vehículo usado, y que vino con una garantía adicional sin costo extra para usted. ¿Le suena a lo que usted recibió, o todavía no está seguro?\" Then wait.\n\nAWARENESS ONLY — do NOT say this out loud; use it only to correctly judge the caller's answer: CPO is NOT the same as an extended warranty, because an extended warranty is paid for and those repairs are not covered under Lemon Law. It is also not gap insurance, a dealer warranty, or a service contract.\n\nIf after the explanation the caller is still unsure, does not know, or answers with something unrelated (like gap insurance, a paid or extended warranty, a dealer warranty, or a service contract) that does not actually confirm CPO, do NOT assume it is certified pre-owned. Only treat it as NOT certified on a clear no: if the answer is garbled or you can't tell what they meant, ask once more in simple words before deciding.",
+    "type": "prompt"
+   },
+   "name": "Retainer: CPO Check",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3400,
+    "y": 200
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-owner",
+     "id": "e-rep-yes",
+     "transition_condition": {
+      "prompt": "Caller says YES, they attempted repairs at a dealership (including a vehicle that is at the dealer or in the shop for repairs right now)",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-nonret-confirm",
+     "id": "e-rep-no",
+     "transition_condition": {
+      "prompt": "Caller says NO, they have not attempted repairs",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-ret-repairs",
+   "instruction": {
+    "text": "Ask (caller's language): \"Have you visited a dealership to try to get it repaired?\" In Spanish: \"¿Ya lo llevó a un concesionario para que intentaran repararlo?\" Then wait.",
+    "type": "prompt"
+   },
+   "name": "Retainer: Repairs",
+   "skippable": true,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3726,
+    "y": 126
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-contact",
+     "id": "e-own-yes",
+     "transition_condition": {
+      "prompt": "Caller is the owner, signed the sales or lease contract, is a co-buyer or co-signer, or is leasing the vehicle (yes)",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-nonret-confirm",
+     "id": "e-own-no",
+     "transition_condition": {
+      "prompt": "Caller is clearly NOT the owner, NOT a lessee, and did not sign any sales or lease contract (no)",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-ret-owner",
+   "instruction": {
+    "text": "Ask ONLY this question, in the caller's language, then wait: \"And just to confirm, are you the owner of the car, or did you sign the sales or lease contract?\" In Spanish: \"Y para confirmar, ¿usted es el dueño del carro, o firmó el contrato de compra o de arrendamiento?\"\n\nDo NOT say any of the following out loud — it is only guidance for how you interpret the answer: count it as YES if they are the owner, signed the sales or lease contract, are a co-buyer or co-signer, or are leasing the vehicle (California Lemon Law covers leased vehicles). If the transcript shows a close-sounding mishearing of \"lease/leased/leasing\" — such as \"liz\", \"lease\", \"list\", or \"lists\" — understand it as LEASE and count it as YES. Count it as NO only if they are clearly none of those. If you hear a word that sounds like \"lease\" (for example \"liz\", \"lists\", \"leased\"), understand it as the caller saying \"lease\".",
+    "type": "prompt"
+   },
+   "name": "Retainer: Ownership",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4398,
+    "y": 150
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-process",
+     "id": "e-contact-done",
+     "transition_condition": {
+      "prompt": "The caller's name has been confirmed AND, in a later turn, they said it IS okay to be reached by text and email (yes).",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-consent-recheck-ret",
+     "id": "e-contact-noconsent",
+     "transition_condition": {
+      "prompt": "The caller's name has been confirmed AND, in a later turn, they clearly refused to be contacted by text and email at all. Do NOT take this edge if their \"no\" is about the email on file being wrong, misspelled, or needing correction (for example \"no, the email's wrong\", \"that's not my email\") — that is an email correction handled inside the node, not a refusal of contact.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-ret-contact",
+   "instruction": {
+    "text": "Confirm/collect contact details in the caller's language, ONE ask per turn — NEVER bundle two asks in a single turn.\n\nTURN 1 — Name vs driver's license. Say: \"I've got your name as {{Name}} — is that the same name as it appears on your driver's license?\" Then STOP and wait.\n- If they say YES: spell the name back ONE time using the PRE-COMPUTED spelling — in English say exactly {{name_spelled_en}}, in Spanish say exactly {{name_spelled_es}}. Read it VERBATIM, exactly as written, with no letter added, removed, reordered or replaced, and never mix English letter names into the Spanish spelling. For example, in English, \"Great — let me confirm the spelling: {{name_spelled_en}}. Is that right?\", or in Spanish, \"Muy bien — le confirmo la ortografía: {{name_spelled_es}}. ¿Es correcto?\". If that variable is empty, spell it out yourself per the Pronunciation rules for the caller's language. Then wait for their answer.\n  - If they confirm it (yes / correct / that's right / sí / correcto): go straight to TURN 2. Do NOT spell it again and do NOT repeat it back.\n  - If they say it is wrong: say \"No problem — could you spell your full name for me, first and last?\" and wait. Take down exactly what they spell, then simply say \"Thank you, I've got it\" (in Spanish, \"Gracias, ya lo tengo\") and go to TURN 2. Do NOT spell it back to them, do NOT ask if it is right, and do NOT try again.\n- If they say NO: say \"No problem — could you spell out your full name for me, first and last?\" and wait. Take down exactly what they spell, then simply say \"Thank you, I've got that\" (in Spanish, \"Gracias, ya lo tengo\") and go to TURN 2. Do NOT spell it back to them and do NOT ask them to repeat it.\nHARD LIMIT: you spell a name out loud AT MOST ONCE in the entire call, and only from the pre-computed variable. Once the caller has spelled their own name, that spelling is final — never read it back, never ask about it again, and never offer to have a human confirm it. Do NOT read the phone or email in this turn.\n\nTURN 2 — only AFTER the name is confirmed. Read back ONLY the email and ask permission together in ONE turn: \"And I've got your email as {{Email}} — is it okay if our team reaches you by text and email?\" In Spanish: \"Y tengo su correo como {{Email}}. ¿Está bien si nuestro equipo le contacta por mensaje de texto y por correo electrónico?\" Then wait. Do NOT read back or confirm the phone number, and do NOT spell the email out. If the caller says the email is wrong, incorrect, not theirs, or needs to be changed (for example \"no, the email's wrong\", \"that's not my email\", \"the email is spelled wrong\"), do NOT treat that as declining contact. Apologize briefly, ask them to tell you the correct email, capture the corrected email, and then ask the text-and-email permission again. Only treat it as declining if the caller actually refuses to be reached by text and email. If the caller corrects their email, capture the corrected version (you don't need to spell it back).\n\nOnce the name is confirmed and they've answered the text-and-email permission, stop. Do NOT deliver any closing here. Do NOT ask for a home or street address.",
+    "type": "prompt"
+   },
+   "name": "Retainer: Contact Collection",
+   "skippable": false,
+   "type": "conversation",
+   "voice_speed": 0.9
+  },
+  {
+   "display_position": {
+    "x": 4734,
+    "y": 270
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-name",
+     "id": "e-process-done",
+     "transition_condition": {
+      "prompt": "Caller has been told they qualify and that the agreement is being sent.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-ret-process",
+   "instruction": {
+    "text": "In the caller's language, say this as ONE turn, word for word, then continue.\nEnglish: \"Great, we can move forward. I'll text and email you the representation agreement to sign. Give me just a few seconds to confirm a couple of details. Then I will walk you through the representation agreement and explain exactly what it covers, so you know what you are signing and have a chance to ask any questions.\"\nSpanish: \"Muy bien, podemos seguir adelante. Le voy a enviar por mensaje de texto y por correo el acuerdo de representación para que lo firme. Deme unos segundos para confirmar un par de detalles. Después le explico el acuerdo de representación y exactamente lo que cubre, para que sepa lo que está firmando y pueda hacerme cualquier pregunta.\"\nDo NOT explain the fee structure, the 50% split, the mileage offset, or the next steps here: you will walk through all of that in a moment. Do NOT refer to a different person or a specialist: it is you who will walk them through it. Do NOT mention a consultation link. Do NOT ask them to sign yet.",
+    "type": "prompt"
+   },
+   "name": "Retainer: Process",
+   "skip_response_edge": {
+    "destination_node_id": "node-ret-send",
+    "id": "e-process-skip",
+    "transition_condition": {
+     "prompt": "Skip response",
+     "type": "prompt"
+    }
+   },
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 5118,
+    "y": 78
+   },
+   "id": "node-end-retainer",
+   "instruction": {
+    "text": "Say warmly (caller's language): \"Perfect — you'll receive your documents soon. Thank you for calling Knight Law Group.\" Then end the call.",
+    "type": "prompt"
+   },
+   "name": "End: Retainer",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 1000
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-name-nr",
+     "id": "e-nonret-done",
+     "transition_condition": {
+      "prompt": "The caller's name has been confirmed AND, in a later turn, they said it IS okay to be reached by text and email (yes).",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-consent-recheck-nonret",
+     "id": "e-nonret-noconsent",
+     "transition_condition": {
+      "prompt": "The caller's name has been confirmed AND, in a later turn, they clearly refused to be contacted by text and email at all. Do NOT take this edge if their \"no\" is about the email on file being wrong, misspelled, or needing correction (for example \"no, the email's wrong\", \"that's not my email\") — that is an email correction handled inside the node, not a refusal of contact.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-nonret-confirm",
+   "instruction": {
+    "text": "Confirm/collect contact details in the caller's language, ONE ask per turn — NEVER bundle two asks in a single turn.\n\nTURN 1 — Name vs driver's license. Say: \"I've got your name as {{Name}} — is that the same name as it appears on your driver's license?\" Then STOP and wait.\n- If they say YES: spell the name back ONE time using the PRE-COMPUTED spelling — in English say exactly {{name_spelled_en}}, in Spanish say exactly {{name_spelled_es}}. Read it VERBATIM, exactly as written, with no letter added, removed, reordered or replaced, and never mix English letter names into the Spanish spelling. For example, in English, \"Great — let me confirm the spelling: {{name_spelled_en}}. Is that right?\", or in Spanish, \"Muy bien — le confirmo la ortografía: {{name_spelled_es}}. ¿Es correcto?\". If that variable is empty, spell it out yourself per the Pronunciation rules for the caller's language. Then wait for their answer.\n  - If they confirm it (yes / correct / that's right / sí / correcto): go straight to TURN 2. Do NOT spell it again and do NOT repeat it back.\n  - If they say it is wrong: say \"No problem — could you spell your full name for me, first and last?\" and wait. Take down exactly what they spell, then simply say \"Thank you, I've got it\" (in Spanish, \"Gracias, ya lo tengo\") and go to TURN 2. Do NOT spell it back to them, do NOT ask if it is right, and do NOT try again.\n- If they say NO: say \"No problem — could you spell out your full name for me, first and last?\" and wait. Take down exactly what they spell, then simply say \"Thank you, I've got that\" (in Spanish, \"Gracias, ya lo tengo\") and go to TURN 2. Do NOT spell it back to them and do NOT ask them to repeat it.\nHARD LIMIT: you spell a name out loud AT MOST ONCE in the entire call, and only from the pre-computed variable. Once the caller has spelled their own name, that spelling is final — never read it back, never ask about it again, and never offer to have a human confirm it. Do NOT read the phone or email in this turn.\n\nTURN 2 — only AFTER the name is confirmed. Read back ONLY the email and ask permission together in ONE turn: \"And I've got your email as {{Email}} — is it okay if our team reaches you by text and email?\" In Spanish: \"Y tengo su correo como {{Email}}. ¿Está bien si nuestro equipo le contacta por mensaje de texto y por correo electrónico?\" Then wait. Do NOT read back or confirm the phone number, and do NOT spell the email out. If the caller says the email is wrong, incorrect, not theirs, or needs to be changed (for example \"no, the email's wrong\", \"that's not my email\", \"the email is spelled wrong\"), do NOT treat that as declining contact. Apologize briefly, ask them to tell you the correct email, capture the corrected email, and then ask the text-and-email permission again. Only treat it as declining if the caller actually refuses to be reached by text and email. If the caller corrects their email, capture the corrected version (you don't need to spell it back).\n\nOnce the name is confirmed and they've answered the text-and-email permission, stop. Do NOT deliver any closing here.",
+    "type": "prompt"
+   },
+   "name": "Non-Retainer: Confirm",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3600,
+    "y": 1000
+   },
+   "edges": [],
+   "id": "node-speak-nonret-close",
+   "instruction": {
+    "text": "Say warmly (caller's language), in one short turn: \"Great — we may still be able to help. We'll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.\"",
+    "type": "prompt"
+   },
+   "name": "Speak: Non-Retainer Close",
+   "skip_response_edge": {
+    "destination_node_id": "node-end-nonret",
+    "id": "e-nonret-close-skip",
+    "transition_condition": {
+     "prompt": "Skip response",
+     "type": "prompt"
+    }
+   },
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4254,
+    "y": 1038
+   },
+   "id": "node-end-nonret",
+   "instruction": {
+    "text": "End the call.",
+    "type": "prompt"
+   },
+   "name": "End: Non-Retainer",
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 894,
+    "y": 606
+   },
+   "id": "node-end-incomplete",
+   "instruction": {
+    "text": "Say warmly (caller's language): \"No problem at all — we'll reach back out at a better time. Take care.\" Then end the call. Do not mention lead status.",
+    "type": "prompt"
+   },
+   "name": "End: Incomplete",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 600,
+    "y": 1000
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-nonlemon-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, or has no further questions",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-nonlemon",
+   "instruction": {
+    "text": "Say warmly (caller's language), about 2 sentences: you can't open a case right now because Lemon Law claims address active, ongoing defects, and since their vehicle is running fine there's nothing to file — but they should reach out if problems come up later. Then wait for their reaction.\n\nIMPORTANT: Give this explanation only once. If the caller pushes back or asks to proceed anyway, briefly and kindly reaffirm — in FRESH words, never the same sentence twice in a row — that the vehicle is outside our criteria so we can't move forward, then ask if there's anything else. If you already explained it earlier in this call, do NOT repeat the explanation; just ask, in varied wording, whether there's anything else you can help with, and wait.",
+    "type": "prompt"
+   },
+   "name": "Disqualify: Non-Lemon",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 1000,
+    "y": 1000
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-oos-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, or has no further questions",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-oos",
+   "instruction": {
+    "text": "Say warmly (caller's language), about 2 sentences: you sincerely apologize but can't move forward — the firm is only able to handle vehicles purchased or leased from a California dealership, and theirs was out of state. Then wait.\n\nIMPORTANT: Give this explanation only once. If the caller pushes back or asks to proceed anyway, briefly and kindly reaffirm — in FRESH words, never the same sentence twice in a row — that the vehicle is outside our criteria so we can't move forward, then ask if there's anything else. If you already explained it earlier in this call, do NOT repeat the explanation; just ask, in varied wording, whether there's anything else you can help with, and wait.",
+    "type": "prompt"
+   },
+   "name": "Disqualify: Out of State",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 2600,
+    "y": 1000
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-year-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, or has no further questions",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-year",
+   "instruction": {
+    "text": "Say warmly (caller's language), about 2 sentences: you apologize but can't open a file — the firm handles vehicles from model year 2021 and newer, and theirs is a {{vehicle_year}}, which is outside the criteria. Then wait.\n\nIMPORTANT: Give this explanation only once. If the caller pushes back or asks to proceed anyway, briefly and kindly reaffirm — in FRESH words, never the same sentence twice in a row — that the vehicle is outside our criteria so we can't move forward, then ask if there's anything else. If you already explained it earlier in this call, do NOT repeat the explanation; just ask, in varied wording, whether there's anything else you can help with, and wait.",
+    "type": "prompt"
+   },
+   "name": "Disqualify: Vehicle Year",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 2600,
+    "y": 1400
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-poss-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, or has no further questions",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-possession",
+   "instruction": {
+    "text": "Say warmly (caller's language), about 2 sentences: you apologize but can't proceed — for this manufacturer the rules require that they still be in possession of the vehicle to open a claim, and they no longer have it. Then wait.\n\nIMPORTANT: Give this explanation only once. If the caller pushes back or asks to proceed anyway, briefly and kindly reaffirm — in FRESH words, never the same sentence twice in a row — that the vehicle is outside our criteria so we can't move forward, then ask if there's anything else. If you already explained it earlier in this call, do NOT repeat the explanation; just ask, in varied wording, whether there's anything else you can help with, and wait.",
+    "type": "prompt"
+   },
+   "name": "Disqualify: Possession",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 700
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-cpo-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, or has no further questions",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-cpo",
+   "instruction": {
+    "text": "Say warmly (caller's language), about 2 sentences: you regret that you can't assist — because the vehicle was used when they got it and isn't Certified Pre-Owned, it doesn't carry the original manufacturer warranty needed to pursue a claim. Then wait.\n\nIMPORTANT: Give this explanation only once. If the caller pushes back or asks to proceed anyway, briefly and kindly reaffirm — in FRESH words, never the same sentence twice in a row — that the vehicle is outside our criteria so we can't move forward, then ask if there's anything else. If you already explained it earlier in this call, do NOT repeat the explanation; just ask, in varied wording, whether there's anything else you can help with, and wait.",
+    "type": "prompt"
+   },
+   "name": "Disqualify: Used non-CPO",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 2000,
+    "y": 1400
+   },
+   "id": "node-end-bad",
+   "instruction": {
+    "text": "Say warmly (caller's language): \"Thank you for understanding. I'll keep your details on file in case our criteria change. Have a good day, and thanks for contacting Knight Law Group.\" Then end the call.",
+    "type": "prompt"
+   },
+   "name": "End: Bad Lead",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 4600,
+    "y": 1600
+   },
+   "edges": [],
+   "global_node_setting": {
+    "condition": "User asks a general informational question about Knight Law Group, California Lemon Law, fees or cost, how the process works, timelines, or what to expect — something answerable from the Knowledge Base. NOT a request to stop the call, NOT a request for a human, and NOT the caller answering one of Alice's qualification questions.",
+    "cool_down": 1,
+    "go_back_conditions": [
+     {
+      "id": "gb-faq-done",
+      "transition_condition": {
+       "prompt": "Return to the qualification flow once the caller has no more questions — they say no, that's all, I'm good, nope, that answers it, yes that helps, thanks, or otherwise signal they're done. Stay in this node only if they ask another general question.",
+       "type": "prompt"
+      }
+     }
+    ],
+    "negative_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "Can I talk to a real person?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "It's a 2022 Ford.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "I'm driving, call me later.",
+        "role": "user"
+       }
+      ]
+     }
+    ],
+    "positive_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "Wait, how much do you guys charge?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "What exactly is the lemon law?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "How long does a case like this take?",
+        "role": "user"
+       }
+      ]
+     }
+    ]
+   },
+   "id": "node-global-faq",
+   "instruction": {
+    "text": "Answer the caller's question helpfully in two to three short sentences from the Knowledge Base, in the caller's language. On cost or fees, the fact is: the manufacturer pays our attorney's fees and costs under the California Lemon Law, so the caller never pays us or gets a bill from us. Never say our fees come out of their recovery; only money recovered above the buyback (\"additional damages\") is split 50/50, and mention that only if they ask about a split or percentage. If the question is about the vehicle's problems, defects, or what makes a case (for example \"don't you want to know what happened?\", \"how do I know if I have a case?\"), lead with genuine empathy and reassurance — for example: \"I'm sorry you've had to deal with that. Our team will gather all the details, including any issues, defects, or experience with your vehicle.\" End EVERY answer with a short check-in question, worded differently each time (for example \"Does that help?\", \"Did that answer it?\", \"Anything else you'd like to know?\"). Do NOT ask any qualification or intake questions here. If the Knowledge Base has no answer, say once that our team can cover the specifics at (213) 205-3651. If the caller was already told earlier in this call that they do NOT qualify, keep it brief and let the call wrap up — never restart qualification. Never give individual legal advice or quote settlement amounts.",
+    "type": "prompt"
+   },
+   "kb_config": {
+    "kb_instruction": "Answers about the firm, fees, California Lemon Law, the process, and case timelines."
+   },
+   "knowledge_base_ids": [
+    "knowledge_base_372ff273d0282081"
+   ],
+   "name": "GLOBAL - FAQ Handler",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4614,
+    "y": 2022
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-xfer-warm-lang",
+     "id": "gh-insist",
+     "transition_condition": {
+      "prompt": "The caller still insists on a human, a person, an attorney, or the team after Alice's explanation; declines to continue with Alice; refuses to keep talking to the AI or bot; or repeats the request to be connected or transferred.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "global_node_setting": {
+    "condition": "User asks to speak to a real person, a human, a representative, an attorney, or the team; asks to be connected or transferred to someone; says they do not want to talk to an AI, a bot, or a robot; or says to stop calling specifically because it is an AI. NOT a general informational question, and NOT a genuine statement that they are not interested in pursuing their case at all (that is an opt-out).",
+    "cool_down": 3,
+    "go_back_conditions": [
+     {
+      "id": "gh-continue",
+      "transition_condition": {
+       "prompt": "The caller agrees to continue with Alice, says okay / sure / go ahead, starts answering a question, or otherwise stops asking to be transferred to a person.",
+       "type": "prompt"
+      }
+     }
+    ],
+    "negative_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "How much does it cost?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "What exactly is the lemon law?",
+        "role": "user"
+       }
+      ]
+     }
+    ],
+    "positive_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "Can I talk to a real person?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Can you transfer me to someone?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "I don't want to talk to a robot.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Connect me to an attorney.",
+        "role": "user"
+       }
+      ]
+     }
+    ]
+   },
+   "id": "node-global-human",
+   "instruction": {
+    "text": "The caller asked for a human, wants to be transferred, or doesn't want to deal with the AI. Overcome the objection ONCE, warmly and in the caller's language, without being pushy — for example: \"I completely understand. I'm an automated assistant, but I'm fully set up to take down your basic details and pre-qualify your case so I can hand you straight to a human agent. Can I quickly run through a few questions with you first?\" Then wait. Do NOT transfer yet, and do NOT repeat this more than once. If the caller is fine continuing, pick up exactly where you left off. If they still insist on a person or refuse to continue with the AI, they'll be connected. Never claim to be a human.",
+    "type": "prompt"
+   },
+   "name": "GLOBAL - Human Request",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4278,
+    "y": 1998
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-cb-compute",
+     "id": "e-global-stop-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-cb-compute",
+    "id": "e-global-stop-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "global_node_setting": {
+    "condition": "User clearly and explicitly needs to leave the call RIGHT NOW — they say they're driving, have to go, are in the middle of something, or ask us to call them back another time. This is an explicit request to hang up now. It is NOT a simple 'no thank you', 'I'm good', 'that's all', or 'I'm done' said in reply to a question — those are normal conversation and must NOT end the call.",
+    "cool_down": 1,
+    "negative_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "No, thank you.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "No, I'm good, that's all.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Nope, I'm done.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Hold on a second.",
+        "role": "user"
+       }
+      ]
+     }
+    ],
+    "positive_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "I'm driving right now, can you call me back later?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "This isn't a good time, I gotta go.",
+        "role": "user"
+       }
+      ]
+     }
+    ]
+   },
+   "id": "node-global-stop",
+   "name": "GLOBAL - Callback Request",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "choices": [
+      "today",
+      "tomorrow",
+      "day_after_tomorrow",
+      "in_days",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+      "next_week",
+      "specific_date",
+      "unspecified"
+     ],
+     "description": "Which day the caller wants us to call them back. 'today' (hoy, this afternoon, tonight), 'tomorrow' (mañana), 'day_after_tomorrow' (pasado mañana), 'in_days' for 'in N days' (then fill callback_in_days), a weekday name for a named day ('Friday', 'next Friday', 'el viernes'; 'this weekend' = 'saturday'), 'next_week' for 'next week' / 'la próxima semana' with no day, 'specific_date' for a calendar date ('the 20th', 'October 20') (then fill callback_specific_date), 'unspecified' if no day was said. Leave it 'unspecified' for a relative time like 'in two hours' (use callback_in_minutes). Use the LATEST time the caller asked for: if they corrected themselves or changed it, use the correction.",
+     "name": "callback_day",
+     "type": "enum"
+    },
+    {
+     "description": "Only when callback_day is 'specific_date': the date as MM-DD (for example 10-20). If only the day of the month was said, use the current month. Otherwise empty.",
+     "name": "callback_specific_date",
+     "type": "string"
+    },
+    {
+     "description": "Only when callback_day is 'in_days': the number of days ('in two days' = 2, 'en tres días' = 3). Otherwise 0.",
+     "name": "callback_in_days",
+     "type": "number"
+    },
+    {
+     "description": "Only for a time RELATIVE to now: minutes from now ('in two hours' = 120, 'in half an hour' = 30, 'en una hora' = 60, 'in 15 minutes' = 15). Otherwise 0.",
+     "name": "callback_in_minutes",
+     "type": "number"
+    },
+    {
+     "description": "The time of day for the callback as 24-hour HH:MM (5 PM = 17:00, 9:30 in the morning = 09:30, 'a las cinco de la tarde' = 17:00). A bare hour from 1 to 7 with no AM/PM means PM ('at 5' = 17:00); a bare 8 to 11 means AM unless they said evening or night. Parts of the day: morning / en la mañana = 09:00, noon / mediodía = 12:00, afternoon / en la tarde = 14:00, evening / tonight / en la noche = 18:00. Empty if no time of day was said. Use the LATEST time the caller asked for: if they corrected themselves or changed it, use the correction.",
+     "name": "callback_time",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "display_position": {
+    "x": 4278,
+    "y": 2238
+   },
+   "global_node_setting": {
+    "condition": "Caller genuinely does not want to pursue their case or be contacted about it at all — not interested, wants to be removed from the list, stop receiving calls, or not be contacted again, about the CASE itself. If the objection is that they don't want to talk to an AI/bot or that they want a human instead, that is NOT an opt-out — it is a human request. NOT just 'call me back later' (that is a callback), and NOT a general question.",
+    "cool_down": 1,
+    "negative_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "Can you call me back later? I'm busy.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "How much does this cost?",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "I don't want to talk to a robot, get me a person.",
+        "role": "user"
+       }
+      ]
+     }
+    ],
+    "positive_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "I'm not interested, please don't call me again.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Take me off your list.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Stop calling me, I don't want a lawyer.",
+        "role": "user"
+       }
+      ]
+     }
+    ]
+   },
+   "id": "node-global-optout",
+   "instruction": {
+    "text": "Acknowledge respectfully and briefly in the caller's language: \"Understood — I'll make sure you're taken off our list and you won't be contacted again. Take care.\" Then end the call. Do not argue or try to re-qualify.",
+    "type": "prompt"
+   },
+   "name": "GLOBAL - Opt Out",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 1950,
+    "y": 1134
+   },
+   "id": "node-end-needyear",
+   "instruction": {
+    "text": "Say warmly (caller's language): \"No problem at all — once you've got the model year handy, just give us a quick call back at (213) 205-3651 and we'll pick up right where we left off. Take care.\" Then end the call.",
+    "type": "prompt"
+   },
+   "name": "End: Need Year",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": -306,
+    "y": 198
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-intro-es",
+     "id": "e-introlang-es",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{lead_language}}",
+        "operator": "==",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-intro",
+    "id": "e-introlang-en",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-intro-lang",
+   "name": "node-intro-lang",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 174,
+    "y": 6
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-intro-issue",
+     "id": "e-intro-es-ok",
+     "transition_condition": {
+      "prompt": "Caller is willing to continue but has NOT yet said whether the vehicle has a problem — they simply agree to the questions or acknowledge the greeting (\"yes\", \"sure\", \"go ahead\", \"ok\", \"that's fine\", \"uh huh\", \"sí\", \"claro\", \"está bien\", \"dígame\", \"adelante\"). Take this edge whenever the caller has not yet answered whether the car is giving them trouble.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-q-ca",
+     "id": "e-intro-es-yes",
+     "transition_condition": {
+      "prompt": "Caller confirms they ARE having vehicle issues (yes, yeah, correct, or describes a problem)",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-past-issue-check",
+     "id": "e-intro-es-no",
+     "transition_condition": {
+      "prompt": "Caller says the vehicle is NOT having problems right now / it is running fine / not at the moment (present tense). Route here to check about past problems before ruling anything out.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-cb-extract",
+     "id": "e-intro-es-busy",
+     "transition_condition": {
+      "prompt": "Caller says it's not a good time, they're busy, or asks to be called back later",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-intro-es",
+   "instruction": {
+    "text": "Saludo de apertura saliente, EN ESPAÑOL, UNA sola intervención, palabra por palabra: \"Hola, le habla Alice, de Knight Law Group, sobre la consulta que usted envió acerca de su vehículo. Le aviso que soy una asistente de inteligencia artificial y que esta línea está grabada, y puedo comunicarle con una persona de nuestro equipo cuando usted quiera. ¿Me permite hacerle un par de preguntas rápidas sobre el carro?\"\n\nLuego ESPERE. No añada nada más, no haga una segunda pregunta y NO empiece las preguntas de calificación en esta misma intervención. Continúe toda la llamada en español.",
+    "type": "prompt"
+   },
+   "name": "Introduction (Spanish)",
+   "skippable": false,
+   "start_speaker": "agent",
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 5200,
+    "y": 2000
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-xfer-es",
+     "id": "e-xfer-lang-es",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{lead_language}}",
+        "operator": "==",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-xfer-en",
+    "id": "e-xfer-lang-en",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-xfer-lang",
+   "name": "Transfer Language Router",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 5500,
+    "y": 1880
+   },
+   "edge": {
+    "destination_node_id": "node-end-generic",
+    "id": "e-node-xfer-en-failed",
+    "transition_condition": {
+     "prompt": "Transfer failed",
+     "type": "prompt"
+    }
+   },
+   "id": "node-xfer-en",
+   "instruction": {
+    "text": "Thanks so much. Please hold for just a moment while I connect you with one of our specialists.",
+    "type": "static_text"
+   },
+   "name": "Cold Transfer: Intake (English)",
+   "skippable": false,
+   "speak_during_execution": true,
+   "transfer_destination": {
+    "number": "+18444825282",
+    "type": "predefined"
+   },
+   "transfer_option": {
+    "show_transferee_as_caller": true,
+    "type": "cold_transfer"
+   },
+   "type": "transfer_call"
+  },
+  {
+   "display_position": {
+    "x": 5500,
+    "y": 2120
+   },
+   "edge": {
+    "destination_node_id": "node-end-generic",
+    "id": "e-node-xfer-es-failed",
+    "transition_condition": {
+     "prompt": "Transfer failed",
+     "type": "prompt"
+    }
+   },
+   "id": "node-xfer-es",
+   "instruction": {
+    "text": "Gracias. Por favor, espere un momento mientras le conecto con uno de nuestros especialistas.",
+    "type": "static_text"
+   },
+   "name": "Cold Transfer: Intake (Spanish)",
+   "skippable": false,
+   "speak_during_execution": true,
+   "transfer_destination": {
+    "number": "+18445398811",
+    "type": "predefined"
+   },
+   "transfer_option": {
+    "show_transferee_as_caller": true,
+    "type": "cold_transfer"
+   },
+   "type": "transfer_call"
+  },
+  {
+   "display_position": {
+    "x": 5800,
+    "y": 2000
+   },
+   "id": "node-end-generic",
+   "instruction": {
+    "text": "Say warmly (caller's language): \"Thanks again — take care and have a great day.\" Then end the call.",
+    "type": "prompt"
+   },
+   "name": "End: Generic",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 5200,
+    "y": 2700
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-xfer-warm-es",
+     "id": "e-xfer-warm-lang-es",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{lead_language}}",
+        "operator": "==",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-xfer-warm-en",
+    "id": "e-xfer-warm-lang-en",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-xfer-warm-lang",
+   "name": "Warm Transfer Language Router",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 5718,
+    "y": 2454
+   },
+   "edge": {
+    "destination_node_id": "node-end-generic",
+    "id": "e-node-xfer-warm-en-failed",
+    "transition_condition": {
+     "prompt": "Transfer failed",
+     "type": "prompt"
+    }
+   },
+   "id": "node-xfer-warm-en",
+   "instruction": {
+    "text": "Thanks for your patience — let me connect you with one of our specialists. Please hold for just a moment.",
+    "type": "static_text"
+   },
+   "name": "Warm Transfer: Intake (English)",
+   "skippable": false,
+   "speak_during_execution": true,
+   "transfer_destination": {
+    "number": "+18444825282",
+    "type": "predefined"
+   },
+   "transfer_option": {
+    "agent_detection_timeout_ms": 30000,
+    "enable_bridge_audio_cue": true,
+    "on_hold_music": "ringtone",
+    "opt_out_human_detection": false,
+    "private_handoff_option": {
+     "message": "Hi, this is Alice, the AI intake assistant at Knight Law Group. I'm connecting you with a caller who needs to speak with someone.",
+     "type": "static_message"
+    },
+    "show_transferee_as_caller": true,
+    "type": "warm_transfer"
+   },
+   "type": "transfer_call"
+  },
+  {
+   "display_position": {
+    "x": 5718,
+    "y": 2814
+   },
+   "edge": {
+    "destination_node_id": "node-end-generic",
+    "id": "e-node-xfer-warm-es-failed",
+    "transition_condition": {
+     "prompt": "Transfer failed",
+     "type": "prompt"
+    }
+   },
+   "id": "node-xfer-warm-es",
+   "instruction": {
+    "text": "Gracias por su paciencia. Le conecto con uno de nuestros especialistas. Por favor, espere un momento.",
+    "type": "static_text"
+   },
+   "name": "Warm Transfer: Intake (Spanish)",
+   "skippable": false,
+   "speak_during_execution": true,
+   "transfer_destination": {
+    "number": "+18445398811",
+    "type": "predefined"
+   },
+   "transfer_option": {
+    "agent_detection_timeout_ms": 30000,
+    "enable_bridge_audio_cue": true,
+    "on_hold_music": "ringtone",
+    "opt_out_human_detection": false,
+    "private_handoff_option": {
+     "message": "Hola, le habla Alice, la asistente de admisión con inteligencia artificial de Knight Law Group. Le comunico con un cliente que necesita hablar con un agente.",
+     "type": "static_message"
+    },
+    "show_transferee_as_caller": true,
+    "type": "warm_transfer"
+   },
+   "type": "transfer_call"
+  },
+  {
+   "display_position": {
+    "x": 558,
+    "y": 510
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-q-ca",
+     "id": "e-past-yes",
+     "transition_condition": {
+      "prompt": "Caller confirms the vehicle DID have problems in the past / previously / before, even if it runs fine now. Any past issue counts.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-nonlemon",
+     "id": "e-past-no",
+     "transition_condition": {
+      "prompt": "Caller clearly states the vehicle has NEVER had any problems, past or present.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-past-issue-check",
+   "instruction": {
+    "text": "The caller said the vehicle is not having problems RIGHT NOW. Before ruling anything out, ask ONCE in the caller's language: \"Got it — and did you have any problems with it in the past?\" Then wait. California Lemon Law can still cover a vehicle that had problems previously, so any past issue still qualifies to continue.",
+    "type": "prompt"
+   },
+   "name": "Past Issue Check",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4062,
+    "y": 654
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-process",
+     "id": "e-consent-ret-yes",
+     "transition_condition": {
+      "prompt": "Caller now agrees to be reached by text and email (yes / okay / that's fine).",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-xfer-warm-lang",
+     "id": "e-consent-ret-no",
+     "transition_condition": {
+      "prompt": "Caller still declines to be reached by text and email.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-consent-recheck-ret",
+   "instruction": {
+    "text": "The caller declined to be reached by text and email. Re-confirm ONCE, warmly and in the caller's language: \"I understand. Just so you know, text and email are the official channels we use to send you the documents to sign and to receive everything back — is it okay if our team reaches you there?\" In Spanish: \"Entiendo. Solo para que sepa, el mensaje de texto y el correo son los medios oficiales que usamos para enviarle los documentos para firmar y recibirlos de vuelta. ¿Está bien si nuestro equipo le contacta por ahí?\" Then wait. Ask only once and do not pressure.",
+    "type": "prompt"
+   },
+   "name": "Consent Re-confirm (Retainer)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 1320
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-name-nr",
+     "id": "e-consent-nonret-yes",
+     "transition_condition": {
+      "prompt": "Caller now agrees to be reached by text and email (yes / okay / that's fine).",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-xfer-warm-lang",
+     "id": "e-consent-nonret-no",
+     "transition_condition": {
+      "prompt": "Caller still declines to be reached by text and email.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-consent-recheck-nonret",
+   "instruction": {
+    "text": "The caller declined to be reached by text and email. Re-confirm ONCE, warmly and in the caller's language: \"I understand. Just so you know, text and email are the official channels we use to send you the documents to sign and to receive everything back — is it okay if our team reaches you there?\" In Spanish: \"Entiendo. Solo para que sepa, el mensaje de texto y el correo son los medios oficiales que usamos para enviarle los documentos para firmar y recibirlos de vuelta. ¿Está bien si nuestro equipo le contacta por ahí?\" Then wait. Ask only once and do not pressure.",
+    "type": "prompt"
+   },
+   "name": "Consent Re-confirm (Non-Retainer)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 5094,
+    "y": 294
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-handoff-prep",
+     "id": "e-send-done",
+     "transition_condition": {
+      "prompt": "The send_agreement tool call has completed (whether it succeeded or failed).",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-ret-handoff-prep",
+    "id": "e-send-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "enable_typing_sound": true,
+   "id": "node-ret-send",
+   "name": "Retainer: Send Agreement",
+   "skippable": false,
+   "speak_during_execution": false,
+   "tool_id": "send_agreement",
+   "tool_type": "local",
+   "type": "function",
+   "wait_for_result": true
+  },
+  {
+   "code": "const name = ((dv.confirmed_name || '').toString().trim()) || ((dv.Name || '').toString().trim());\nconst first = name ? name.split(/\\s+/)[0] : '';\nconst lang = (dv.lead_language || 'English').toString().toLowerCase();\nconst isEs = lang.indexOf('es') === 0 || lang.indexOf('span') !== -1;\nconst greeting = isEs\n  ? ('Muy bien' + (first ? ', ' + first : '') + ' — su acuerdo de representación acaba de salir a su teléfono y a su correo. Ábralo mientras seguimos en la línea y le explico los puntos clave y le respondo cualquier duda. Mientras tanto, puedo empezar por los aspectos principales si le parece bien. Usted me dice.')\n  : ('Okay' + (first ? ' ' + first : '') + \" — that agreement just went out to your phone and email. Pull it up while we're on and I'll walk you through the key points and answer anything you've got. In the meantime, I can start by walking you through the main aspects of it if you're ready. Just let me know.\");\nreturn {\n  greeting: greeting,\n  first_name: first,\n  full_name: name,\n  phone: (dv.Phone || '').toString(),\n  email: (dv.Email || '').toString(),\n  lead_language: (dv.lead_language || '').toString(),\n  contact_id: (dv.contact_id || '').toString(),\n  entry_mode: 'immediate_handoff'\n};",
+   "display_position": {
+    "x": 5454,
+    "y": 270
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-swap",
+     "id": "e-prep-done",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-ret-swap",
+    "id": "e-prep-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "enable_typing_sound": false,
+   "id": "node-ret-handoff-prep",
+   "name": "Retainer: Handoff Prep (set vars)",
+   "response_variables": {
+    "contact_id": "contact_id",
+    "email": "email",
+    "entry_mode": "entry_mode",
+    "first_name": "first_name",
+    "full_name": "full_name",
+    "greeting": "greeting",
+    "lead_language": "lead_language",
+    "phone": "phone"
+   },
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "code",
+   "wait_for_result": true
+  },
+  {
+   "agent_id": "agent_7540b5be1e12d28fe1e937a832",
+   "agent_version": "latest_published",
+   "display_position": {
+    "x": 5814,
+    "y": 270
+   },
+   "edge": {
+    "destination_node_id": "node-end-retainer",
+    "id": "e-swap-fail",
+    "transition_condition": {
+     "prompt": "Transfer failed",
+     "type": "prompt"
+    }
+   },
+   "id": "node-ret-swap",
+   "keep_current_language": true,
+   "keep_current_voice": true,
+   "name": "Retainer: Hand off to Immediate Agent",
+   "post_call_analysis_setting": "both_agents",
+   "skippable": false,
+   "type": "agent_swap",
+   "webhook_setting": "both_agents"
+  },
+  {
+   "display_position": {
+    "x": 646,
+    "y": 410
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-q-lease",
+     "id": "e-cacfm-yes",
+     "transition_condition": {
+      "prompt": "Caller says the dealership was in California, names a California city or dealership, or corrects themselves to say it was California after all.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-oos",
+     "id": "e-cacfm-no",
+     "transition_condition": {
+      "prompt": "Caller clearly confirms the dealership was outside California — names another state, or plainly says it was not California.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-q-ca-confirm",
+   "instruction": {
+    "text": "Ask ONE short question about the LOCATION only (caller's language), then wait: \"Just to be sure I've got this right — was the dealership here in California, or in another state?\" In Spanish: \"Nada más para confirmar — ¿el concesionario estaba aquí en California, o en otro estado?\"\n\nAsk only this. Do NOT explain anything about the case and do NOT say we can't help — this turn exists only to confirm where the vehicle came from.\n\nIf the caller answers about buying versus leasing instead of the location, do not disqualify: ask the location question again in fresh words, for example \"And what state was that dealership in?\" / \"¿Y ese concesionario en qué estado estaba?\" Buying and leasing both qualify — only the location decides this.",
+    "type": "prompt"
+   },
+   "name": "Q: California Purchase (confirm)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "code": "var ES = { a:'a', b:'be', c:'ce', d:'de', e:'e', f:'efe', g:'ge', h:'hache', i:'i', j:'jota', k:'ka', l:'ele', m:'eme', n:'ene', 'ñ':'eñe', o:'o', p:'pe', q:'cu', r:'ere', s:'ese', t:'te', u:'u', v:'uve', w:'doble uve', x:'equis', y:'ye', z:'zeta' };\nvar ACC = { 'á':'a','à':'a','ä':'a','â':'a','ã':'a','é':'e','è':'e','ë':'e','ê':'e','í':'i','ì':'i','ï':'i','î':'i','ó':'o','ò':'o','ö':'o','ô':'o','õ':'o','ú':'u','ù':'u','ü':'u','û':'u','ç':'c' };\nvar raw = (dv.Name == null ? '' : dv.Name).toString().toLowerCase();\nvar cleaned = '';\nfor (var i = 0; i < raw.length; i++) { var ch = raw.charAt(i); cleaned += (ACC[ch] || ch); }\nvar words = cleaned.split(/[^a-zñ]+/);\nvar out = [];\nfor (var w = 0; w < words.length && out.length < 4; w++) { if (words[w]) out.push(words[w]); }\nvar esParts = [], enParts = [];\nfor (var k = 0; k < out.length; k++) {\n  var word = out[k], es = [], en = [];\n  for (var c = 0; c < word.length; c++) { var L = word.charAt(c); if (ES[L]) { es.push(ES[L]); en.push(L.toUpperCase()); } }\n  if (es.length) { esParts.push(es.join(', ')); enParts.push(en.join(' - ')); }\n}\nreturn { name_spelled_es: esParts.join('. '), name_spelled_en: enParts.join(', ') };\n",
+   "display_position": {
+    "x": 2028,
+    "y": 390
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-code-classify",
+     "id": "e-spell-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-code-classify",
+    "id": "e-spell-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "enable_typing_sound": false,
+   "id": "node-code-spell",
+   "name": "Spell Name (deterministic)",
+   "response_variables": {
+    "name_spelled_en": "name_spelled_en",
+    "name_spelled_es": "name_spelled_es"
+   },
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "code",
+   "wait_for_result": true
+  },
+  {
+   "display_position": {
+    "x": 402,
+    "y": 666
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-q-ca",
+     "id": "e-introq-yes",
+     "transition_condition": {
+      "prompt": "Caller confirms they ARE having vehicle issues (yes, yeah, correct, or describes a problem)",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-past-issue-check",
+     "id": "e-introq-no",
+     "transition_condition": {
+      "prompt": "Caller says the vehicle is NOT having problems right now / it is running fine / not at the moment (present tense). Route here to check about past problems before ruling anything out.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-cb-extract",
+     "id": "e-introq-busy",
+     "transition_condition": {
+      "prompt": "Caller says it's not a good time, they're busy, or asks to be called back later",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-intro-issue",
+   "instruction": {
+    "text": "First qualifying question, ONE turn, in the caller's language.\nEnglish: \"Great — are you having any issues with the vehicle?\"\nSpanish: \"Muy bien — ¿está teniendo problemas con su vehículo?\"\nThen WAIT. Ask nothing else in this turn. If the caller already described a problem in their previous answer, do NOT re-ask — treat that as a yes and move straight on.",
+    "type": "prompt"
+   },
+   "name": "Opening: Issue Check",
+   "skippable": false,
+   "start_speaker": "agent",
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4854,
+    "y": 470
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-send",
+     "id": "e-node-extract-name-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-ret-send",
+    "id": "e-node-extract-name-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-extract-name",
+   "name": "Extract Confirmed Name",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "description": "The caller's full legal name as it should appear on the representation agreement — the name on their driver's license, as established on THIS call. If the caller corrected the name we had on file, or spelled their name out, use the corrected or spelled name: assemble the letters they spelled into words and capitalise normally (for example \"m a r t i n\" -> \"Martin\"), and keep Spanish accents where the name clearly uses them (Martín, Guzmán, Fonseca). If the caller confirmed the name we already had was correct, return that name unchanged. Never invent a name, never return an email handle or username, and never return the garbled text from the web form if the caller gave a different name out loud. Leave empty ONLY if no name was ever established on the call.",
+     "name": "confirmed_name",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "display_position": {
+    "x": 3120,
+    "y": 1200
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-nonret-hours",
+     "id": "e-node-extract-name-nr-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-nonret-hours",
+    "id": "e-node-extract-name-nr-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-extract-name-nr",
+   "name": "Extract Confirmed Name (Non-Retainer)",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "description": "The caller's full legal name as it should appear on the representation agreement — the name on their driver's license, as established on THIS call. If the caller corrected the name we had on file, or spelled their name out, use the corrected or spelled name: assemble the letters they spelled into words and capitalise normally (for example \"m a r t i n\" -> \"Martin\"), and keep Spanish accents where the name clearly uses them (Martín, Guzmán, Fonseca). If the caller confirmed the name we already had was correct, return that name unchanged. Never invent a name, never return an email handle or username, and never return the garbled text from the web form if the caller gave a different name out loud. Leave empty ONLY if no name was ever established on the call.",
+     "name": "confirmed_name",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "display_position": {
+    "x": 790,
+    "y": 446
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease",
+     "id": "e-qlease-done",
+     "transition_condition": {
+      "prompt": "The caller has said they bought it, OR confirmed it is still leased, OR said they leased it and later bought it out. A bare \"I leased it\" is not enough: the \"still leased, or bought it out?\" follow-up must be answered first.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-q-lease",
+   "instruction": {
+    "text": "Ask ONE question (caller's language), then wait.\nEnglish: \"Did you purchase the vehicle, or lease it?\"\nSpanish: \"¿Usted compró el vehículo, o lo arrendó?\"\n\nIf the caller ALREADY said in an earlier answer that they lease it or leased it, do NOT ask that again: go straight to the follow-up below.\n\nFollow-up, ONLY if the vehicle is or was leased: \"And is it still leased, or did you later buy it out?\" In Spanish: \"¿Y todavía lo tiene arrendado, o después lo compró?\" Then wait.\n\nIf the answer is only \"it's financed\", \"I'm making payments\", \"a loan\" or \"estoy pagando\", that does not say lease or purchase. Ask once: \"Is that a lease, or a loan to buy it?\" In Spanish: \"¿Es un arrendamiento, o un préstamo para comprarlo?\"\n\nHow to read the answer (do NOT say this out loud): \"lease\", \"leased\", \"leasing\" and close-sounding mis-transcriptions such as \"liz\", \"list\", \"lists\", \"leave it\" or \"I'll leave it\" (for \"I leased it\") mean LEASE. In Spanish, \"arrendado\", \"arrendé\", \"lo arriendo\", \"rentado\", \"lo rento\" and mis-transcriptions such as \"Rendée\" or \"renté\" mean LEASE. \"Bought\", \"purchased\", \"paid cash\", \"financed with a loan\", \"compré\", \"lo compré\" mean PURCHASED. \"Bought it out\", \"bought out the lease\", \"lo compré al final del arrendamiento\" mean LEASED, THEN PURCHASED.\n\nDo NOT explain why you are asking, and do NOT mention arbitration or whether this affects their case. Only collect the answer.",
+    "type": "prompt"
+   },
+   "name": "Q: Purchase or Lease",
+   "skippable": true,
+   "start_speaker": "agent",
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 990,
+    "y": 446
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-after-lease",
+     "id": "e-xlease-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-after-lease",
+    "id": "e-xlease-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-extract-lease",
+   "name": "Extract Purchase Type",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "choices": [
+      "purchased",
+      "leased",
+      "lease_buyout"
+     ],
+     "description": "How the caller got the vehicle. 'purchased' = they bought it (cash, loan or financing). 'leased' = it is on a lease right now. 'lease_buyout' = it started as a lease and they later bought it out. Mis-transcriptions of lease ('liz', 'list', 'lists', 'leave it', 'I'll leave it', 'Rendée', 'renté') and Spanish 'arrendado', 'arrendé', 'rentado' mean lease. If the caller never made it clear, return 'purchased'. Never return 'leased' or 'lease_buyout' unless the caller actually said the vehicle is or was leased.",
+     "name": "purchase_type_call",
+     "type": "enum"
+    }
+   ]
+  },
+  {
+   "display_position": {
+    "x": 1190,
+    "y": 446
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-q-possession",
+     "id": "e-al-poss",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{in_possession}}",
+        "operator": "not_exist"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-q-vehicle",
+     "id": "e-al-make",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{vehicle_make}}",
+        "operator": "not_exist"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-q-vehicle",
+     "id": "e-al-year",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{vehicle_year}}",
+        "operator": "not_exist"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-extract-vehicle",
+    "id": "e-al-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-after-lease",
+   "name": "Route After Lease",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 894,
+    "y": 906
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-cb-compute",
+     "id": "e-cb-extract-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-cb-compute",
+    "id": "e-cb-extract-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-cb-extract",
+   "name": "Callback: Extract Time",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "choices": [
+      "today",
+      "tomorrow",
+      "day_after_tomorrow",
+      "in_days",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+      "next_week",
+      "specific_date",
+      "unspecified"
+     ],
+     "description": "Which day the caller wants us to call them back. 'today' (hoy, this afternoon, tonight), 'tomorrow' (mañana), 'day_after_tomorrow' (pasado mañana), 'in_days' for 'in N days' (then fill callback_in_days), a weekday name for a named day ('Friday', 'next Friday', 'el viernes'; 'this weekend' = 'saturday'), 'next_week' for 'next week' / 'la próxima semana' with no day, 'specific_date' for a calendar date ('the 20th', 'October 20') (then fill callback_specific_date), 'unspecified' if no day was said. Leave it 'unspecified' for a relative time like 'in two hours' (use callback_in_minutes). Use the LATEST time the caller asked for: if they corrected themselves or changed it, use the correction.",
+     "name": "callback_day",
+     "type": "enum"
+    },
+    {
+     "description": "Only when callback_day is 'specific_date': the date as MM-DD (for example 10-20). If only the day of the month was said, use the current month. Otherwise empty.",
+     "name": "callback_specific_date",
+     "type": "string"
+    },
+    {
+     "description": "Only when callback_day is 'in_days': the number of days ('in two days' = 2, 'en tres días' = 3). Otherwise 0.",
+     "name": "callback_in_days",
+     "type": "number"
+    },
+    {
+     "description": "Only for a time RELATIVE to now: minutes from now ('in two hours' = 120, 'in half an hour' = 30, 'en una hora' = 60, 'in 15 minutes' = 15). Otherwise 0.",
+     "name": "callback_in_minutes",
+     "type": "number"
+    },
+    {
+     "description": "The time of day for the callback as 24-hour HH:MM (5 PM = 17:00, 9:30 in the morning = 09:30, 'a las cinco de la tarde' = 17:00). A bare hour from 1 to 7 with no AM/PM means PM ('at 5' = 17:00); a bare 8 to 11 means AM unless they said evening or night. Parts of the day: morning / en la mañana = 09:00, noon / mediodía = 12:00, afternoon / en la tarde = 14:00, evening / tonight / en la noche = 18:00. Empty if no time of day was said. Use the LATEST time the caller asked for: if they corrected themselves or changed it, use the correction.",
+     "name": "callback_time",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "code": "// Retell code node \"Callback: Resolve Time\" (node-cb-compute). Body only: Retell runs it with `dv` (dynamic variables)\n// and maps the returned keys to dynamic variables. Pacific time is computed by hand (US DST rules), no Intl needed.\n// Inputs (from node-cb-extract): callback_day, callback_specific_date, callback_in_days, callback_in_minutes,\n// callback_time, plus callback_tries from a previous pass.\n// callback_status: in_window | out_of_window | need_time | outside_hours | unclear\n// callback_next:   confirm | out | reask | giveup   (the only value the branch node reads)\nvar WINDOW_HOURS = 72; // Micol: the 3-day Alice Qualifying follow-up cadence prevails\nvar OPEN_HOUR = 8, CLOSE_HOUR = 21; // same calling hours as the n8n callback parser (8 AM - 9 PM PT)\nvar HOUR = 3600000, DAY = 86400000;\n\nfunction nthSunday(y, m, n) { var first = (7 - new Date(Date.UTC(y, m, 1)).getUTCDay()) % 7; return 1 + first + 7 * (n - 1); }\nfunction offsetAt(ms) { // -7 (PDT) or -8 (PST)\n  var y = new Date(ms).getUTCFullYear();\n  var start = Date.UTC(y, 2, nthSunday(y, 2, 2), 10), end = Date.UTC(y, 10, nthSunday(y, 10, 1), 9);\n  return (ms >= start && ms < end) ? -7 : -8;\n}\nfunction pac(ms) {\n  var off = offsetAt(ms), d = new Date(ms + off * HOUR);\n  return { y: d.getUTCFullYear(), mo: d.getUTCMonth(), d: d.getUTCDate(), wd: d.getUTCDay(), h: d.getUTCHours(), mi: d.getUTCMinutes(), off: off };\n}\nfunction fromPac(y, mo, d, h, mi) { // Pacific wall clock -> epoch ms\n  var guess = Date.UTC(y, mo, d, h, mi) + 8 * HOUR;\n  return Date.UTC(y, mo, d, h, mi) - offsetAt(guess) * HOUR;\n}\nfunction pad(n) { return (n < 10 ? '0' : '') + n; }\n\nvar now = Date.now();\nvar P = pac(now);\nvar tries = (parseInt(dv.callback_tries, 10) || 0) + 1;\nvar day = String(dv.callback_day || '').toLowerCase().trim();\nvar inMin = parseInt(dv.callback_in_minutes, 10) || 0;\nvar inDays = parseInt(dv.callback_in_days, 10) || 0;\nvar tm = String(dv.callback_time || '').toLowerCase().match(/(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.)?/);\nvar hour = null, minute = 0;\nif (tm) {\n  hour = parseInt(tm[1], 10); minute = tm[2] ? parseInt(tm[2], 10) : 0;\n  var ap = (tm[3] || '').replace(/\\./g, '');\n  if (ap === 'pm' && hour < 12) hour += 12; else if (ap === 'am' && hour === 12) hour = 0;\n  if (hour > 23 || minute > 59) hour = null;\n}\n\nvar cbStatus = '', target = null, dayOffset = null;\nif (inMin > 0) {\n  target = now + inMin * 60000;\n  target = Math.ceil(target / 300000) * 300000; // next 5 minutes\n} else {\n  var WD = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];\n  var wi = WD.indexOf(day);\n  if (day === 'today') dayOffset = 0;\n  else if (day === 'tomorrow') dayOffset = 1;\n  else if (day === 'day_after_tomorrow') dayOffset = 2;\n  else if (day === 'in_days' && inDays > 0) dayOffset = inDays;\n  else if (wi !== -1) { dayOffset = (wi - P.wd + 7) % 7; if (dayOffset === 0) dayOffset = 7; }\n  else if (day === 'next_week') cbStatus = 'out_of_window';\n  else if (day === 'specific_date') {\n    var sd = String(dv.callback_specific_date || '').match(/(\\d{1,2})\\D+(\\d{1,2})/);\n    if (sd) {\n      var mo = parseInt(sd[1], 10) - 1, dd = parseInt(sd[2], 10);\n      var t0 = Date.UTC(P.y, P.mo, P.d), t1 = Date.UTC(P.y, mo, dd);\n      if (t1 < t0) t1 = Date.UTC(P.y + 1, mo, dd);\n      dayOffset = Math.round((t1 - t0) / DAY);\n    }\n  }\n  if (!cbStatus) {\n    if (dayOffset === null && hour !== null) { // a time with no day: today if still ahead, else tomorrow\n      dayOffset = (hour * 60 + minute > P.h * 60 + P.mi) ? 0 : 1;\n    }\n    if (dayOffset === null) cbStatus = 'unclear';\n    else {\n      var base = new Date(Date.UTC(P.y, P.mo, P.d + dayOffset));\n      var by = base.getUTCFullYear(), bm = base.getUTCMonth(), bd = base.getUTCDate();\n      if (fromPac(by, bm, bd, OPEN_HOUR, 0) > now + WINDOW_HOURS * HOUR) cbStatus = 'out_of_window';\n      else if (hour === null) cbStatus = 'need_time';\n      else if (hour < OPEN_HOUR || hour >= CLOSE_HOUR) cbStatus = 'outside_hours';\n      else {\n        target = fromPac(by, bm, bd, hour, minute);\n        if (target <= now) { target = null; cbStatus = 'unclear'; } // e.g. \"today at 2\" when it is already 3\n      }\n    }\n  }\n}\nif (target !== null && !cbStatus) {\n  var T = pac(target);\n  if (T.h < OPEN_HOUR || T.h >= CLOSE_HOUR) cbStatus = 'outside_hours';\n  else if (target > now + WINDOW_HOURS * HOUR) cbStatus = 'out_of_window';\n  else cbStatus = 'in_window';\n}\n\nvar whenEn = '', whenEs = '', iso = '', pacific = '';\nif (cbStatus === 'in_window') {\n  var Q = pac(target);\n  var off = Math.round((Date.UTC(Q.y, Q.mo, Q.d) - Date.UTC(P.y, P.mo, P.d)) / DAY);\n  var h12 = Q.h % 12 === 0 ? 12 : Q.h % 12;\n  var clock = h12 + (Q.mi ? ':' + pad(Q.mi) : '');\n  var DEN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n  var DES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];\n  whenEn = (off === 0 ? 'today' : off === 1 ? 'tomorrow' : DEN[Q.wd]) + ' at ' + clock + ' ' + (Q.h < 12 ? 'AM' : 'PM');\n  var part = Q.h < 12 ? 'de la mañana' : Q.h === 12 ? 'del mediodía' : Q.h < 19 ? 'de la tarde' : 'de la noche';\n  whenEs = (off === 0 ? 'hoy' : off === 1 ? 'mañana' : 'el ' + DES[Q.wd]) + (h12 === 1 ? ' a la ' : ' a las ') + clock + ' ' + part;\n  var oh = -Q.off;\n  iso = Q.y + '-' + pad(Q.mo + 1) + '-' + pad(Q.d) + 'T' + pad(Q.h) + ':' + pad(Q.mi) + ':00.000-' + pad(oh) + ':00';\n  pacific = pad(Q.mo + 1) + '-' + pad(Q.d) + '-' + Q.y + ' ' + pad(h12) + ':' + pad(Q.mi) + ' ' + (Q.h < 12 ? 'AM' : 'PM');\n}\n// At most two questions: \"when?\" and then \"what time?\" (or a second \"when?\").\nvar next = cbStatus === 'in_window' ? 'confirm' : cbStatus === 'out_of_window' ? 'out' : (tries < 3 ? 'reask' : 'giveup');\nvar askEn = '', askEs = '';\nif (next === 'reask') {\n  if (cbStatus === 'need_time') { askEn = 'Sure. And what time works best that day?'; askEs = 'Claro. ¿Y a qué hora le queda mejor ese día?'; }\n  else if (cbStatus === 'outside_hours') { askEn = 'We make calls between 8 AM and 9 PM Pacific. What time in that window works for you?'; askEs = 'Hacemos llamadas entre las 8 de la mañana y las 9 de la noche, hora del Pacífico. ¿Qué hora en ese horario le funciona?'; }\n  else if (tries === 1) { askEn = \"No problem at all. What's a good day and time for us to give you a call back?\"; askEs = 'No hay problema. ¿Qué día y a qué hora le podemos volver a llamar?'; }\n  else { askEn = 'Sorry, what day and time would work best for us to call you back?'; askEs = 'Disculpe, ¿qué día y a qué hora le conviene que le llamemos?'; }\n}\nreturn {\n  callback_status: cbStatus,\n  callback_next: next,\n  callback_tries: String(tries),\n  callback_ask_en: askEn,\n  callback_ask_es: askEs,\n  callback_when_en: whenEn,\n  callback_when_es: whenEs,\n  callback_at_iso: iso,\n  callback_at_pacific: pacific\n};\n",
+   "display_position": {
+    "x": 1194,
+    "y": 906
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-cb-branch",
+     "id": "e-cb-compute-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-cb-branch",
+    "id": "e-cb-compute-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "enable_typing_sound": false,
+   "id": "node-cb-compute",
+   "name": "Callback: Resolve Time (deterministic)",
+   "response_variables": {
+    "callback_ask_en": "callback_ask_en",
+    "callback_ask_es": "callback_ask_es",
+    "callback_at_iso": "callback_at_iso",
+    "callback_at_pacific": "callback_at_pacific",
+    "callback_next": "callback_next",
+    "callback_status": "callback_status",
+    "callback_tries": "callback_tries",
+    "callback_when_en": "callback_when_en",
+    "callback_when_es": "callback_when_es"
+   },
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "code",
+   "wait_for_result": true
+  },
+  {
+   "display_position": {
+    "x": 1494,
+    "y": 906
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-cb-confirm",
+     "id": "e-cb-confirm",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{callback_next}}",
+        "operator": "==",
+        "right": "confirm"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-cb-out",
+     "id": "e-cb-out",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{callback_next}}",
+        "operator": "==",
+        "right": "out"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-cb-reask",
+     "id": "e-cb-reask",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{callback_next}}",
+        "operator": "==",
+        "right": "reask"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-end-incomplete",
+    "id": "e-cb-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-cb-branch",
+   "name": "Callback: Route",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 1794,
+    "y": 756
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-cb-extract",
+     "id": "e-cb-reask-time",
+     "transition_condition": {
+      "prompt": "The caller names a day and/or a time for the callback, or changes or corrects one (for example \"tomorrow\", \"at 5\", \"Friday afternoon\", \"in two hours\", \"mañana a las cinco\").",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-incomplete",
+     "id": "e-cb-reask-none",
+     "transition_condition": {
+      "prompt": "The caller will not give a time: they say anytime or whenever, that they will call us back themselves, that they are not interested in a callback, or they just have to go.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-cb-reask",
+   "instruction": {
+    "text": "Say exactly this, in the caller's language, as ONE short turn, then wait:\nEnglish: \"{{callback_ask_en}}\"\nSpanish: \"{{callback_ask_es}}\"\nDo not add anything else, do not continue the intake, and keep it short: they are busy.",
+    "type": "prompt"
+   },
+   "name": "Callback: Ask When",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 1794,
+    "y": 906
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-cb-extract",
+     "id": "e-cb-confirm-change",
+     "transition_condition": {
+      "prompt": "The caller changes or corrects the day or the time.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-cb-end",
+     "id": "e-cb-confirm-ok",
+     "transition_condition": {
+      "prompt": "The caller accepts, says okay / thanks / bye, or has nothing to change.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-cb-confirm",
+   "instruction": {
+    "text": "Say this in the caller's language as ONE short turn, then wait:\nEnglish: \"Perfect, we'll give you a call {{callback_when_en}}. Talk to you then!\"\nSpanish: \"Perfecto, le llamamos {{callback_when_es}}. ¡Hablamos entonces!\"\nSay the day and time exactly as written. Do not add a date, a time zone or anything else, and do not continue the intake.",
+    "type": "prompt"
+   },
+   "name": "Callback: Confirm",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 2094,
+    "y": 906
+   },
+   "id": "node-cb-end",
+   "instruction": {
+    "text": "Say a brief, warm goodbye in the caller's language (for example \"Take care!\" / \"¡Que esté muy bien!\"). Then end the call.",
+    "type": "prompt"
+   },
+   "name": "End: Callback Booked",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 1794,
+    "y": 1056
+   },
+   "id": "node-cb-out",
+   "instruction": {
+    "text": "Say this warmly in the caller's language, as ONE turn:\nEnglish: \"No problem. Our team will contact you soon. Take care!\"\nSpanish: \"No hay problema. Nuestro equipo se comunicará con usted pronto. ¡Que esté muy bien!\"\nDo not promise a specific day or time. Then end the call.",
+    "type": "prompt"
+   },
+   "name": "End: Callback Outside Window",
+   "skippable": false,
+   "speak_during_execution": true,
+   "type": "end"
+  },
+  {
+   "code": "// Retell code node \"Non-Retainer: Business Hours?\" (node-nonret-hours). Body only, run by Retell with `dv`.\n// Intake Analysts take live transfers during business hours: Monday-Friday, 8 AM - 5 PM Pacific (Ubaid 2026-10-20; was 8 PM).\n// Pacific time is computed by hand (US DST rules).\nvar HOUR = 3600000;\nfunction nthSunday(y, m, n) { var first = (7 - new Date(Date.UTC(y, m, 1)).getUTCDay()) % 7; return 1 + first + 7 * (n - 1); }\nfunction offsetAt(ms) {\n  var y = new Date(ms).getUTCFullYear();\n  var start = Date.UTC(y, 2, nthSunday(y, 2, 2), 10), end = Date.UTC(y, 10, nthSunday(y, 10, 1), 9);\n  return (ms >= start && ms < end) ? -7 : -8;\n}\nvar d = new Date(Date.now() + offsetAt(Date.now()) * HOUR);\nvar wd = d.getUTCDay(), h = d.getUTCHours();\nvar open = wd >= 1 && wd <= 5 && h >= 8 && h < 17;\nreturn { nonret_hours: open ? 'open' : 'closed' };\n",
+   "display_position": {
+    "x": 3600,
+    "y": 550
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-nonret-hours-branch",
+     "id": "e-nonret-hours-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-nonret-hours-branch",
+    "id": "e-nonret-hours-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "enable_typing_sound": false,
+   "id": "node-nonret-hours",
+   "name": "Non-Retainer: Business Hours? (deterministic)",
+   "response_variables": {
+    "nonret_hours": "nonret_hours"
+   },
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "code",
+   "wait_for_result": true
+  },
+  {
+   "display_position": {
+    "x": 3900,
+    "y": 550
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-nonret-offer",
+     "id": "e-nr-hours-open",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{nonret_hours}}",
+        "operator": "==",
+        "right": "open"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-speak-nonret-close",
+    "id": "e-nr-hours-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-nonret-hours-branch",
+   "name": "Non-Retainer: Route by Hours",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 4200,
+    "y": 550
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-nonret-lang",
+     "id": "e-nr-offer-yes",
+     "transition_condition": {
+      "prompt": "The caller agrees to be connected now (yes / sure / okay / go ahead / sí / claro).",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-speak-nonret-close",
+     "id": "e-nr-offer-no",
+     "transition_condition": {
+      "prompt": "The caller says no, not now, that they are busy, or that they would rather book the consultation themselves.",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-nonret-offer",
+   "instruction": {
+    "text": "In the caller's language, as ONE short turn, then wait:\nEnglish: \"Great news, we may be able to help. One of our Intake Analysts is available right now to go over your case and set up your consultation. Would you like me to connect you now?\"\nSpanish: \"Buenas noticias, es posible que podamos ayudarle. Uno de nuestros analistas de admisión está disponible ahora mismo para revisar su caso y programar su consulta. ¿Quiere que le comunique ahora?\"\nDo NOT mention a booking link here.",
+    "type": "prompt"
+   },
+   "name": "Non-Retainer: Offer Live Transfer",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4500,
+    "y": 550
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-nonret-xfer-prep",
+     "id": "e-nonret-lang-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-nonret-xfer-prep",
+    "id": "e-nonret-lang-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-nonret-lang",
+   "name": "Non-Retainer: Caller Language",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "choices": [
+      "English",
+      "Spanish"
+     ],
+     "description": "The language the CALLER has actually been speaking on this call: 'Spanish' if the caller has been answering in Spanish, otherwise 'English'. Ignore the language on file.",
+     "name": "call_language",
+     "type": "enum"
+    }
+   ]
+  },
+  {
+   "code": "return { nonret_live_transfer: 'attempted' };",
+   "display_position": {
+    "x": 4800,
+    "y": 550
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-nonret-xfer-lang",
+     "id": "e-nonret-xfer-prep-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-nonret-xfer-lang",
+    "id": "e-nonret-xfer-prep-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "enable_typing_sound": false,
+   "id": "node-nonret-xfer-prep",
+   "name": "Non-Retainer: Mark Live Transfer",
+   "response_variables": {
+    "nonret_live_transfer": "nonret_live_transfer"
+   },
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "code",
+   "wait_for_result": true
+  },
+  {
+   "display_position": {
+    "x": 5100,
+    "y": 550
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-nonret-xfer-es",
+     "id": "e-nr-xfer-es",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{call_language}}",
+        "operator": "==",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-nonret-xfer-en",
+    "id": "e-nr-xfer-en",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-nonret-xfer-lang",
+   "name": "Non-Retainer: Transfer Language Router",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 5400,
+    "y": 450
+   },
+   "edge": {
+    "destination_node_id": "node-nonret-busy",
+    "id": "e-nonret-xfer-en-failed",
+    "transition_condition": {
+     "prompt": "Transfer failed",
+     "type": "prompt"
+    }
+   },
+   "id": "node-nonret-xfer-en",
+   "instruction": {
+    "text": "Perfect, connecting you now. Please hold for just a moment.",
+    "type": "static_text"
+   },
+   "name": "Non-Retainer: Live Transfer (English)",
+   "skippable": false,
+   "speak_during_execution": true,
+   "transfer_destination": {
+    "number": "+18444825282",
+    "type": "predefined"
+   },
+   "transfer_option": {
+    "agent_detection_timeout_ms": 30000,
+    "enable_bridge_audio_cue": true,
+    "on_hold_music": "ringtone",
+    "opt_out_human_detection": false,
+    "private_handoff_option": {
+     "message": "Hi, this is Alice, the AI intake assistant at Knight Law Group. I'm connecting you with a caller who qualifies as a non-retainer lead and would like to set up a consultation now.",
+     "type": "static_message"
+    },
+    "show_transferee_as_caller": true,
+    "type": "warm_transfer"
+   },
+   "type": "transfer_call"
+  },
+  {
+   "display_position": {
+    "x": 5400,
+    "y": 650
+   },
+   "edge": {
+    "destination_node_id": "node-nonret-busy",
+    "id": "e-nonret-xfer-es-failed",
+    "transition_condition": {
+     "prompt": "Transfer failed",
+     "type": "prompt"
+    }
+   },
+   "id": "node-nonret-xfer-es",
+   "instruction": {
+    "text": "Perfecto, le comunico ahora. Por favor, espere un momento.",
+    "type": "static_text"
+   },
+   "name": "Non-Retainer: Live Transfer (Spanish)",
+   "skippable": false,
+   "speak_during_execution": true,
+   "transfer_destination": {
+    "number": "+18445398811",
+    "type": "predefined"
+   },
+   "transfer_option": {
+    "agent_detection_timeout_ms": 30000,
+    "enable_bridge_audio_cue": true,
+    "on_hold_music": "ringtone",
+    "opt_out_human_detection": false,
+    "private_handoff_option": {
+     "message": "Hola, le habla Alice, la asistente de admisión con inteligencia artificial de Knight Law Group. Le comunico con un cliente que califica como caso sin retención y quiere programar una consulta ahora.",
+     "type": "static_message"
+    },
+    "show_transferee_as_caller": true,
+    "type": "warm_transfer"
+   },
+   "type": "transfer_call"
+  },
+  {
+   "display_position": {
+    "x": 5700,
+    "y": 550
+   },
+   "edges": [],
+   "id": "node-nonret-busy",
+   "instruction": {
+    "text": "Say warmly (caller's language), in one short turn:\nEnglish: \"Looks like our Intake Analysts are tied up right now. No problem, we'll text you a booking link shortly so you can set up your consultation. Thanks for contacting Knight Law Group.\"\nSpanish: \"Parece que nuestros analistas de admisión están ocupados en este momento. No se preocupe, en breve le enviaremos por mensaje de texto un enlace para que programe su consulta. Gracias por comunicarse con Knight Law Group.\"",
+    "type": "prompt"
+   },
+   "name": "Non-Retainer: Transfer Failed Close",
+   "skip_response_edge": {
+    "destination_node_id": "node-end-nonret",
+    "id": "e-nr-busy-skip",
+    "transition_condition": {
+     "prompt": "Skip response",
+     "type": "prompt"
+    }
+   },
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 2800,
+    "y": 1600
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-arb-branch",
+     "id": "e-arb-lang-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-arb-branch",
+    "id": "e-arb-lang-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-arb-lang",
+   "name": "Arbitration: Caller Language",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "choices": [
+      "English",
+      "Spanish"
+     ],
+     "description": "The language the CALLER has actually been speaking on this call: 'Spanish' if the caller has been answering in Spanish, otherwise 'English'. Ignore the language on file.",
+     "name": "call_language",
+     "type": "enum"
+    }
+   ]
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 1600
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-disq-arb-lease-en",
+     "id": "e-arb-lease-en",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_lease"
+       },
+       {
+        "left": "{{call_language}}",
+        "operator": "!=",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-lease-es",
+     "id": "e-arb-lease-es",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_lease"
+       },
+       {
+        "left": "{{call_language}}",
+        "operator": "==",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-buyout-en",
+     "id": "e-arb-buyout-en",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_buyout"
+       },
+       {
+        "left": "{{call_language}}",
+        "operator": "!=",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-buyout-es",
+     "id": "e-arb-buyout-es",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_buyout"
+       },
+       {
+        "left": "{{call_language}}",
+        "operator": "==",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-tesla-en",
+     "id": "e-arb-tesla-en",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_tesla"
+       },
+       {
+        "left": "{{call_language}}",
+        "operator": "!=",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-tesla-es",
+     "id": "e-arb-tesla-es",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{bad_reason}}",
+        "operator": "==",
+        "right": "arbitration_tesla"
+       },
+       {
+        "left": "{{call_language}}",
+        "operator": "==",
+        "right": "Spanish"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-end-bad",
+    "id": "e-arb-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-arb-branch",
+   "name": "Arbitration: Route by Reason + Language",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 1000
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease-fix",
+     "id": "e-disq-arb-lease-en-correct",
+     "transition_condition": {
+      "prompt": "The caller corrects how they got the vehicle: for example they say they later bought out the lease, that it is no longer leased, or that they bought it rather than leased it.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-arb-lease-en-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, says okay / thanks / bye, or has no further questions",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-after",
+     "id": "e-disq-arb-lease-en-more",
+     "transition_condition": {
+      "prompt": "Caller pushes back, asks a question, or says anything other than a plain acknowledgement",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-arb-lease-en",
+   "instruction": {
+    "text": "Since your vehicle is leased, the manufacturer is actually a party to your lease agreement, and that agreement includes a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.",
+    "type": "static_text"
+   },
+   "name": "Disqualify: Arbitration (Lease, English)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3300,
+    "y": 1000
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease-fix",
+     "id": "e-disq-arb-lease-es-correct",
+     "transition_condition": {
+      "prompt": "The caller corrects how they got the vehicle: for example they say they later bought out the lease, that it is no longer leased, or that they bought it rather than leased it.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-arb-lease-es-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, says okay / thanks / bye, or has no further questions",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-after",
+     "id": "e-disq-arb-lease-es-more",
+     "transition_condition": {
+      "prompt": "Caller pushes back, asks a question, or says anything other than a plain acknowledgement",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-arb-lease-es",
+   "instruction": {
+    "text": "Como su vehículo es arrendado, el fabricante en realidad forma parte de su contrato de arrendamiento, y ese contrato incluye una cláusula que exige que las disputas se resuelvan por arbitraje en lugar de una demanda. Nuestra firma solo lleva casos a través de los tribunales, así que lamentablemente este no es un caso que podamos aceptar.",
+    "type": "static_text"
+   },
+   "name": "Disqualify: Arbitration (Lease, Spanish)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 1200
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease-fix",
+     "id": "e-disq-arb-buyout-en-correct",
+     "transition_condition": {
+      "prompt": "The caller corrects how they got the vehicle: for example they say they later bought out the lease, that it is no longer leased, or that they bought it rather than leased it.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-arb-buyout-en-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, says okay / thanks / bye, or has no further questions",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-after",
+     "id": "e-disq-arb-buyout-en-more",
+     "transition_condition": {
+      "prompt": "Caller pushes back, asks a question, or says anything other than a plain acknowledgement",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-arb-buyout-en",
+   "instruction": {
+    "text": "Since your vehicle started out as a lease, the manufacturer was a party to that original lease agreement, and that agreement includes a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.",
+    "type": "static_text"
+   },
+   "name": "Disqualify: Arbitration (Lease Buyout, English)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3300,
+    "y": 1200
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease-fix",
+     "id": "e-disq-arb-buyout-es-correct",
+     "transition_condition": {
+      "prompt": "The caller corrects how they got the vehicle: for example they say they later bought out the lease, that it is no longer leased, or that they bought it rather than leased it.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-arb-buyout-es-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, says okay / thanks / bye, or has no further questions",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-after",
+     "id": "e-disq-arb-buyout-es-more",
+     "transition_condition": {
+      "prompt": "Caller pushes back, asks a question, or says anything other than a plain acknowledgement",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-arb-buyout-es",
+   "instruction": {
+    "text": "Como su vehículo comenzó como un arrendamiento, el fabricante formó parte de ese contrato de arrendamiento original, y ese contrato incluye una cláusula que exige que las disputas se resuelvan por arbitraje en lugar de una demanda. Nuestra firma solo lleva casos a través de los tribunales, así que lamentablemente este no es un caso que podamos aceptar.",
+    "type": "static_text"
+   },
+   "name": "Disqualify: Arbitration (Lease Buyout, Spanish)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": 1400
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease-fix",
+     "id": "e-disq-arb-tesla-en-correct",
+     "transition_condition": {
+      "prompt": "The caller corrects how they got the vehicle: for example they say they later bought out the lease, that it is no longer leased, or that they bought it rather than leased it.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-arb-tesla-en-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, says okay / thanks / bye, or has no further questions",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-after",
+     "id": "e-disq-arb-tesla-en-more",
+     "transition_condition": {
+      "prompt": "Caller pushes back, asks a question, or says anything other than a plain acknowledgement",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-arb-tesla-en",
+   "instruction": {
+    "text": "Tesla's purchase and lease agreements include a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.",
+    "type": "static_text"
+   },
+   "name": "Disqualify: Arbitration (Tesla, English)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3300,
+    "y": 1400
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease-fix",
+     "id": "e-disq-arb-tesla-es-correct",
+     "transition_condition": {
+      "prompt": "The caller corrects how they got the vehicle: for example they say they later bought out the lease, that it is no longer leased, or that they bought it rather than leased it.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-arb-tesla-es-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, says okay / thanks / bye, or has no further questions",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-disq-arb-after",
+     "id": "e-disq-arb-tesla-es-more",
+     "transition_condition": {
+      "prompt": "Caller pushes back, asks a question, or says anything other than a plain acknowledgement",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-arb-tesla-es",
+   "instruction": {
+    "text": "Los contratos de compra y de arrendamiento de Tesla incluyen una cláusula que exige que las disputas se resuelvan por arbitraje en lugar de una demanda. Nuestra firma solo lleva casos a través de los tribunales, así que lamentablemente este no es un caso que podamos aceptar.",
+    "type": "static_text"
+   },
+   "name": "Disqualify: Arbitration (Tesla, Spanish)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 3700,
+    "y": 1600
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-extract-lease-fix",
+     "id": "e-disq-arb-after-correct",
+     "transition_condition": {
+      "prompt": "The caller corrects how they got the vehicle: for example they say they later bought out the lease, that it is no longer leased, or that they bought it rather than leased it.",
+      "type": "prompt"
+     }
+    },
+    {
+     "destination_node_id": "node-end-bad",
+     "id": "e-disq-arb-after-done",
+     "transition_condition": {
+      "prompt": "Caller acknowledges, accepts it, or has no further questions",
+      "type": "prompt"
+     }
+    }
+   ],
+   "id": "node-disq-arb-after",
+   "instruction": {
+    "text": "You have ALREADY told the caller why we can't take this case: the agreement requires arbitration, and our firm only handles cases through the court system. Do NOT repeat that explanation.\nIf the caller pushes back or asks to proceed anyway, briefly and kindly reaffirm, in fresh words, that the vehicle is outside our criteria so we can't move forward, then ask if there's anything else you can help with. If they ask a simple question, answer it briefly. Never say the same sentence twice in a row. Speak the caller's language.",
+    "type": "prompt"
+   },
+   "name": "Disqualify: Arbitration (follow-up)",
+   "skippable": false,
+   "type": "conversation"
+  },
+  {
+   "display_position": {
+    "x": 4900,
+    "y": 2400
+   },
+   "global_node_setting": {
+    "condition": "The other side is clearly a machine running a menu or a system message, not a person: a full mailbox, a \"press 1 to listen to your message\" menu after a recording, \"your message has been sent\", or \"the recording has reached its maximum length\". NOT a voicemail greeting asking you to leave a message, NOT a call-screening assistant asking who is calling or for your name and reason (answer those), NOT a \"this call may be recorded\" notice, and NOT a person.",
+    "negative_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "Hi. If you record your name and reason for calling, I'll see if this person is available.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Thanks. Please stay on the line.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "This call may be recorded for quality assurance.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Hello? Hello?",
+        "role": "user"
+       }
+      ]
+     }
+    ],
+    "positive_finetune_examples": [
+     {
+      "transcript": [
+       {
+        "content": "Mailbox is full. To send an SMS notification, press five.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "Su grabación ha alcanzado la longitud máxima. Para volver a escuchar su mensaje, oprima uno. Para borrar y volver a grabar su mensaje, oprima tres.",
+        "role": "user"
+       }
+      ]
+     },
+     {
+      "transcript": [
+       {
+        "content": "To listen to your message, press one. To re-record, press two.",
+        "role": "user"
+       }
+      ]
+     }
+    ]
+   },
+   "id": "node-global-automated",
+   "instruction": {
+    "text": "Do not say anything. End the call.",
+    "type": "prompt"
+   },
+   "name": "GLOBAL - Automated System (end)",
+   "skippable": false,
+   "speak_during_execution": false,
+   "type": "end"
+  },
+  {
+   "display_position": {
+    "x": 4000,
+    "y": 1800
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-code-classify",
+     "id": "e-xlease-fix-ok",
+     "transition_condition": {
+      "prompt": "Always",
+      "type": "prompt"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-code-classify",
+    "id": "e-xlease-fix-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-extract-lease-fix",
+   "name": "Extract Purchase Type (correction)",
+   "skippable": false,
+   "type": "extract_dynamic_variables",
+   "variables": [
+    {
+     "choices": [
+      "purchased",
+      "leased",
+      "lease_buyout"
+     ],
+     "description": "How the caller got the vehicle. 'purchased' = they bought it (cash, loan or financing). 'leased' = it is on a lease right now. 'lease_buyout' = it started as a lease and they later bought it out. Mis-transcriptions of lease ('liz', 'list', 'lists', 'leave it', 'I'll leave it', 'Rendée', 'renté') and Spanish 'arrendado', 'arrendé', 'rentado' mean lease. If the caller never made it clear, return 'purchased'. Never return 'leased' or 'lease_buyout' unless the caller actually said the vehicle is or was leased.",
+     "name": "purchase_type_call",
+     "type": "enum"
+    }
+   ]
+  },
+  {
+   "display_position": {
+    "x": 3400,
+    "y": -20
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-owner",
+     "id": "e-skiprep-yes",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{said_dealer_repairs}}",
+        "operator": "==",
+        "right": "yes"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-ret-repairs",
+    "id": "e-skiprep-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-ret-skip-repairs",
+   "name": "Retainer: Repairs already said?",
+   "skippable": false,
+   "type": "branch"
+  },
+  {
+   "display_position": {
+    "x": 3000,
+    "y": -20
+   },
+   "edges": [
+    {
+     "destination_node_id": "node-ret-skip-repairs",
+     "id": "e-skipnu-new",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{said_new_or_used}}",
+        "operator": "==",
+        "right": "new"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    },
+    {
+     "destination_node_id": "node-ret-cpo",
+     "id": "e-skipnu-used",
+     "transition_condition": {
+      "equations": [
+       {
+        "left": "{{said_new_or_used}}",
+        "operator": "==",
+        "right": "used"
+       }
+      ],
+      "operator": "&&",
+      "type": "equation"
+     }
+    }
+   ],
+   "else_edge": {
+    "destination_node_id": "node-ret-newused",
+    "id": "e-skipnu-else",
+    "transition_condition": {
+     "prompt": "Else",
+     "type": "prompt"
+    }
+   },
+   "id": "node-ret-skip-newused",
+   "name": "Retainer: New/Used already said?",
+   "skippable": false,
+   "type": "branch"
+  }
+ ],
+ "start_node_id": "node-intro-lang",
+ "start_speaker": "user",
+ "tools": [
+  {
+   "args_at_root": true,
+   "description": "Sends the consultation booking link to the caller via SMS and email. Use ONLY for a hesitant caller who asks to speak to a human, asks for a consultation or booking link, or wants to book a call with a person. Do NOT call this in the normal Non-Retainer flow — that link is delivered by the Post-Call workflow, so calling it here would double-send.",
+   "headers": {},
+   "method": "POST",
+   "name": "send_consultation_link",
+   "parameter_type": "json",
+   "parameters": {
+    "properties": {
+     "email_address": {
+      "description": "The caller's email address.",
+      "type": "string"
+     },
+     "phone_number": {
+      "description": "The caller's phone number in E.164 format, e.g. +13105551234.",
+      "type": "string"
+     },
+     "user_language": {
+      "description": "The language the caller is speaking, strictly 'english' or 'spanish'.",
+      "enum": [
+       "english",
+       "spanish"
+      ],
+      "type": "string"
+     }
+    },
+    "required": [
+     "user_language",
+     "phone_number",
+     "email_address"
+    ],
+    "type": "object"
+   },
+   "query_params": {},
+   "response_variables": {},
+   "speak_after_execution": true,
+   "speak_during_execution": false,
+   "timeout_ms": 120000,
+   "tool_id": "send_consultation_link",
+   "type": "custom",
+   "url": "https://services.leadconnectorhq.com/hooks/vHHnJlFVorkeBvqgaqqA/webhook-trigger/e658984a-6700-43ce-8b96-e463f8eca620"
+  },
+  {
+   "args_at_root": true,
+   "description": "Send the representation agreement to a qualified retainer lead by SMS and email (the DocuSeal signing link). Called once at the retainer hand-off.",
+   "headers": {},
+   "method": "POST",
+   "name": "send_agreement",
+   "parameter_type": "json",
+   "parameters": {
+    "properties": {
+     "email": {
+      "description": "The caller's email address where the emailed link is sent. Use the email on file ({{Email}}).",
+      "type": "string"
+     },
+     "full_name": {
+      "description": "The caller's full name as it should appear on the representation agreement. Use {{confirmed_name}} — the name confirmed with the caller on this call. Only if that is empty, fall back to the name on file ({{Name}}).",
+      "type": "string"
+     },
+     "lead_language": {
+      "description": "Language to send the agreement in. English or Spanish only (from {{lead_language}}).",
+      "enum": [
+       "English",
+       "Spanish"
+      ],
+      "type": "string"
+     },
+     "phone": {
+      "description": "The caller's mobile number in E.164 format where the SMS link is sent. Use the number on file ({{Phone}}).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "full_name",
+     "lead_language"
+    ],
+    "type": "object"
+   },
+   "query_params": {},
+   "response_variables": {},
+   "speak_after_execution": true,
+   "speak_during_execution": false,
+   "timeout_ms": 120000,
+   "tool_id": "send_agreement",
+   "type": "custom",
+   "url": "https://services.leadconnectorhq.com/hooks/vHHnJlFVorkeBvqgaqqA/webhook-trigger/7a7c8e71-986a-4b9f-aaa1-01affde1ba63"
+  }
+ ],
+ "model_choice": {
+  "type": "cascading",
+  "model": "gpt-5.5",
+  "high_priority": false,
+  "ultrafast": false
+ },
+ "tool_call_strict_mode": true,
+ "knowledge_base_ids": [],
+ "kb_config": {
+  "filter_score": 0.6,
+  "top_k": 3
+ },
+ "begin_tag_display_position": {
+  "x": 54,
+  "y": 414
+ },
+ "is_published": false,
+ "flex_mode": false,
+ "is_transfer_cf": false
+}

@@ -9,7 +9,10 @@ const path = require('path');
 const KEY = fs.readFileSync('D:/tmp/retellkey.txt', 'utf8').trim();
 const H = { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };
 const BASE = 'https://api.retellai.com';
-const ENGINE = { type: 'conversation-flow', conversation_flow_id: 'conversation_flow_b4e1b9683eaf', version: 1 };
+// 2026-10-22: re-pinned from flow v1 to v4 (workshop-spec draft; its hand-off goes to Retainer Immediate draft v6).
+const ENGINE = { type: 'conversation-flow', conversation_flow_id: 'conversation_flow_b4e1b9683eaf', version: 4 };
+const IN_ENGINE = { type: 'conversation-flow', conversation_flow_id: 'conversation_flow_fce8e3f30b49', version: 3 }; // Intake Inbound draft v3
+const RET_OUT_ENGINE = { type: 'retell-llm', llm_id: 'llm_4d3a25e444334df5155b2bb9b3ab', version: 6 }; // Retainer Outbound draft v6
 const SIM_MODEL = 'gpt-4.1';
 const OUT = path.join(__dirname, 'out', 'sim');
 const RUN = path.join(OUT, 'run.json');
@@ -24,6 +27,8 @@ const STYLE = ' Keep every reply short and natural, like a real person on the ph
 const GLOBAL_METRICS = [
   'Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).',
   'Alice never asks for the same piece of information twice after the caller has clearly given it.',
+  'The opening is the greeting with the AI/recording disclosure, ending "…so let me get a little information about the car." (or the Spanish equivalent), followed straight away by the California purchase question. Alice never asks "Mind if I ask you a couple of quick questions?" or "Are you having any issues with your vehicle?".',
+  'Before any hand-off to the retainer agent: apart from the one driver\'s-license name check (where she reads the name on file once), Alice never says the caller\'s name, including in the line where she says the agreement was sent. (After the hand-off the retainer agent may use the name.)',
 ];
 
 const TESTS = [
@@ -31,15 +36,20 @@ const TESTS = [
     name: 'INTAKE-V1 T1 retainer path, skip known answers, FAQ check-in',
     vars: VARS('John Test', 'john.test@acme.ai'),
     prompt: PICKUP + 'You are John Test. You filled in a form on the Knight Law Group website about your truck: a 2023 Ford F-150. '
-      + 'When Alice asks whether you have issues with the vehicle, say in one go: "Yeah, the transmission keeps slipping, and it\'s been at the dealer three times already." '
-      + 'When she asks about California, say: "Yes, I bought it brand new in Los Angeles." '
-      + 'If she asks whether you still have it, say: "It\'s at the dealer right now, actually." Give the year, make and model when asked and confirm her read-back. '
+      + 'When she asks about California, say in one go: "Yes, I bought it brand new in Los Angeles. It\'s at the dealer right now, actually, third time for the same transmission problem." '
+      + 'If she asks whether you still have it, say "Yes." Give the year, make and model when asked and confirm her read-back. '
       + 'The FIRST time she asks whether you are the owner or the one who signed the contract, do not answer yet: ask "Wait, how much is this going to cost me?" '
       + 'After her answer ask "How long does the whole thing take?" After that answer say, in one breath: "No, that\'s all. And yes, it\'s my truck." If she still asks about the owner, say "Yes." '
-      + 'Your name is John Test; your email john.test@acme.ai is correct; texts and emails are fine. If she spells your name, say yes. '
-      + 'When she says she is sending the agreement, say "Okay, sounds good."' + STYLE,
+      + 'Your name is John Test and your email john.test@acme.ai is correct. If she spells your name, say yes. '
+      + 'When she says she is sending the agreement, say "Okay, sounds good." If she offers to walk you through it, say "Sure, go ahead." '
+      + 'When she asks whether it came through, say "Yes, I\'m opening it now, give me a minute." Then, on your next turn, say "Okay, I just signed and submitted it." '
+      + 'After she says goodbye, say "Thanks, you too. Bye."' + STYLE,
     metrics: [
-      'Alice does NOT ask whether the vehicle was purchased or leased, whether it was new or used, or whether it has been taken to the dealer for repairs, because the caller already said he bought it brand new and it has been at the dealer three times.',
+      'Alice does NOT ask whether the vehicle was purchased or leased, whether he still has it, whether it was new or used, or whether it has been taken to the dealer for repairs: he already said he bought it brand new and it is at the dealer right now. She acknowledges it instead (e.g. "Got it, so it\'s with the dealer now").',
+      'In the contact step Alice confirms the email ("…is that right?") and does NOT ask for permission to text or email.',
+      'After the hand-off, the buyback is explained as one definition with the mileage deduction inside it (no separate "mileage offset" point), with no negative framing such as "you won\'t get 100% back"; the 50/50 split on money above the refund is stated plainly once, without a worked example and without justifying why the firm takes half.',
+      'When the caller says he is opening the agreement, the agent says "Of course, take your time, I\'ll wait." (or very close) and does not add filler such as "I\'m still here".',
+      'After the caller says he signed, the agent says a farewell and waits for the caller\'s goodbye before the call ends; the call does not end in the same turn as an unanswered farewell.',
       'During the intake part (before the agreement is sent), on cost Alice says the caller pays nothing / the manufacturer pays the attorney fees, and does not say fees come out of the caller\'s recovery or call it a contingency fee. (Later, a 50/50 split of money ABOVE the buyback is the firm\'s real term and is correct.)',
       'After EACH of the caller\'s two questions, Alice ends her answer with a short check-in question ("does that help?" / "anything else?"), worded differently the second time.',
       'After the caller says "that\'s all, and yes, it\'s my truck", Alice does not ask the owner question again and her next turn ends with a question (she moves on to the name / contact step).',
@@ -60,7 +70,7 @@ const TESTS = [
       'After the caller answers "No" to the new-or-used question, Alice asks again neutrally (e.g. "sorry, was it new or used?") and does NOT assume "new" or "used".',
       'On the unclear CPO answers ("some kind of warranty", "not sure") Alice explains CPO or asks again, and does NOT tell the caller she doesn\'t qualify.',
       'The lead is treated as a NON-RETAINER lead: no agreement is sent and she is not disqualified. The call ends with Alice saying a consultation booking link will be texted (if she first offers to connect the caller to an Intake Analyst, the caller declines and she then gives the booking-link close).',
-      'Alice does not ask the dealer-repairs or owner questions after the CPO answer, and asks for the name and the text/email permission in separate turns.',
+      'Alice does not ask the dealer-repairs or owner questions after the CPO answer. The name check and the email confirmation ("…is that right?") are separate turns, and she never asks for permission to text or email.',
     ],
   },
   {
@@ -145,8 +155,8 @@ const TESTS = [
     name: 'INTAKE-V1 T9 Spanish, vehicle given early, 2019 -> model-year bad lead',
     vars: VARS('Luis Test', 'luis.test@acme.ai'),
     prompt: 'Esta es una llamada telefónica saliente hacia usted. Usted solo habla español. Cuando conteste, diga "¿Bueno?" y espere a que Alice hable. '
-      + 'Usted es Luis Test. Cuando le pregunte si tiene problemas con el vehículo, diga de una vez: "Sí, mi Chevrolet Silverado 2019 se apaga solo en la carretera." '
-      + 'California: "Sí, lo compré en Fresno." Todavía lo tiene: "Sí, todavía lo tengo." Si le vuelve a preguntar el año, la marca o el modelo, conteste con paciencia. '
+      + 'Usted es Luis Test. Cuando le pregunte por California, diga de una vez: "Sí, lo compré en Fresno. Es mi Chevrolet Silverado 2019, se apaga solo en la carretera." '
+      + 'Todavía lo tiene: "Sí, todavía lo tengo." Si le vuelve a preguntar el año, la marca o el modelo, conteste con paciencia. '
       + 'Si le confirma el vehículo, diga "Sí, correcto." Cuando le explique que no pueden tomar el caso, pregunte una vez: "¿Y no hay nada que puedan hacer?" y luego diga "Bueno, gracias." y despídase. '
       + 'Respuestas cortas y naturales, como una persona real por teléfono. Nunca hable en inglés.',
     metrics: [
@@ -165,6 +175,40 @@ const TESTS = [
     metrics: [
       'Right after the opt-out request, Alice acknowledges it respectfully and briefly, confirms the caller will be taken off the list / not contacted again, and ends the call.',
       'After the opt-out request Alice does not argue, does not try to re-qualify, does not ask any further qualification question, does not offer a callback, and does not say a booking link or agreement will be sent.',
+    ],
+  },
+  {
+    // Workshop spec on the INBOUND draft: new greeting without the name; inbound KEEPS the text/email consent question.
+    name: 'INTAKE-V1 T11 inbound new caller, non-retainer Toyota, consent kept',
+    engine: IN_ENGINE,
+    vars: { Name: 'Paula Test', Phone: '+13105550101', Email: 'paula.test@acme.ai', lead_language: '', lead_status: '', lead_status_group: '', route_to_retainer: 'false', has_prior_data: 'false' },
+    prompt: 'You are Paula Test, calling Knight Law Group yourself about your car. When the call connects, say "Hi, I\'m calling about my car." and wait for Alice. '
+      + 'California: "Yes, I bought it in San Diego." If asked purchase or lease: "I bought it." You still have it. Your car is a 2022 Toyota Camry; give it when asked and confirm her read-back. '
+      + 'Your name is Paula Test (it matches your license); if she spells it, say yes. Your email paula.test@acme.ai is right, and texts and emails are fine. '
+      + 'If she offers to connect you with someone now, say "No thanks, just send me the link."' + STYLE,
+    metrics: [
+      'The greeting is "Thanks for calling Knight Law Group, this is Alice." with the AI/recording disclosure, ending "…so let me get a little information about the car.", then straight into the California question. It does NOT include the caller\'s name and does NOT ask "Are you having issues with your vehicle?".',
+      'After the email is read back, Alice ASKS whether it is okay for the team to reach the caller by text and email (inbound keeps the consent question).',
+      'The lead is treated as non-retainer (Toyota): no agreement is sent, and the call ends on the consultation booking-link close (after the caller declines a live transfer, if one is offered).',
+    ],
+  },
+  {
+    // Workshop spec #5-#8 on the Retainer OUTBOUND draft v6 (the follow-up caller, no intake hand-off).
+    name: 'INTAKE-V1 T12 retainer outbound: mileage + split pushback, reading wait, two-step goodbye',
+    engine: RET_OUT_ENGINE,
+    globals: [GLOBAL_METRICS[0]],
+    vars: { first_name: 'Rob', full_name: 'Rob Test', phone: '+13105550101', email: 'rob.test@acme.ai', lead_language: 'English', greeting: 'Hi, is this Rob?', call_number: '1',
+      voicemail_script: 'Hi Rob, this is Alice with Knight Law Group about your representation agreement. Call us at (213) 205-3651.', agreement_link: '' },
+    prompt: 'You are Rob Test. Two days ago Knight Law Group texted and emailed you a representation agreement for your lemon law case, and you have not signed it yet. '
+      + 'When asked if you are Rob, say "Yes, speaking." Answer her questions briefly. Then ask: "Before I sign, a friend said I won\'t get all my money back. What\'s this mileage thing?" '
+      + 'After her answer, ask: "And why do you guys take half of anything extra?" After that answer say: "Okay, fair. Let me open the agreement, give me a minute." '
+      + 'On your next turn say: "Okay, I signed and submitted it." After she says goodbye, say "Thanks, bye."' + STYLE,
+    metrics: [
+      'On the mileage question, the agent explains the refund minus a mileage deduction based on the miles driven before the problems first emerged, converted with a formula in the Lemon Law (she may use the comparison that 5,000 miles gets a bigger refund than 15,000). She never says "you won\'t get 100% back", "the buyback isn\'t all your money" or similar negative framing.',
+      'On "why do you take half", the agent answers with the "we fight hard / we get the manufacturer to pay more than the refund" framing. She does not volunteer a justification for the split before being challenged.',
+      'When the caller says he is opening the agreement, the agent says "Of course, take your time, I\'ll wait." (or very close) and adds no filler such as "I\'m still here".',
+      'After "I signed and submitted it", the agent says a farewell and the call only ends after the caller\'s "Thanks, bye."; she does not hang up in the same turn as an unanswered farewell.',
+      'The agent never says "actual damages", "offset" or "statutory".',
     ],
   },
 ];
@@ -210,19 +254,24 @@ function transcriptText(ts) {
     const run = JSON.parse(fs.readFileSync(RUN, 'utf8'));
     const picks = (process.argv[3] || '').split(',').map((t) => Number(t.replace(/^T/i, '')));
     if (!picks.length || picks.some((n) => !TESTS[n - 1])) throw new Error('usage: suite T1,T2,... (T1..T' + TESTS.length + ')');
-    const ids = [];
+    // A batch runs against ONE response engine, so tests on other agents (t.engine) get a batch of their own.
+    const groups = new Map();
     for (const n of picks) {
       const t = TESTS[n - 1];
-      const body = { name: t.name, response_engine: ENGINE, user_prompt: t.prompt, metrics: [...t.metrics, ...GLOBAL_METRICS], dynamic_variables: t.vars, tool_mocks: MOCKS, llm_model: SIM_MODEL };
+      const engine = t.engine || ENGINE;
+      const body = { name: t.name, response_engine: engine, user_prompt: t.prompt, metrics: [...t.metrics, ...(t.globals || GLOBAL_METRICS)], dynamic_variables: t.vars, tool_mocks: MOCKS, llm_model: SIM_MODEL };
       if (run.ids[n - 1]) { await api('PUT', '/update-test-case-definition/' + run.ids[n - 1], body); console.log('updated', run.ids[n - 1], t.name); }
       else { run.ids[n - 1] = (await api('POST', '/create-test-case-definition', body)).test_case_definition_id; console.log('created', run.ids[n - 1], t.name); }
-      ids.push(run.ids[n - 1]);
+      const k = JSON.stringify(engine);
+      if (!groups.has(k)) groups.set(k, { engine, ids: [] });
+      groups.get(k).ids.push(run.ids[n - 1]);
     }
-    const b = await api('POST', '/create-batch-test', { test_case_definition_ids: ids, response_engine: ENGINE });
-    run.batch = b.test_case_batch_job_id;
+    run.batches = [];
+    for (const g of groups.values()) run.batches.push((await api('POST', '/create-batch-test', { test_case_definition_ids: g.ids, response_engine: g.engine })).test_case_batch_job_id);
+    run.batch = run.batches[0];
     run.dir = 'suite-' + run.batch;
     fs.writeFileSync(RUN, JSON.stringify(run, null, 2));
-    console.log('batch', run.batch, 'for', process.argv[3]);
+    console.log('batches', run.batches.join(', '), 'for', process.argv[3]);
   } else if (mode === 'rerun') {
     // node sim_intake_v1.js rerun T1,T2  -> new batch on the existing definitions; results go to out/sim/rerun-<batch>/
     const run = JSON.parse(fs.readFileSync(RUN, 'utf8'));
@@ -237,14 +286,17 @@ function transcriptText(ts) {
     const run = JSON.parse(fs.readFileSync(RUN, 'utf8'));
     const OUTD = path.join(OUT, run.dir || '');
     fs.mkdirSync(OUTD, { recursive: true });
-    let b;
-    for (let i = 0; i < 90; i++) {
-      b = await api('GET', '/get-batch-test/' + run.batch);
-      if (b.status === 'complete') break;
-      await new Promise((r) => setTimeout(r, 10000));
+    const runs = [];
+    for (const batch of run.batches || [run.batch]) {
+      let b;
+      for (let i = 0; i < 90; i++) {
+        b = await api('GET', '/get-batch-test/' + batch);
+        if (b.status === 'complete') break;
+        await new Promise((r) => setTimeout(r, 10000));
+      }
+      console.log('batch', batch, b.status, 'pass', b.pass_count, 'fail', b.fail_count, 'error', b.error_count, 'total', b.total_count);
+      runs.push(...((await api('GET', '/v2/list-test-runs/' + batch + '?limit=100')).items || []));
     }
-    console.log('batch', run.batch, b.status, 'pass', b.pass_count, 'fail', b.fail_count, 'error', b.error_count, 'total', b.total_count);
-    const runs = (await api('GET', '/v2/list-test-runs/' + run.batch + '?limit=100')).items || [];
     for (const x of runs) {
       const full = await api('GET', '/get-test-run/' + x.test_case_job_id).catch(() => x);
       const name = ((full.test_case_definition_snapshot || {}).name || x.test_case_job_id);

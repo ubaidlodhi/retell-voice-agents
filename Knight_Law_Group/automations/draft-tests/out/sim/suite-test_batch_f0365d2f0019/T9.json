@@ -1,0 +1,409 @@
+{
+  "test_case_job_id": "test_job_2862e70169ec",
+  "status": "pass",
+  "result_explanation": "Alice speaks Spanish throughout using Latin American wording, opens with the required AI/recording disclosure and immediately asks the California purchase question. She does not re-ask purchase type or request year/make/model anew; she reads the vehicle back once. She correctly disqualifies the 2019 vehicle based on the 2021+ criterion, sends no agreement or booking link, responds kindly without repeating verbatim or requalifying, and closes politely. No internal directions or names are spoken, and no information is asked twice.",
+  "creation_timestamp": 1792624500429,
+  "user_modified_timestamp": 1792624528442,
+  "test_case_definition_id": "test_case_2c45a5c0b7cc",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792355125969,
+    "dynamicVariables": {
+      "Email": "luis.test@acme.ai",
+      "Name": "Luis Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "Alice speaks Spanish for the whole call (Latin American: \"usted\", \"carro\"; never \"vale\" or \"coche\").",
+      "Alice does NOT ask \"did you purchase or lease it?\" separately (the caller already said \"lo compré\") and does NOT ask for the year, make and model as a new question; at most she reads the vehicle back ONCE to confirm it, and she does not confirm it twice.",
+      "The lead is disqualified because of the model year: Alice explains the firm handles model year 2021 and newer and a 2019 is outside the criteria. She sends no agreement and gives no booking link.",
+      "When the caller asks if nothing can be done, Alice answers kindly in fresh words without repeating her explanation word for word and without restarting qualification, and the call ends politely.",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it.",
+      "The opening is the greeting with the AI/recording disclosure, ending \"…so let me get a little information about the car.\" (or the Spanish equivalent), followed straight away by the California purchase question. Alice never asks \"Mind if I ask you a couple of quick questions?\" or \"Are you having any issues with your vehicle?\".",
+      "Before any hand-off to the retainer agent: apart from the one driver's-license name check (where she reads the name on file once), Alice never says the caller's name, including in the line where she says the agreement was sent. (After the hand-off the retainer agent may use the name.)"
+    ],
+    "name": "INTAKE-V1 T9 Spanish, vehicle given early, 2019 -> model-year bad lead",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 4
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_2c45a5c0b7cc",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792624499442,
+    "userPrompt": "Esta es una llamada telefónica saliente hacia usted. Usted solo habla español. Cuando conteste, diga \"¿Bueno?\" y espere a que Alice hable. Usted es Luis Test. Cuando le pregunte por California, diga de una vez: \"Sí, lo compré en Fresno. Es mi Chevrolet Silverado 2019, se apaga solo en la carretera.\" Todavía lo tiene: \"Sí, todavía lo tengo.\" Si le vuelve a preguntar el año, la marca o el modelo, conteste con paciencia. Si le confirma el vehículo, diga \"Sí, correcto.\" Cuando le explique que no pueden tomar el caso, pregunte una vez: \"¿Y no hay nada que puedan hacer?\" y luego diga \"Bueno, gracias.\" y despídase. Respuestas cortas y naturales, como una persona real por teléfono. Nunca hable en inglés."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-end-bad",
+    "dynamicVariables": {
+      "Email": "luis.test@acme.ai",
+      "Name": "Luis Test",
+      "Phone": "+13105550101",
+      "bad_reason": "vehicle_year",
+      "call_id": "playground",
+      "call_type": "web_call",
+      "current_node": "End: Bad Lead",
+      "in_possession": "true",
+      "lead_language": "",
+      "lead_status": "Bad Lead",
+      "name_spelled_en": "L - U - I - S, T - E - S - T",
+      "name_spelled_es": "ele, u, i, ese. te, e, ese, te",
+      "previous_node": "Disqualify: Vehicle Year",
+      "purchase_type_call": "purchased",
+      "route": "bad",
+      "said_at_dealer": "unknown",
+      "said_dealer_repairs": "unknown",
+      "said_new_or_used": "unknown",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "vehicle_make": "Chevrolet",
+      "vehicle_model": "Silverado",
+      "vehicle_readback_confirmed": "yes",
+      "vehicle_year": "2019"
+    },
+    "knowledgeBaseRetrievedContents": [
+      "{FileName: knight-law-group-faqs-14-07-2026.md}\nThe CA Lemon Law changed on July 1, 2025, and the car manufacturers that refused to opt-in to the new law are the companies we can still sue on your behalf if you no longer have possession of the vehicle.\nIf your car manufacturer is one that opted into the new law, then unfortunately we cannot help you.\nHere is a list of the opt-ins and opt-outs:\n**Opted Into the New Law:** Alfa Romeo, Buick, Cadillac, Chevrolet, Chrysler, Dodge, Fiat, Ford, GMC, Hummer, Infiniti, Jaguar, Jeep, Kia, Land Rover, Lincoln, Maserati, Mercedes, Mercury, Mitsubishi, Nissan, Pontiac, RAM, Saturn, Smart, Hyundai, Subaru, Genesis, VinFast\n**Not Opted In (Old Law Applies):** Acura, Audi, Bentley, Harley Davidson, Lexus, Mazda, Mini, Porsche, Rolls Royce, Scion, Suzuki, Tesla, Toyota, Volkswagen, Volvo, Honda, BMW, Polestar, McLaren, Fisker\n---\n14. **Can you recommend me to another firm or lawyer?**\n**A:** Unfortunately, we are unable to provide any referrals.\nYou might consider utilizing search engines like Google or Yelp to seek assistance tailored to your situation.\n---\n15. **My car is not paid off.\nWhat happens to the amount that I owe?**\n**A:** If we can assist, the manufacturer will be responsible for settling the outstanding amount.\nYou would receive a refund of what you’ve paid, while the car manufacturer is responsible for the repayment to the lender.\n---\n16. **How long do these cases take?**\n**A:** Each situation is unique, and because we are fighting for the biggest outcomes, we want you to prepare for a potentially lengthy process.\nTypically, these cases can average between 18 to 24 months.\nThe timeline varies widely depending on how far the car manufacturer is willing to go.\n---\n17. **Do I continue making my car payments?**\n**A:** Yes, you want to continue making payments to your lender.\nYour lender is not the car manufacturer, and they are not the ones that sold you a defective vehicle.",
+      "{FileName: knight-law-group-faqs-14-07-2026.md}\nTherefore, we are unable to assist you.\n---\n24. **Do you help consumers who have used vehicles?**\nOnly if the vehicle was sold used CPO (Certified pre-owned) or used – dealer demo.\nIf it was used without being CPO or a dealer demo, no, unfortunately we cannot help.\n---\n25. **What is a buyback?\nWhat is it that you are recovering for me?**\nA buyback under California's Lemon Law is when the manufacturer repurchases your defective vehicle.\nWe seek to recover the payments you made toward the purchase or lease of the vehicle, including finance charges paid, sales or use tax, license and initial registration fees, and other official acquisition fees required under your purchase or lease agreement—less the legally required mileage offset for the use of the vehicle before the defect first occurred.\n---\n26. **What do I need to do during my case?\nWhat is my participation?**\nClient participation is limited but required throughout the process.\nYou must keep us updated if your contact information changes, provide any documents or information we request, and continue taking your vehicle to the dealership for repairs if problems persist, sending us the repair records from each visit.\nDepending on your case you may also be asked to:\n* Answer written questions (interrogatories) about your ownership experience.\n* Allow a vehicle inspection.\nWe'll schedule a convenient time, pick up your vehicle, take it to the inspection, and return it the same day.\nYou do not need to be present.\n* Participate in a deposition, where you'll answer questions under oath about your ownership experience.\nDepositions take place outside of court, and our attorneys will fully prepare you beforehand, either in person or by phone.\n* Attend a court hearing or trial, if necessary.\nIn some cases, you may be required to participate in a Mandatory Settlement Conference (MSC) or a trial.\nIf that happens, our attorneys will prepare you in advance, explain what to expect, and be with you throughout the process.\n---",
+      "{FileName: knight-law-group-faqs-14-07-2026.md}\n7. **The dealership does not want to give me my repair documents.\nCan you request the repair documents on my behalf?**\n**A:** If you're unable to obtain the necessary repair documents, we can attempt to request them on your behalf.\n---\n8. **Why do you need to see my repair documents?**\n**A:** The service records are the evidence of repair attempts for your case.\nThey give us a detailed timeline of your dealership visits and the work performed on the vehicle.\nThey document the steps the dealer has taken to address issues, which helps determine how to proceed.\n---\n9. **How do I send in my repair documents\\*?**\n**A:** There are three ways you can submit your repair documents to us.\nText: 800-243-8711, Fax: (855) 355-8422, Email: [intakedocs@knightlaw.com](mailto:intakedocs@knightlaw.com)\n\\*If the agent is capable to collect documents, then the instructions should be to receive repair documents via the channel where the lead engaged with (usually SMS or Email)\n---\n10. **What is the fee that I will be charged?**\n**A:** The benefit of the California Lemon Law is that the car manufacturer is responsible for paying all attorney’s fees and costs.\nYou do not send our firm any money or receive a bill from us.\n---\n11. **I got an offer from the car manufacturer.\nShould I accept it?**\n**A:** Before you accept an offer, we can review it to determine if they are reimbursing all the money you are owed.\nFor us to review the offer, we will need a copy of your repair orders, a copy of the sales contract/lease agreement, and the actual offer.\nOnce everything is received, we can have an answer typically within (1) business day.\n---\n12. **How long does it take to review the repair documents?**\n**A:** We can review your documents within 24-48 hours.\n---\n13. **I think I had a lemon, but I sold the car.\nCan I still pursue my California Lemon Law rights?**\n**A:** It depends on who your car manufacturer is."
+    ],
+    "transcript": [
+      {
+        "content": "¿Bueno?",
+        "created_timestamp": 1792624511273,
+        "message_id": "message_ea043e08adbb51d420ec4c53",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624511274,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_43be2bd75db41978877ac91b",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624511275,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_6edee183c7f4e9cd7b38e8ef",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hola, le habla Alice, de Knight Law Group, sobre la consulta que usted envió acerca de su vehículo. Le aviso que soy una asistente de inteligencia artificial y que esta línea está grabada. Puedo comunicarle con una persona de nuestro equipo cuando usted quiera. Me imagino que nos contactó porque está teniendo problemas con su vehículo, así que déjeme tomar un poco de información sobre el carro.",
+        "created_timestamp": 1792624512433,
+        "message_id": "message_234664eb3495afbef33c3a3e",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "created_timestamp": 1792624512434,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_bbf726825d5a5303e3d9890e",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Una pregunta rápida: ¿usted compró o arrendó su carro en un concesionario de California?",
+        "created_timestamp": 1792624513969,
+        "message_id": "message_a9b257630b80ab139dea4c94",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, lo compré en Fresno. Es mi Chevrolet Silverado 2019, se apaga solo en la carretera.",
+        "created_timestamp": 1792624514454,
+        "message_id": "message_b7cc8ec066b3ed0d57971a46",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624514664,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_f3e7c1db5fd77daf2f786fe0",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792624515702,
+        "message_id": "message_f678c866c7aa79102ca3980c",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_3ffa50",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"purchased\",\"said_at_dealer\":\"unknown\"}",
+        "created_timestamp": 1792624515703,
+        "message_id": "message_58fdb900513ba1bb731e3944",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_3ffa50"
+      },
+      {
+        "created_timestamp": 1792624515781,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_caf8f2e9fef2f2f871beeaf8",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624515782,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_2055372070ae7260582308fa",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Entiendo, eso suena muy peligroso. Y una pregunta: ¿todavía tiene el vehículo en su posesión?",
+        "created_timestamp": 1792624517042,
+        "message_id": "message_440073f18c360d4e038633f8",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, todavía lo tengo.",
+        "created_timestamp": 1792624517511,
+        "message_id": "message_deda13dfc110f78b5d505d5f",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624517651,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_64dd9d358b0de9b1ee71d695",
+        "new_node_id": "node-q-vehicle",
+        "new_node_name": "Q: Vehicle Year/Make/Model",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Perfecto. Tengo un Chevrolet Silverado dos mil diecinueve, ¿correcto?",
+        "created_timestamp": 1792624519197,
+        "message_id": "message_a8304d7dbd6dcdb3e7172bc9",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, correcto.",
+        "created_timestamp": 1792624519615,
+        "message_id": "message_2b830ed9259a3f09373fe4f2",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624519697,
+        "former_node_id": "node-q-vehicle",
+        "former_node_name": "Q: Vehicle Year/Make/Model",
+        "message_id": "message_21afe82aca197e4785954e64",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792624521106,
+        "message_id": "message_ae5175b09644f3f86eff91a0",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_b4a93f",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":2019,\"vehicle_make\":\"Chevrolet\",\"vehicle_model\":\"Silverado\",\"in_possession\":true,\"said_new_or_used\":\"unknown\",\"said_dealer_repairs\":\"unknown\",\"vehicle_readback_confirmed\":\"yes\"}",
+        "created_timestamp": 1792624521107,
+        "message_id": "message_06dc572e10ca568117351e69",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_b4a93f"
+      },
+      {
+        "created_timestamp": 1792624521108,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_de955c010f36f1552d7f15e4",
+        "new_node_id": "node-code-spell",
+        "new_node_name": "Spell Name (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624521109,
+        "message_id": "message_7fa7a0c07dd2f177cec312fa",
+        "name": "Spell Name (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_37c10a",
+        "type": "code"
+      },
+      {
+        "content": "{\"name_spelled_es\":\"ele, u, i, ese. te, e, ese, te\",\"name_spelled_en\":\"L - U - I - S, T - E - S - T\"}",
+        "created_timestamp": 1792624521125,
+        "message_id": "message_212c3fbf0b2e042701fa8ead",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_37c10a"
+      },
+      {
+        "created_timestamp": 1792624521234,
+        "former_node_id": "node-code-spell",
+        "former_node_name": "Spell Name (deterministic)",
+        "message_id": "message_b0416bfe972282b46a3692db",
+        "new_node_id": "node-code-classify",
+        "new_node_name": "Classify Lead (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624521235,
+        "message_id": "message_bcc7e153ac80f1822c8aa305",
+        "name": "Classify Lead (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_e4275c",
+        "type": "code"
+      },
+      {
+        "content": "{\"route\":\"bad\",\"bad_reason\":\"vehicle_year\",\"lead_status\":\"Bad Lead\"}",
+        "created_timestamp": 1792624521287,
+        "message_id": "message_b427788a296236bcbe410e6d",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_e4275c"
+      },
+      {
+        "created_timestamp": 1792624521377,
+        "former_node_id": "node-code-classify",
+        "former_node_name": "Classify Lead (deterministic)",
+        "message_id": "message_d3b0af0e6646593e2bee2e36",
+        "new_node_id": "node-branch-route",
+        "new_node_name": "Route by Outcome",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624521378,
+        "former_node_id": "node-branch-route",
+        "former_node_name": "Route by Outcome",
+        "message_id": "message_4bf4a15ab0f363ca9e59f25c",
+        "new_node_id": "node-branch-bad",
+        "new_node_name": "Route Bad Reason",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624521379,
+        "former_node_id": "node-branch-bad",
+        "former_node_name": "Route Bad Reason",
+        "message_id": "message_860d92e5661414a69457fa66",
+        "new_node_id": "node-disq-year",
+        "new_node_name": "Disqualify: Vehicle Year",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Lo siento mucho, pero no vamos a poder abrir un expediente en este caso. La firma está manejando vehículos del año modelo dos mil veintiuno en adelante, y el suyo es dos mil diecinueve, así que queda fuera de nuestros criterios.",
+        "created_timestamp": 1792624522907,
+        "message_id": "message_ef1ae402f60d868a908eb145",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "¿Y no hay nada que puedan hacer?",
+        "created_timestamp": 1792624523354,
+        "message_id": "message_8847be0c92c065c920b53fec",
+        "role": "user"
+      },
+      {
+        "content": "Lamento la situación, de verdad. Por nuestros criterios actuales no podemos avanzar con este vehículo; ¿hay algo más en lo que le pueda orientar?",
+        "created_timestamp": 1792624524809,
+        "message_id": "message_2422b55293bd899f1d00ae3f",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Bueno, gracias.",
+        "created_timestamp": 1792624525216,
+        "message_id": "message_21a8b8a6cbacefbe1b5b28aa",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624525294,
+        "former_node_id": "node-disq-year",
+        "former_node_name": "Disqualify: Vehicle Year",
+        "message_id": "message_17fd2fba048a47e5d636d3be",
+        "new_node_id": "node-end-bad",
+        "new_node_name": "End: Bad Lead",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Gracias por entender. Vamos a mantener sus datos en archivo por si nuestros criterios cambian. Que tenga buen día, y gracias por contactar a Knight Law Group.",
+        "created_timestamp": 1792624526971,
+        "message_id": "message_79171765312d44ae5c9095d6",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624526972,
+        "message_id": "message_0bb1d25d46bc8dd6bbc17087",
+        "name": "End: Bad Lead",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_d96d36",
+        "type": "end_call"
+      }
+    ]
+  }
+}

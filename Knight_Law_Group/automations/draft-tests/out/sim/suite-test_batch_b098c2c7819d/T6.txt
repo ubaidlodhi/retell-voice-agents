@@ -1,0 +1,54 @@
+INTAKE-V1 T6 making payments -> loan, Tesla arbitration, pushback
+JUDGE: fail
+Criterion 1 fails: after the caller says “I'm making payments on it,” Alice first asks what state the dealership was in, rather than asking whether it is a lease or loan immediately. The remaining criteria are met: she gives the required arbitration language verbatim, responds to pushback without repeating it or restarting qualification, ends politely, does not speak internal metadata, does not repeat information requests, uses the required opening followed by the California question, and never says the caller’s name.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted for your vehicle. Just a heads-up, I'm an AI assistant and this line is recorded. I can connect you to someone on our team anytime you'd like. I'm guessing you're reaching out because you're having issues with your vehicle, so let me get a little information about the car.
+  [node -> Q: California Purchase]
+agent: So, quick question — did you purchase or lease your vehicle from a dealership in California?
+user: I'm making payments on it.
+  [node -> Q: California Purchase (confirm)]
+agent: Got it — and what state was that dealership in?
+user: Yes, in San Diego.
+  [node -> Q: Purchase or Lease]
+agent: Okay — is that a lease, or a loan to buy it?
+user: A loan.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"purchased","said_at_dealer":"unknown"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Got it. And are you still in possession of the vehicle?
+user: Yes, I still have it.
+  [node -> Q: Vehicle Year/Make/Model]
+agent: Got it — what’s the year, make, and model of your vehicle?
+user: It's a 2024 Tesla Model Y.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2024,"vehicle_make":"Tesla","vehicle_model":"Model Y","in_possession":true,"said_new_or_used":"unknown",]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s a twenty twenty-four Tesla Model Y, is that right?
+user: Yes, that's right.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"ere, ye, a, ene. te, e, ese, te","name_spelled_en":"R - Y - A - N, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"bad","bad_reason":"arbitration_tesla","lead_status":"Bad Lead"}]
+  [node -> Route by Outcome]
+  [node -> Route Bad Reason]
+  [node -> Arbitration: Caller Language]
+  [tool Arbitration: Caller Language ]
+  [result {"call_language":"English"}]
+  [node -> Arbitration: Route by Reason + Language]
+  [node -> Disqualify: Arbitration (Tesla, English)]
+agent: Tesla's purchase and lease agreements include a clause requiring disputes to go through arbitration instead of a lawsuit. Our firm only handles cases through the court system, so unfortunately this isn't one we are able to take on.
+user: Are you sure? There's no other way?
+  [node -> Disqualify: Arbitration (follow-up)]
+agent: I’m sorry, I know that’s frustrating. Based on the vehicle, it falls outside what our firm can move forward with, so we wouldn’t be able to take the case — is there anything else I can help answer?
+user: Okay, thanks. Goodbye.
+  [node -> End: Bad Lead]
+agent: Thank you for understanding. I’ll keep your details on file in case our criteria change. Have a good day, and thanks for contacting Knight Law Group.
+  [tool End: Bad Lead {}]

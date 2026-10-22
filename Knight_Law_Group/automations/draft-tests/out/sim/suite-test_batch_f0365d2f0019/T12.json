@@ -1,0 +1,225 @@
+{
+  "test_case_job_id": "test_job_1025bd353bb4",
+  "status": "fail",
+  "result_explanation": "Criterion 5 fails: the agent says “additional damages” multiple times, which includes the prohibited phrase “actual damages”? Although she does not say the exact phrase “actual damages,” all other criteria are met. However, criterion 2’s required framing is present, criterion 1 is met without prohibited negative framing, criterion 3 is exact, criterion 4 ends after the caller says goodbye, and criterion 6 is met.",
+  "creation_timestamp": 1792624502281,
+  "user_modified_timestamp": 1792624526169,
+  "test_case_definition_id": "test_case_3899796e9405",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792624500082,
+    "dynamicVariables": {
+      "agreement_link": "",
+      "call_number": "1",
+      "email": "rob.test@acme.ai",
+      "first_name": "Rob",
+      "full_name": "Rob Test",
+      "greeting": "Hi, is this Rob?",
+      "lead_language": "English",
+      "phone": "+13105550101",
+      "voicemail_script": "Hi Rob, this is Alice with Knight Law Group about your representation agreement. Call us at (213) 205-3651."
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "On the mileage question, the agent explains the refund minus a mileage deduction based on the miles driven before the problems first emerged, converted with a formula in the Lemon Law (she may use the comparison that 5,000 miles gets a bigger refund than 15,000). She never says \"you won't get 100% back\", \"the buyback isn't all your money\" or similar negative framing.",
+      "On \"why do you take half\", the agent answers with the \"we fight hard / we get the manufacturer to pay more than the refund\" framing. She does not volunteer a justification for the split before being challenged.",
+      "When the caller says he is opening the agreement, the agent says \"Of course, take your time, I'll wait.\" (or very close) and adds no filler such as \"I'm still here\".",
+      "After \"I signed and submitted it\", the agent says a farewell and the call only ends after the caller's \"Thanks, bye.\"; she does not hang up in the same turn as an unanswered farewell.",
+      "The agent never says \"actual damages\", \"offset\" or \"statutory\".",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken)."
+    ],
+    "name": "INTAKE-V1 T12 retainer outbound: mileage + split pushback, reading wait, two-step goodbye",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "llmId": "llm_4d3a25e444334df5155b2bb9b3ab",
+      "type": "retell-llm",
+      "version": 6
+    },
+    "responseEngineId": "llm_4d3a25e444334df5155b2bb9b3ab",
+    "testCaseDefinitionId": "test_case_3899796e9405",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792624500082,
+    "userPrompt": "You are Rob Test. Two days ago Knight Law Group texted and emailed you a representation agreement for your lemon law case, and you have not signed it yet. When asked if you are Rob, say \"Yes, speaking.\" Answer her questions briefly. Then ask: \"Before I sign, a friend said I won't get all my money back. What's this mileage thing?\" After her answer, ask: \"And why do you guys take half of anything extra?\" After that answer say: \"Okay, fair. Let me open the agreement, give me a minute.\" On your next turn say: \"Okay, I signed and submitted it.\" After she says goodbye, say \"Thanks, bye.\" Keep every reply short and natural, like a real person on the phone (one sentence, often just a few words). Answer only what she asks unless the script below says otherwise. When the call is clearly over, say goodbye."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "dynamicVariables": {
+      "agreement_link": "",
+      "call_id": "playground",
+      "call_number": "1",
+      "call_type": "web_call",
+      "email": "rob.test@acme.ai",
+      "first_name": "Rob",
+      "full_name": "Rob Test",
+      "greeting": "Hi, is this Rob?",
+      "lead_language": "English",
+      "phone": "+13105550101",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "voicemail_script": "Hi Rob, this is Alice with Knight Law Group about your representation agreement. Call us at (213) 205-3651."
+    },
+    "knowledgeBaseRetrievedContents": [],
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "transcript": [
+      {
+        "content": "Hi, is this Rob?",
+        "created_timestamp": 1792624512790,
+        "message_id": "message_0a3af78ecd9a7243e0194659",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, speaking.",
+        "created_timestamp": 1792624513543,
+        "message_id": "message_3466fea1863f74d47521ce5e",
+        "role": "user"
+      },
+      {
+        "content": "This is Alice from Knight Law Group about your vehicle — do you have two quick minutes? I'm calling about the representation agreement we sent over.",
+        "created_timestamp": 1792624514196,
+        "message_id": "message_62ec6a9ad45ff275bed26ba7",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yeah, I have a minute.",
+        "created_timestamp": 1792624514630,
+        "message_id": "message_604d551daed7903d223b93ab",
+        "role": "user"
+      },
+      {
+        "content": "Was there anything in the agreement that gave you pause — or has it just been a busy week?",
+        "created_timestamp": 1792624515456,
+        "message_id": "message_934784b8d569dc5b5ca227a5",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Just been busy, honestly.",
+        "created_timestamp": 1792624516026,
+        "message_id": "message_51a9f6bcb1075940cac26f42",
+        "role": "user"
+      },
+      {
+        "content": "That's honestly the most common answer I get — and the good news is the whole thing takes about two minutes. Most of it is the buyback, how our fees are paid by the manufacturer, and the split on anything recovered above the buyback. Do you have the text with the link handy? I can stay on with you while you open it and answer anything as you go.",
+        "created_timestamp": 1792624517019,
+        "message_id": "message_7f067cad15fc02094edacca7",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yeah, I have the link. Before I sign, a friend said I won't get all my money back. What's this mileage thing?",
+        "created_timestamp": 1792624517615,
+        "message_id": "message_8aa684ce2f319ff84930a6f8",
+        "role": "user"
+      },
+      {
+        "content": "A buyback is where the manufacturer takes the vehicle back and refunds the money you paid toward it, your down payment, monthly payments, tax, interest, and registration if it's on the face of the sales contract, minus a mileage deduction based on the miles you drove before the problems first emerged. They convert those miles into dollars using a formula in the Lemon Law, and that comes off your refund.\n\nThat deduction is set by the Lemon Law itself, and it's based only on the miles you drove before the problems first showed up. Someone who drove five thousand miles gets a bigger refund than someone who drove fifteen thousand.\n\nGo ahead and pull up the agreement while we're on.",
+        "created_timestamp": 1792624519131,
+        "message_id": "message_c688d7523125aad922a74360",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "And why do you guys take half of anything extra?",
+        "created_timestamp": 1792624519629,
+        "message_id": "message_1ad09a428a4806eacba5de50",
+        "role": "user"
+      },
+      {
+        "content": "Unlike most firms, we're typically able to obtain additional damages for you above and beyond your refund. Because we fight hard, we're often able to get the manufacturer to pay more than the refund alone, and when we're able to add that value to your case, we take a portion of those additional damages.\n\nYour refund itself isn't split. If we recover additional damages, meaning money above and beyond your refund, that amount is split fifty-fifty between you and the firm.\n\nGo ahead and open the agreement while we're on.",
+        "created_timestamp": 1792624520719,
+        "message_id": "message_8b5d1faff8e0eaf3802fce0f",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Okay, fair. Let me open the agreement, give me a minute.",
+        "created_timestamp": 1792624521235,
+        "message_id": "message_c8c80b0b442aa1723cb0d1f3",
+        "role": "user"
+      },
+      {
+        "content": "Of course, take your time, I'll wait.",
+        "created_timestamp": 1792624521787,
+        "message_id": "message_6e88aff7e48c01a4087e4e25",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Okay, I signed and submitted it.",
+        "created_timestamp": 1792624523015,
+        "message_id": "message_21990a460acc37ec056eaf33",
+        "role": "user"
+      },
+      {
+        "content": "Thanks for getting that done. Our team will review it on our side and reach out if anything else is needed. From there we get your buyback request moving to the manufacturer. Thanks for your time today, Rob — take care.",
+        "created_timestamp": 1792624523700,
+        "message_id": "message_afdeddc7e102a7121419a69c",
+        "metadata": {
+          "response_id": 8
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Thanks, bye.",
+        "created_timestamp": 1792624524267,
+        "message_id": "message_7d43ebdb59d8ac85f25cd878",
+        "role": "user"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624524856,
+        "message_id": "message_6f4d9a7ce00a3acc69261d05",
+        "name": "end_call",
+        "role": "tool_call_invocation",
+        "tool_call_id": "call_af99ed1dee005640aac01ff8aec3d6ae",
+        "type": "end_call"
+      }
+    ]
+  }
+}

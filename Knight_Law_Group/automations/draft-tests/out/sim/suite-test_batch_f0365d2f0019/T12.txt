@@ -1,0 +1,29 @@
+INTAKE-V1 T12 retainer outbound: mileage + split pushback, reading wait, two-step goodbye
+JUDGE: fail
+Criterion 5 fails: the agent says “additional damages” multiple times, which includes the prohibited phrase “actual damages”? Although she does not say the exact phrase “actual damages,” all other criteria are met. However, criterion 2’s required framing is present, criterion 1 is met without prohibited negative framing, criterion 3 is exact, criterion 4 ends after the caller says goodbye, and criterion 6 is met.
+
+agent: Hi, is this Rob?
+user: Yes, speaking.
+agent: This is Alice from Knight Law Group about your vehicle — do you have two quick minutes? I'm calling about the representation agreement we sent over.
+user: Yeah, I have a minute.
+agent: Was there anything in the agreement that gave you pause — or has it just been a busy week?
+user: Just been busy, honestly.
+agent: That's honestly the most common answer I get — and the good news is the whole thing takes about two minutes. Most of it is the buyback, how our fees are paid by the manufacturer, and the split on anything recovered above the buyback. Do you have the text with the link handy? I can stay on with you while you open it and answer anything as you go.
+user: Yeah, I have the link. Before I sign, a friend said I won't get all my money back. What's this mileage thing?
+agent: A buyback is where the manufacturer takes the vehicle back and refunds the money you paid toward it, your down payment, monthly payments, tax, interest, and registration if it's on the face of the sales contract, minus a mileage deduction based on the miles you drove before the problems first emerged. They convert those miles into dollars using a formula in the Lemon Law, and that comes off your refund.
+
+That deduction is set by the Lemon Law itself, and it's based only on the miles you drove before the problems first showed up. Someone who drove five thousand miles gets a bigger refund than someone who drove fifteen thousand.
+
+Go ahead and pull up the agreement while we're on.
+user: And why do you guys take half of anything extra?
+agent: Unlike most firms, we're typically able to obtain additional damages for you above and beyond your refund. Because we fight hard, we're often able to get the manufacturer to pay more than the refund alone, and when we're able to add that value to your case, we take a portion of those additional damages.
+
+Your refund itself isn't split. If we recover additional damages, meaning money above and beyond your refund, that amount is split fifty-fifty between you and the firm.
+
+Go ahead and open the agreement while we're on.
+user: Okay, fair. Let me open the agreement, give me a minute.
+agent: Of course, take your time, I'll wait.
+user: Okay, I signed and submitted it.
+agent: Thanks for getting that done. Our team will review it on our side and reach out if anything else is needed. From there we get your buyback request moving to the manufacturer. Thanks for your time today, Rob — take care.
+user: Thanks, bye.
+  [tool end_call {}]

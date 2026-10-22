@@ -1,0 +1,546 @@
+{
+  "test_case_job_id": "test_job_a64f0019f07a",
+  "status": "fail",
+  "result_explanation": "Criterion 1/6 fails: although the required greeting, disclosure, and immediate California question are present, Alice says, “I'm guessing you're reaching out because you're having issues with your vehicle,” which is prohibited by the criteria. The remaining criteria are met: she asks for text/email consent, correctly follows the non-retainer booking-link path after the caller declines transfer, does not speak internal routing text, does not redundantly ask for provided information, and uses the caller’s name only for the permitted driver’s-license check.",
+  "creation_timestamp": 1792624501980,
+  "user_modified_timestamp": 1792624539338,
+  "test_case_definition_id": "test_case_19f2ed0a9100",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792624499773,
+    "dynamicVariables": {
+      "Email": "paula.test@acme.ai",
+      "Name": "Paula Test",
+      "Phone": "+13105550101",
+      "has_prior_data": "false",
+      "lead_language": "",
+      "lead_status": "",
+      "lead_status_group": "",
+      "route_to_retainer": "false"
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "The greeting is \"Thanks for calling Knight Law Group, this is Alice.\" with the AI/recording disclosure, ending \"…so let me get a little information about the car.\", then straight into the California question. It does NOT include the caller's name and does NOT ask \"Are you having issues with your vehicle?\".",
+      "After the email is read back, Alice ASKS whether it is okay for the team to reach the caller by text and email (inbound keeps the consent question).",
+      "The lead is treated as non-retainer (Toyota): no agreement is sent, and the call ends on the consultation booking-link close (after the caller declines a live transfer, if one is offered).",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it.",
+      "The opening is the greeting with the AI/recording disclosure, ending \"…so let me get a little information about the car.\" (or the Spanish equivalent), followed straight away by the California purchase question. Alice never asks \"Mind if I ask you a couple of quick questions?\" or \"Are you having any issues with your vehicle?\".",
+      "Before any hand-off to the retainer agent: apart from the one driver's-license name check (where she reads the name on file once), Alice never says the caller's name, including in the line where she says the agreement was sent. (After the hand-off the retainer agent may use the name.)"
+    ],
+    "name": "INTAKE-V1 T11 inbound new caller, non-retainer Toyota, consent kept",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_fce8e3f30b49",
+      "type": "conversation-flow",
+      "version": 3
+    },
+    "responseEngineId": "conversation_flow_fce8e3f30b49",
+    "testCaseDefinitionId": "test_case_19f2ed0a9100",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792624499773,
+    "userPrompt": "You are Paula Test, calling Knight Law Group yourself about your car. When the call connects, say \"Hi, I'm calling about my car.\" and wait for Alice. California: \"Yes, I bought it in San Diego.\" If asked purchase or lease: \"I bought it.\" You still have it. Your car is a 2022 Toyota Camry; give it when asked and confirm her read-back. Your name is Paula Test (it matches your license); if she spells it, say yes. Your email paula.test@acme.ai is right, and texts and emails are fine. If she offers to connect you with someone now, say \"No thanks, just send me the link.\" Keep every reply short and natural, like a real person on the phone (one sentence, often just a few words). Answer only what she asks unless the script below says otherwise. When the call is clearly over, say goodbye."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-end-nonret",
+    "dynamicVariables": {
+      "Email": "paula.test@acme.ai",
+      "Name": "Paula Test",
+      "Phone": "+13105550101",
+      "bad_reason": "N/A",
+      "call_id": "playground",
+      "call_type": "web_call",
+      "confirmed_name": "Paula Test",
+      "current_node": "End: Non-Retainer",
+      "has_prior_data": "false",
+      "in_possession": "true",
+      "lead_language": "",
+      "lead_status": "Non-Retainer Lead",
+      "lead_status_group": "",
+      "name_spelled_en": "P - A - U - L - A, T - E - S - T",
+      "name_spelled_es": "pe, a, u, ele, a. te, e, ese, te",
+      "nonret_hours": "open",
+      "previous_node": "Speak: Non-Retainer Close",
+      "purchase_type_call": "purchased",
+      "route": "non_retainer",
+      "route_to_retainer": "false",
+      "said_at_dealer": "unknown",
+      "said_dealer_repairs": "unknown",
+      "said_new_or_used": "unknown",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "vehicle_make": "Toyota",
+      "vehicle_model": "Camry",
+      "vehicle_readback_confirmed": "no",
+      "vehicle_year": "2022"
+    },
+    "knowledgeBaseRetrievedContents": [
+      "{Title: Correct Vehicle Make and Model Spellings}\n\nSLS AMG GT Final Edition, Sprinter, Sprinter Worker.\n\nMercury (United States): Capri, Cougar, Grand Marquis, Marauder, Mariner, Mariner Hybrid, Milan, Milan Hybrid, Montego, Monterey, Mountaineer, Mystique, Sable, Topaz, Tracer, Villager.\n\nMINI (Germany): Clubman, Convertible, Cooper, Cooper Clubman, Cooper Countryman, Cooper Coupe, Cooper Paceman, Cooper Roadster, Countryman, Hardtop 2 Door, Hardtop 4 Door.\n\nMitsubishi (Japan): 3000GT, Diamante, Eclipse, Eclipse Cross, Eclipse Spyder, Endeavor, Expo, Galant, i-MiEV, Lancer, Lancer Evolution, Lancer Sportback, Mighty Max Pickup, Mirage, Mirage G4, Montero, Montero Sport, Outlander, Outlander PHEV, Outlander Sport, Precis, Raider, Sigma, Vanwagon.\n\nNissan (Japan): 200SX, 240SX, 300ZX, 350Z, 370Z, Altima, Altima Hybrid, Armada, ARIYA, Axxess, Cube, Frontier, GT-R, Juke, Kicks, LEAF, Maxima, Murano, Murano CrossCabriolet, NV Cargo, NV Passenger, NV200, NX, Pathfinder, Pulsar, Quest, Rogue, Rogue Select, Rogue Sport, Sentra, Stanza, Titan, Titan XD, Truck, Van, Versa, Versa Note, Xterra, Z.\n\nOldsmobile (United States): Achieva, Alero, Aurora, Bravada, Ciera, Custom Cruiser, Cutlass, Cutlass Calais, Cutlass Ciera, Cutlass Supreme, Eighty-Eight, Eighty-Eight Royale, Intrigue, LSS, Ninety-Eight, Regency, Silhouette, Toronado.\n\nPanoz (United States): Esperante.\n\nPlymouth (United States): Acclaim, Breeze, Colt, Grand Voyager, Horizon, Laser, Neon, Prowler, Sundance, Voyager.\n\nPontiac (United States): 6000, Aztek, Bonneville, Firebird, G3, G5, G6, G8, Grand Am, Grand Prix, GTO, Le Mans, Montana, Montana SV6, Solstice, Sunbird, Sunfire, Torrent, Trans Sport, Vibe.\n\nPolestar (Sweden): 1, 2.\n\nPorsche (Germany): 718 Boxster, 718 Cayman, 911, 928, 944, 968, 918 Spyder, Boxster, Carrera GT, Cayenne, Cayenne Coupe, Cayman, Macan, Panamera, Taycan.\n\nRam (United States): 1500, 2500, 3500, 1500 Classic, C/V, Dakota, Promaster Cargo Van, Promaster City, Promaster Window Van.\n\nRivian (United States): R1S, R1T.\n\nRolls-Royce (United",
+      "{Title: Correct Vehicle Make and Model Spellings}\n\nSierra Classic 2500, Sierra Classic 3500, Sonoma, Suburban, Syclone, Terrain, Typhoon, Vandura, Yukon, Yukon Hybrid, Yukon XL.\n\nHonda (Japan): Accord, Accord Crosstour, Accord Hybrid, Accord Plug-In Hybrid, Civic, Civic CRX, Civic del Sol, Clarity, Crosstour, CR-V, CR-V Hybrid, CR-Z, Element, Fit, Fit EV, HR-V, Insight, Odyssey, Passport, Pilot, Prelude, Prologue, Ridgeline, S2000.\n\nHUMMER (United States): H1, H1 Alpha, H2, H2 SUT, H3, H3T.\n\nHyundai (South Korea): Accent, Azera, Elantra, Elantra Coupe, Elantra GT, Elantra Hybrid, Elantra N, Elantra Touring, Entourage, Equus, Excel, Genesis, Genesis Coupe, IONIQ 5, IONIQ 5 N, IONIQ 6, Ioniq Electric, Ioniq Hybrid, Ioniq Plug-In Hybrid, Kona, Kona Electric, NEXO, Palisade, Santa Cruz, Santa Fe, Santa Fe Hybrid, Santa Fe Plug-In Hybrid, Santa Fe Sport, Santa Fe XL, Scoupe, Sonata, Sonata Hybrid, Sonata Plug-in Hybrid, Tiburon, Tucson, Tucson Plug-In Hybrid, Veloster, Venue, Veracruz, XG300, XG350.\n\nINEOS (United Kingdom): Grenadier.\n\nINFINITI (Japan): EX, FX, G, G Convertible, G Coupe, G Sedan, I, J, JX, M, Q, Q40, Q50, Q60, Q60 Convertible, Q60 Coupe, Q70, QX, QX4, QX30, QX50, QX55, QX60, QX70, QX80.\n\nIsuzu (Japan): Amigo, Ascender, Axiom, Hombre, i-Series, Impulse, Oasis, Pickup, Rodeo, Rodeo Sport, Stylus, Trooper, VehiCROSS.\n\nJaguar (United Kingdom): E-PACE, F-PACE, F-TYPE, I-PACE, S-Type, XE, XF, XJ-Series, XK-Series, X-Type.\n\nJeep (United States): Cherokee, Comanche, Commander, Compass, Gladiator, Grand Cherokee, Grand Cherokee 4xe, Grand Cherokee L, Grand Cherokee WK, Grand Wagoneer, Grand Wagoneer L, Liberty, Patriot, Renegade, Wagoneer, Wagoneer L, Wrangler, Wrangler 4xe, Wrangler JK.\n\nKarma (United States): GS-6, Revero GT.\n\nKia (South Korea): Amanti, Borrego, Cadenza, Carnival, EV6, EV9, Forte, K5, K900, Niro, Niro EV, Niro Plug-In Hybrid, Optima, Optima Hybrid, Optima Plug-In Hybrid, Rio, Rondo, Sedona, Seltos, Sephia, Sorento, Sorento Hybrid, Sorento Plug-In Hybrid, Soul, Soul EV, Spectra, Sportage,",
+      "{Title: Correct Vehicle Make and Model Spellings}\n\nRoadmaster, Skylark, Terraza, Verano.\n\nCadillac (United States): Allante, ATS, ATS Coupe, ATS-V, Brougham, Catera, CT4, CT4-V Blackwing, CT5, CT5-V Blackwing, CT6, CT6-V, CTS, CTS Coupe, CTS Wagon, CTS-V, CTS-V Coupe, CTS-V Wagon, DeVille, DTS, Eldorado, ELR, Escalade, Escalade ESV, Escalade EXT, Escalade Hybrid, Fleetwood, LYRIQ, Seville, Sixty Special, SRX, STS, STS-V, XLR, XLR-V, XT4, XT5, XT6, XTS.\n\nChevrolet (United States): Astro, Astro Cargo, Avalanche, Aveo, Beretta, Black Diamond Avalanche, Blazer, Blazer EV, Bolt EUV, Bolt EV, C/K 1500 Series, C/K 2500 Series, C/K 3500 Series, Camaro, Caprice, Captiva Sport, Cavalier, Celebrity, Chevy Van, Chevy Van Classic, City Express, Classic, Cobalt, Colorado, Corsica, Corvette, Cruze, Cruze Limited, Equinox, Equinox EV, Express, Express Cargo, HHR, Impala, Impala Limited, Lumina, Lumina Minivan, Malibu, Malibu Classic, Malibu Hybrid, Malibu Limited, Malibu Maxx, Metro, Monte Carlo, Prizm, R/V 3500 Series, S-10, S-10 Blazer, Silverado 1500 Limited, Silverado 1500, Silverado 1500 Classic, Silverado 1500 Hybrid, Silverado 1500 LD, Silverado 1500HD, Silverado 1500HD Classic, Silverado 2500, Silverado 2500HD, Silverado 2500HD Classic, Silverado 3500, Silverado 3500 Classic, Silverado 3500HD, Silverado EV, Sonic, Spark, Spark EV, Sportvan, SS, SSR, Suburban, Tahoe, Tahoe Hybrid, Tracker, Trailblazer, TrailBlazer EXT, Traverse, Traverse Limited, Trax, Uplander, Venture, Volt.\n\nChrysler (United States): 200, 300, 300M, Aspen, Cirrus, Concorde, Crossfire, Grand Voyager, Imperial, Le Baron, LHS, New Yorker, Pacifica, Pacifica Hybrid, Prowler, PT Cruiser, Sebring, TC, Town and Country, Voyager.\n\nDaewoo (South Korea): Lanos, Leganza, Nubira.\n\nDodge (United States): Avenger, Caliber, Caravan, Challenger, Charger, Colt, Dakota, Dart, Daytona, Durango, Dynasty, Grand Caravan, Hornet, Intrepid, Journey, Magnum, Monaco, Neon, Nitro, Omni, RAM 150, RAM 250, RAM 350, Ram 50 Pickup, Ram Cargo, Ram Pickup 1500, Ram Pickup 2500, Ram"
+    ],
+    "transcript": [
+      {
+        "content": "Hi, I'm calling about my car.",
+        "created_timestamp": 1792624512737,
+        "message_id": "message_6eb95dd2a6a3f264b9fe78cc",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624512738,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_53e05e29ece103c38c0c4f4c",
+        "new_node_id": "node-inbound-route",
+        "new_node_name": "Inbound Router",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624512739,
+        "former_node_id": "node-inbound-route",
+        "former_node_name": "Inbound Router",
+        "message_id": "message_9a7704114656254222e1204e",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Thanks for calling Knight Law Group, this is Alice. Just a heads-up, I'm an AI assistant and this line is recorded. I can connect you to someone on our team anytime you'd like. I'm guessing you're reaching out because you're having issues with your vehicle, so let me get a little information about the car.",
+        "created_timestamp": 1792624514231,
+        "message_id": "message_361864d3ca6596c444527daf",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "created_timestamp": 1792624514232,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_3799e0b20462bffcbb0beaa7",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "So, quick question — did you purchase or lease your vehicle from a dealership in California?",
+        "created_timestamp": 1792624515681,
+        "message_id": "message_3ba10ab231d1385484cb7b45",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, I bought it in San Diego.",
+        "created_timestamp": 1792624516158,
+        "message_id": "message_ef4b318c4a13f35535ed1d36",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624516357,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_21e79ef56e9fc66bb88b2150",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792624517535,
+        "message_id": "message_1f09bb1d294fe3d3fbbb8629",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_1f1adc",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"purchased\",\"said_at_dealer\":\"unknown\"}",
+        "created_timestamp": 1792624517536,
+        "message_id": "message_f1f66bd17410511f8db761d5",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_1f1adc"
+      },
+      {
+        "created_timestamp": 1792624517651,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_6587841b43777b14ad62757e",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624517652,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_713870fff9a9c4ebf646f6ff",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it. And are you still in possession of the vehicle?",
+        "created_timestamp": 1792624519666,
+        "message_id": "message_d24a0300a3e0606d1ab8985d",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, I still have it.",
+        "created_timestamp": 1792624520099,
+        "message_id": "message_a2b077c9ba88fc21fd42754a",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624520177,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_bb74a8a216d9677e4bcf27e9",
+        "new_node_id": "node-q-vehicle",
+        "new_node_name": "Q: Vehicle Year/Make/Model",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Got it — what’s the year, make, and model of your vehicle?",
+        "created_timestamp": 1792624521945,
+        "message_id": "message_7567e670ef85cdeb69cf7bbf",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "It's a 2022 Toyota Camry.",
+        "created_timestamp": 1792624522376,
+        "message_id": "message_08e5ebd5039be32c1f3af752",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624522455,
+        "former_node_id": "node-q-vehicle",
+        "former_node_name": "Q: Vehicle Year/Make/Model",
+        "message_id": "message_a15fddc67a02dc2504de4554",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792624523925,
+        "message_id": "message_647cb7f1c24bafc745115baf",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_272fe8",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":2022,\"vehicle_make\":\"Toyota\",\"vehicle_model\":\"Camry\",\"in_possession\":true,\"said_new_or_used\":\"unknown\",\"said_dealer_repairs\":\"unknown\",\"vehicle_readback_confirmed\":\"no\"}",
+        "created_timestamp": 1792624523926,
+        "message_id": "message_d47fbedc8b77b6eee97b0ed0",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_272fe8"
+      },
+      {
+        "created_timestamp": 1792624524061,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_7bdb98146d802c8ab4d66d9d",
+        "new_node_id": "node-confirm-vehicle",
+        "new_node_name": "Confirm Vehicle",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Just to confirm, that’s a twenty twenty-two Toyota Camry, is that right?",
+        "created_timestamp": 1792624525375,
+        "message_id": "message_f07d9763394335388d00e01b",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's right.",
+        "created_timestamp": 1792624525846,
+        "message_id": "message_181c4cffeaa3caa40f1f970a",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624525925,
+        "former_node_id": "node-confirm-vehicle",
+        "former_node_name": "Confirm Vehicle",
+        "message_id": "message_fc08bf862ae5477fab4319fe",
+        "new_node_id": "node-code-spell",
+        "new_node_name": "Spell Name (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624525926,
+        "message_id": "message_e808bf8355f34f08ea3a838a",
+        "name": "Spell Name (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_b7d174",
+        "type": "code"
+      },
+      {
+        "content": "{\"name_spelled_es\":\"pe, a, u, ele, a. te, e, ese, te\",\"name_spelled_en\":\"P - A - U - L - A, T - E - S - T\"}",
+        "created_timestamp": 1792624525948,
+        "message_id": "message_fb7996c56a8430482c614347",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_b7d174"
+      },
+      {
+        "created_timestamp": 1792624526048,
+        "former_node_id": "node-code-spell",
+        "former_node_name": "Spell Name (deterministic)",
+        "message_id": "message_713b0878fb0d363f4adecd34",
+        "new_node_id": "node-code-classify",
+        "new_node_name": "Classify Lead (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624526049,
+        "message_id": "message_441497809fdcc9fd8ecbb00c",
+        "name": "Classify Lead (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_6e87d3",
+        "type": "code"
+      },
+      {
+        "content": "{\"route\":\"non_retainer\",\"bad_reason\":\"N/A\",\"lead_status\":\"Non-Retainer Lead\"}",
+        "created_timestamp": 1792624526073,
+        "message_id": "message_001965544d6be93885075868",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_6e87d3"
+      },
+      {
+        "created_timestamp": 1792624526211,
+        "former_node_id": "node-code-classify",
+        "former_node_name": "Classify Lead (deterministic)",
+        "message_id": "message_13576ec2930d71ad19bc9aaf",
+        "new_node_id": "node-branch-route",
+        "new_node_name": "Route by Outcome",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624526213,
+        "former_node_id": "node-branch-route",
+        "former_node_name": "Route by Outcome",
+        "message_id": "message_bb63be100549009e0715511a",
+        "new_node_id": "node-nonret-confirm",
+        "new_node_name": "Non-Retainer: Confirm",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "I’ve got your name as Paula Test — is that the same name as it appears on your driver’s license?",
+        "created_timestamp": 1792624527849,
+        "message_id": "message_5e3bac99b7074927ddcc9dc9",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's correct.",
+        "created_timestamp": 1792624528315,
+        "message_id": "message_78d2f46e47285a67666dd379",
+        "role": "user"
+      },
+      {
+        "content": "Great — let me confirm the spelling: P - A - U - L - A, T - E - S - T. Is that right?",
+        "created_timestamp": 1792624529937,
+        "message_id": "message_847282bf0a0d958d3a1aca83",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's right.",
+        "created_timestamp": 1792624530783,
+        "message_id": "message_ec256007d9d0ae3e4cb0d045",
+        "role": "user"
+      },
+      {
+        "content": "And I’ve got your email as paula.test at acme dot A I — is it okay if our team reaches you by text and email?",
+        "created_timestamp": 1792624532308,
+        "message_id": "message_82344853c74ca298ec06f047",
+        "metadata": {
+          "response_id": 8
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Yes, that's fine.",
+        "created_timestamp": 1792624532767,
+        "message_id": "message_df1d62da3c6b7d00ac221c1f",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624532847,
+        "former_node_id": "node-nonret-confirm",
+        "former_node_name": "Non-Retainer: Confirm",
+        "message_id": "message_e36b8df02a09ccffbb719ba0",
+        "new_node_id": "node-extract-name-nr",
+        "new_node_name": "Extract Confirmed Name (Non-Retainer)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792624534202,
+        "message_id": "message_cc2e66fc0462441982f0425d",
+        "name": "Extract Confirmed Name (Non-Retainer)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_5f1efc",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"confirmed_name\":\"Paula Test\"}",
+        "created_timestamp": 1792624534203,
+        "message_id": "message_1da15a6b3ecc5a3eb064e72b",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_5f1efc"
+      },
+      {
+        "created_timestamp": 1792624534279,
+        "former_node_id": "node-extract-name-nr",
+        "former_node_name": "Extract Confirmed Name (Non-Retainer)",
+        "message_id": "message_75a4795235c7de23b97197e1",
+        "new_node_id": "node-nonret-hours",
+        "new_node_name": "Non-Retainer: Business Hours? (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624534280,
+        "message_id": "message_bb6e95c77087429d62905c4a",
+        "name": "Non-Retainer: Business Hours? (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_8ff6ab",
+        "type": "code"
+      },
+      {
+        "content": "{\"nonret_hours\":\"open\"}",
+        "created_timestamp": 1792624534302,
+        "message_id": "message_a060b439a270a7a90d9fb0cf",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_8ff6ab"
+      },
+      {
+        "created_timestamp": 1792624534378,
+        "former_node_id": "node-nonret-hours",
+        "former_node_name": "Non-Retainer: Business Hours? (deterministic)",
+        "message_id": "message_f7faaeb90a30f4d751b42278",
+        "new_node_id": "node-nonret-hours-branch",
+        "new_node_name": "Non-Retainer: Route by Hours",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792624534379,
+        "former_node_id": "node-nonret-hours-branch",
+        "former_node_name": "Non-Retainer: Route by Hours",
+        "message_id": "message_4dedac6966a5fd6df3dbdc35",
+        "new_node_id": "node-nonret-offer",
+        "new_node_name": "Non-Retainer: Offer Live Transfer",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great news, we may be able to help. One of our Intake Analysts is available right now to go over your case and set up your consultation — would you like me to connect you now?",
+        "created_timestamp": 1792624535608,
+        "message_id": "message_9a24196ef70155d36c2f9727",
+        "metadata": {
+          "response_id": 9
+        },
+        "role": "agent"
+      },
+      {
+        "content": "No thanks, just send me the link.",
+        "created_timestamp": 1792624536072,
+        "message_id": "message_e7c8905b038a4f54fa2dd702",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792624536151,
+        "former_node_id": "node-nonret-offer",
+        "former_node_name": "Non-Retainer: Offer Live Transfer",
+        "message_id": "message_8fd2ed7ec86a285568a908df",
+        "new_node_id": "node-speak-nonret-close",
+        "new_node_name": "Speak: Non-Retainer Close",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Great — we may still be able to help. We’ll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.",
+        "created_timestamp": 1792624537745,
+        "message_id": "message_74849c8bb88eece11dadc166",
+        "metadata": {
+          "response_id": 10
+        },
+        "role": "agent"
+      },
+      {
+        "created_timestamp": 1792624537746,
+        "former_node_id": "node-speak-nonret-close",
+        "former_node_name": "Speak: Non-Retainer Close",
+        "message_id": "message_d98fd5fc4f63759ea8ddb557",
+        "new_node_id": "node-end-nonret",
+        "new_node_name": "End: Non-Retainer",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792624537747,
+        "message_id": "message_6d841a08a849edb6fe3d6e1e",
+        "name": "End: Non-Retainer",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_4a6169",
+        "type": "end_call"
+      }
+    ]
+  }
+}

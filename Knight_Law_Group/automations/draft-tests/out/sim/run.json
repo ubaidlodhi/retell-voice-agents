@@ -15,8 +15,15 @@
     "test_case_4590d26833f6",
     "test_case_caec02356271",
     "test_case_2c45a5c0b7cc",
-    "test_case_550a3e47d82b"
+    "test_case_550a3e47d82b",
+    "test_case_19f2ed0a9100",
+    "test_case_3899796e9405"
   ],
-  "batch": "test_batch_e025bbb86101",
-  "dir": "suite-test_batch_e025bbb86101"
+  "batch": "test_batch_f0365d2f0019",
+  "dir": "suite-test_batch_f0365d2f0019",
+  "batches": [
+    "test_batch_f0365d2f0019",
+    "test_batch_d2d7a0376edc",
+    "test_batch_7c3c094239f3"
+  ]
 }

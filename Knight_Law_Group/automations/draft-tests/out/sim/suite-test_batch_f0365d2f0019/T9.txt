@@ -1,0 +1,40 @@
+INTAKE-V1 T9 Spanish, vehicle given early, 2019 -> model-year bad lead
+JUDGE: pass
+Alice speaks Spanish throughout using Latin American wording, opens with the required AI/recording disclosure and immediately asks the California purchase question. She does not re-ask purchase type or request year/make/model anew; she reads the vehicle back once. She correctly disqualifies the 2019 vehicle based on the 2021+ criterion, sends no agreement or booking link, responds kindly without repeating verbatim or requalifying, and closes politely. No internal directions or names are spoken, and no information is asked twice.
+
+user: ¿Bueno?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hola, le habla Alice, de Knight Law Group, sobre la consulta que usted envió acerca de su vehículo. Le aviso que soy una asistente de inteligencia artificial y que esta línea está grabada. Puedo comunicarle con una persona de nuestro equipo cuando usted quiera. Me imagino que nos contactó porque está teniendo problemas con su vehículo, así que déjeme tomar un poco de información sobre el carro.
+  [node -> Q: California Purchase]
+agent: Una pregunta rápida: ¿usted compró o arrendó su carro en un concesionario de California?
+user: Sí, lo compré en Fresno. Es mi Chevrolet Silverado 2019, se apaga solo en la carretera.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"purchased","said_at_dealer":"unknown"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Entiendo, eso suena muy peligroso. Y una pregunta: ¿todavía tiene el vehículo en su posesión?
+user: Sí, todavía lo tengo.
+  [node -> Q: Vehicle Year/Make/Model]
+agent: Perfecto. Tengo un Chevrolet Silverado dos mil diecinueve, ¿correcto?
+user: Sí, correcto.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2019,"vehicle_make":"Chevrolet","vehicle_model":"Silverado","in_possession":true,"said_new_or_used":"unk]
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"ele, u, i, ese. te, e, ese, te","name_spelled_en":"L - U - I - S, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"bad","bad_reason":"vehicle_year","lead_status":"Bad Lead"}]
+  [node -> Route by Outcome]
+  [node -> Route Bad Reason]
+  [node -> Disqualify: Vehicle Year]
+agent: Lo siento mucho, pero no vamos a poder abrir un expediente en este caso. La firma está manejando vehículos del año modelo dos mil veintiuno en adelante, y el suyo es dos mil diecinueve, así que queda fuera de nuestros criterios.
+user: ¿Y no hay nada que puedan hacer?
+agent: Lamento la situación, de verdad. Por nuestros criterios actuales no podemos avanzar con este vehículo; ¿hay algo más en lo que le pueda orientar?
+user: Bueno, gracias.
+  [node -> End: Bad Lead]
+agent: Gracias por entender. Vamos a mantener sus datos en archivo por si nuestros criterios cambian. Que tenga buen día, y gracias por contactar a Knight Law Group.
+  [tool End: Bad Lead {}]

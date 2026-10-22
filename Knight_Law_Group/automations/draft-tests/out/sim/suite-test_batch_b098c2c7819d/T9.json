@@ -1,0 +1,430 @@
+{
+  "test_case_job_id": "test_job_8006ff317ee6",
+  "status": "fail",
+  "result_explanation": "Alice violates criterion 2: after the caller had already stated “lo compré,” she asks “¿usted compró o arrendó el carro...?” separately. She also asks the year, make, and model as a new question rather than only reading it back once. The remaining criteria are satisfied: Spanish/LATAM wording, one vehicle readback, correct 2019 disqualification with no agreement/link, polite follow-up and ending, no spoken internal logic, no repeated information requests, compliant disclosure opening followed by the California question, and no use of the caller’s name.",
+  "creation_timestamp": 1792620647045,
+  "user_modified_timestamp": 1792620682101,
+  "test_case_definition_id": "test_case_2c45a5c0b7cc",
+  "test_case_definition_snapshot": {
+    "creationTimestamp": 1792355125969,
+    "dynamicVariables": {
+      "Email": "luis.test@acme.ai",
+      "Name": "Luis Test",
+      "Phone": "+13105550101",
+      "lead_language": ""
+    },
+    "llmModel": "gpt-4.1",
+    "metrics": [
+      "Alice speaks Spanish for the whole call (Latin American: \"usted\", \"carro\"; never \"vale\" or \"coche\").",
+      "Alice does NOT ask \"did you purchase or lease it?\" separately (the caller already said \"lo compré\") and does NOT ask for the year, make and model as a new question; at most she reads the vehicle back ONCE to confirm it, and she does not confirm it twice.",
+      "The lead is disqualified because of the model year: Alice explains the firm handles model year 2021 and newer and a 2019 is outside the criteria. She sends no agreement and gives no booking link.",
+      "When the caller asks if nothing can be done, Alice answers kindly in fresh words without repeating her explanation word for word and without restarting qualification, and the call ends politely.",
+      "Alice never reads stage directions, node names, variable names, lead classifications or routing logic aloud (ignore tool_call / tool_call_result lines, they are not spoken).",
+      "Alice never asks for the same piece of information twice after the caller has clearly given it.",
+      "The opening is the greeting with the AI/recording disclosure, ending \"…so let me get a little information about the car.\" (or the Spanish equivalent), followed straight away by the California purchase question. Alice never asks \"Mind if I ask you a couple of quick questions?\" or \"Are you having any issues with your vehicle?\".",
+      "Apart from the one driver's-license name check (where she reads the name on file once), Alice never says the caller's name, including in the line where she says the agreement was sent."
+    ],
+    "name": "INTAKE-V1 T9 Spanish, vehicle given early, 2019 -> model-year bad lead",
+    "orgId": "org_QBKoWXH61idH0owT",
+    "responseEngine": {
+      "conversationFlowId": "conversation_flow_b4e1b9683eaf",
+      "type": "conversation-flow",
+      "version": 4
+    },
+    "responseEngineId": "conversation_flow_b4e1b9683eaf",
+    "testCaseDefinitionId": "test_case_2c45a5c0b7cc",
+    "toolMocks": [
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_agreement"
+      },
+      {
+        "inputMatchRule": {
+          "type": "any"
+        },
+        "output": "{\"status\":\"Success\"}",
+        "toolName": "send_consultation_link"
+      }
+    ],
+    "type": "simulation",
+    "userModifiedTimestamp": 1792620646243,
+    "userPrompt": "Esta es una llamada telefónica saliente hacia usted. Usted solo habla español. Cuando conteste, diga \"¿Bueno?\" y espere a que Alice hable. Usted es Luis Test. Cuando le pregunte si tiene problemas con el vehículo, diga de una vez: \"Sí, mi Chevrolet Silverado 2019 se apaga solo en la carretera.\" California: \"Sí, lo compré en Fresno.\" Todavía lo tiene: \"Sí, todavía lo tengo.\" Si le vuelve a preguntar el año, la marca o el modelo, conteste con paciencia. Si le confirma el vehículo, diga \"Sí, correcto.\" Cuando le explique que no pueden tomar el caso, pregunte una vez: \"¿Y no hay nada que puedan hacer?\" y luego diga \"Bueno, gracias.\" y despídase. Respuestas cortas y naturales, como una persona real por teléfono. Nunca hable en inglés."
+  },
+  "transcript_snapshot": {
+    "callEnded": true,
+    "currentNodeId": "node-end-bad",
+    "dynamicVariables": {
+      "Email": "luis.test@acme.ai",
+      "Name": "Luis Test",
+      "Phone": "+13105550101",
+      "bad_reason": "vehicle_year",
+      "call_id": "playground",
+      "call_type": "web_call",
+      "current_node": "End: Bad Lead",
+      "in_possession": "true",
+      "lead_language": "",
+      "lead_status": "Bad Lead",
+      "name_spelled_en": "L - U - I - S, T - E - S - T",
+      "name_spelled_es": "ele, u, i, ese. te, e, ese, te",
+      "previous_node": "Disqualify: Vehicle Year",
+      "purchase_type_call": "purchased",
+      "route": "bad",
+      "said_at_dealer": "unknown",
+      "said_dealer_repairs": "unknown",
+      "said_new_or_used": "unknown",
+      "session_type": "voice",
+      "system_timezone": "America/Los_Angeles",
+      "vehicle_make": "Chevrolet",
+      "vehicle_model": "Silverado",
+      "vehicle_readback_confirmed": "no",
+      "vehicle_year": "2019"
+    },
+    "knowledgeBaseRetrievedContents": [],
+    "transcript": [
+      {
+        "content": "¿Bueno?",
+        "created_timestamp": 1792620658019,
+        "message_id": "message_ee4de86579f593840f727411",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792620658020,
+        "former_node_id": "begin",
+        "former_node_name": "begin",
+        "message_id": "message_bb5a714269510c96bcab6fb7",
+        "new_node_id": "node-intro-lang",
+        "new_node_name": "node-intro-lang",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792620658021,
+        "former_node_id": "node-intro-lang",
+        "former_node_name": "node-intro-lang",
+        "message_id": "message_e48cc7b1416ef801b408165a",
+        "new_node_id": "node-intro",
+        "new_node_name": "Introduction",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Hola, le habla Alice, de Knight Law Group, sobre la consulta que usted envió acerca de su vehículo. Le aviso que soy una asistente de inteligencia artificial y que esta línea está grabada. Puedo comunicarle con una persona de nuestro equipo cuando usted quiera. Me imagino que nos contactó porque está teniendo problemas con su vehículo, así que déjeme tomar un poco de información sobre el carro.",
+        "created_timestamp": 1792620660006,
+        "message_id": "message_7292379b1e4c47cbed049b16",
+        "metadata": {
+          "response_id": 1
+        },
+        "role": "agent"
+      },
+      {
+        "created_timestamp": 1792620660007,
+        "former_node_id": "node-intro",
+        "former_node_name": "Introduction",
+        "message_id": "message_70082fd71d619b5558fa09a6",
+        "new_node_id": "node-q-ca",
+        "new_node_name": "Q: California Purchase",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Una pregunta rápida: ¿usted compró o arrendó el carro en un concesionario de California?",
+        "created_timestamp": 1792620661363,
+        "message_id": "message_4ad2fdf85a0230be440f879b",
+        "metadata": {
+          "response_id": 2
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, lo compré en Fresno.",
+        "created_timestamp": 1792620661876,
+        "message_id": "message_0607745617c9958b64cb3035",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792620662139,
+        "former_node_id": "node-q-ca",
+        "former_node_name": "Q: California Purchase",
+        "message_id": "message_3c9eb15162124ac21f8ecbf4",
+        "new_node_id": "node-extract-lease",
+        "new_node_name": "Extract Purchase Type",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792620663143,
+        "message_id": "message_ab3d427002bed58a07561cc8",
+        "name": "Extract Purchase Type",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_0e59b9",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"purchase_type_call\":\"purchased\",\"said_at_dealer\":\"unknown\"}",
+        "created_timestamp": 1792620663144,
+        "message_id": "message_d03ae0a8f3c6c4aaea48bb79",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_0e59b9"
+      },
+      {
+        "created_timestamp": 1792620663221,
+        "former_node_id": "node-extract-lease",
+        "former_node_name": "Extract Purchase Type",
+        "message_id": "message_c4ee0062a6730210ed1d8f1c",
+        "new_node_id": "node-after-lease",
+        "new_node_name": "Route After Lease",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792620663222,
+        "former_node_id": "node-after-lease",
+        "former_node_name": "Route After Lease",
+        "message_id": "message_c44ec44e27a39a3faf113335",
+        "new_node_id": "node-q-possession",
+        "new_node_name": "Q: Possession",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Entiendo. Y actualmente, ¿todavía tiene el carro en su posesión?",
+        "created_timestamp": 1792620664499,
+        "message_id": "message_29f3933b04bb577bcd522fd0",
+        "metadata": {
+          "response_id": 3
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, todavía lo tengo.",
+        "created_timestamp": 1792620664925,
+        "message_id": "message_d51c6393ac878673bfd96231",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792620665098,
+        "former_node_id": "node-q-possession",
+        "former_node_name": "Q: Possession",
+        "message_id": "message_a46b3d4aaf115972ec721e36",
+        "new_node_id": "node-q-vehicle",
+        "new_node_name": "Q: Vehicle Year/Make/Model",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Perfecto, entendido. ¿Cuál es el año, la marca y el modelo de su carro?",
+        "created_timestamp": 1792620666926,
+        "message_id": "message_eaea984a9913719470f2ae9b",
+        "metadata": {
+          "response_id": 4
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Es un Chevrolet Silverado 2019.",
+        "created_timestamp": 1792620667459,
+        "message_id": "message_a53f5a758c6340261f9f048b",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792620667597,
+        "former_node_id": "node-q-vehicle",
+        "former_node_name": "Q: Vehicle Year/Make/Model",
+        "message_id": "message_aec2ae847986bc0acee67097",
+        "new_node_id": "node-extract-vehicle",
+        "new_node_name": "Extract Vehicle Vars",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "",
+        "created_timestamp": 1792620669112,
+        "message_id": "message_c6f09f96410ed2911fc91aa9",
+        "name": "Extract Vehicle Vars",
+        "role": "tool_call_invocation",
+        "tool_call_id": "extract_dynamic_variables_daa7cb",
+        "type": "extract_dynamic_variable"
+      },
+      {
+        "content": "{\"vehicle_year\":2019,\"vehicle_make\":\"Chevrolet\",\"vehicle_model\":\"Silverado\",\"in_possession\":true,\"said_new_or_used\":\"unknown\",\"said_dealer_repairs\":\"unknown\",\"vehicle_readback_confirmed\":\"no\"}",
+        "created_timestamp": 1792620669113,
+        "message_id": "message_0367843241b0b972f5676eeb",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "extract_dynamic_variables_daa7cb"
+      },
+      {
+        "created_timestamp": 1792620669205,
+        "former_node_id": "node-extract-vehicle",
+        "former_node_name": "Extract Vehicle Vars",
+        "message_id": "message_18ed03058708d666dfd7c808",
+        "new_node_id": "node-confirm-vehicle",
+        "new_node_name": "Confirm Vehicle",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Solo para confirmar, es un Chevrolet Silverado dos mil diecinueve, ¿correcto?",
+        "created_timestamp": 1792620670547,
+        "message_id": "message_625ee90ed748b596a848ff5d",
+        "metadata": {
+          "response_id": 5
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Sí, correcto.",
+        "created_timestamp": 1792620671264,
+        "message_id": "message_03f5d00073d27a451c8977ac",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792620671351,
+        "former_node_id": "node-confirm-vehicle",
+        "former_node_name": "Confirm Vehicle",
+        "message_id": "message_7cee4fb0754f25d1c671143f",
+        "new_node_id": "node-code-spell",
+        "new_node_name": "Spell Name (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792620671352,
+        "message_id": "message_877be6e02515a065d74940b4",
+        "name": "Spell Name (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_d2eb00",
+        "type": "code"
+      },
+      {
+        "content": "{\"name_spelled_es\":\"ele, u, i, ese. te, e, ese, te\",\"name_spelled_en\":\"L - U - I - S, T - E - S - T\"}",
+        "created_timestamp": 1792620671370,
+        "message_id": "message_105accf463f39a29288f8510",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_d2eb00"
+      },
+      {
+        "created_timestamp": 1792620671508,
+        "former_node_id": "node-code-spell",
+        "former_node_name": "Spell Name (deterministic)",
+        "message_id": "message_72b7ca9a063e5bbe62615cf0",
+        "new_node_id": "node-code-classify",
+        "new_node_name": "Classify Lead (deterministic)",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792620671509,
+        "message_id": "message_2330b7d568e5136be9f135c2",
+        "name": "Classify Lead (deterministic)",
+        "role": "tool_call_invocation",
+        "tool_call_id": "tool_call_d1e08e",
+        "type": "code"
+      },
+      {
+        "content": "{\"route\":\"bad\",\"bad_reason\":\"vehicle_year\",\"lead_status\":\"Bad Lead\"}",
+        "created_timestamp": 1792620671530,
+        "message_id": "message_e8940d406167a5b0bd48195f",
+        "role": "tool_call_result",
+        "successful": true,
+        "tool_call_id": "tool_call_d1e08e"
+      },
+      {
+        "created_timestamp": 1792620671662,
+        "former_node_id": "node-code-classify",
+        "former_node_name": "Classify Lead (deterministic)",
+        "message_id": "message_691e9bea0577fc32ca584d1f",
+        "new_node_id": "node-branch-route",
+        "new_node_name": "Route by Outcome",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792620671663,
+        "former_node_id": "node-branch-route",
+        "former_node_name": "Route by Outcome",
+        "message_id": "message_8eed965a9fee25592682791a",
+        "new_node_id": "node-branch-bad",
+        "new_node_name": "Route Bad Reason",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "created_timestamp": 1792620671664,
+        "former_node_id": "node-branch-bad",
+        "former_node_name": "Route Bad Reason",
+        "message_id": "message_797be1521c6ebdf091fb0796",
+        "new_node_id": "node-disq-year",
+        "new_node_name": "Disqualify: Vehicle Year",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Lo siento, en este caso no podemos abrir un expediente, porque la firma está manejando vehículos del año dos mil veintiuno en adelante. Como el suyo es dos mil diecinueve, queda fuera de nuestros criterios actuales.",
+        "created_timestamp": 1792620673771,
+        "message_id": "message_bd37be96ac1042edd81b2934",
+        "metadata": {
+          "response_id": 6
+        },
+        "role": "agent"
+      },
+      {
+        "content": "¿Y no hay nada que puedan hacer?",
+        "created_timestamp": 1792620674304,
+        "message_id": "message_1ecbb413657c63f9bc994673",
+        "role": "user"
+      },
+      {
+        "content": "Entiendo, y lamento la frustración. Por el año del carro no podríamos avanzar con este caso; ¿hay algo más en lo que le pueda ayudar?",
+        "created_timestamp": 1792620675802,
+        "message_id": "message_8e58cf7ed2821b55df7e7ba4",
+        "metadata": {
+          "response_id": 7
+        },
+        "role": "agent"
+      },
+      {
+        "content": "Bueno, gracias. Hasta luego.",
+        "created_timestamp": 1792620676910,
+        "message_id": "message_c1a37c51b01e3aa291b56fe3",
+        "role": "user"
+      },
+      {
+        "created_timestamp": 1792620676988,
+        "former_node_id": "node-disq-year",
+        "former_node_name": "Disqualify: Vehicle Year",
+        "message_id": "message_8ec869ff604f975656cc1bd2",
+        "new_node_id": "node-end-bad",
+        "new_node_name": "End: Bad Lead",
+        "role": "node_transition",
+        "transition_type": "normal"
+      },
+      {
+        "content": "Gracias por comprender. Mantendré sus datos en el archivo por si nuestros criterios cambian. Que tenga buen día, y gracias por contactar a Knight Law Group.",
+        "created_timestamp": 1792620679929,
+        "message_id": "message_bce6e9a247951f8acd505662",
+        "metadata": {
+          "response_id": 8
+        },
+        "role": "agent"
+      },
+      {
+        "arguments": "{}",
+        "created_timestamp": 1792620679930,
+        "message_id": "message_a2e5abff1e2d25e4fd93d669",
+        "name": "End: Bad Lead",
+        "role": "tool_call_invocation",
+        "tool_call_id": "end_call_cee60a",
+        "type": "end_call"
+      }
+    ]
+  }
+}

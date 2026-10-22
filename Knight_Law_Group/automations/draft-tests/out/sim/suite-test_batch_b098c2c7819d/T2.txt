@@ -1,0 +1,66 @@
+INTAKE-V1 T2 non-retainer, neutral re-ask, unclear CPO, after hours
+JUDGE: pass
+All criteria are met. Alice neutrally re-asks the new/used question after “No,” explains CPO after the unclear warranty response without disqualifying the caller, treats the matter as non-retainer, offers transfer and then texts a booking link after the caller declines. She does not ask dealer-repair/owner questions, keeps name and email confirmations separate, does not seek texting/email permission, avoids internal-stage language, does not redundantly request clearly supplied information, uses the required opening and California question sequence, and says the caller’s name only during the driver's-license name check.
+
+user: Hello?
+  [node -> node-intro-lang]
+  [node -> Introduction]
+agent: Hi, this is Alice with Knight Law Group, calling about the lemon law inquiry you submitted for your vehicle. Just a heads-up, I'm an AI assistant and this line is recorded. I can connect you to someone on our team anytime you'd like. I'm guessing you're reaching out because you're having issues with your vehicle, so let me get a little information about the car.
+  [node -> Q: California Purchase]
+agent: So, quick question — did you purchase or lease your vehicle from a dealership in California?
+user: Yes, I bought it in Fresno.
+  [node -> Extract Purchase Type]
+  [tool Extract Purchase Type ]
+  [result {"purchase_type_call":"purchased","said_at_dealer":"unknown"}]
+  [node -> Route After Lease]
+  [node -> Q: Possession]
+agent: Got it. And are you still in possession of the vehicle?
+user: Yes, I still have it.
+  [node -> Q: Vehicle Year/Make/Model]
+agent: Got it — what’s the year, make, and model of your vehicle?
+user: It's a 2022 Nissan Altima.
+  [node -> Extract Vehicle Vars]
+  [tool Extract Vehicle Vars ]
+  [result {"vehicle_year":2022,"vehicle_make":"Nissan","vehicle_model":"Altima","in_possession":true,"said_new_or_used":"unknown",]
+  [node -> Confirm Vehicle]
+agent: Just to confirm, that’s a twenty twenty-two Nissan Altima, is that right?
+user: Yes, that's right.
+  [node -> Spell Name (deterministic)]
+  [tool Spell Name (deterministic) {}]
+  [result {"name_spelled_es":"jota, a, ene, e. te, e, ese, te","name_spelled_en":"J - A - N - E, T - E - S - T"}]
+  [node -> Classify Lead (deterministic)]
+  [tool Classify Lead (deterministic) {}]
+  [result {"route":"retainer","bad_reason":"N/A","lead_status":"Retainer Pending"}]
+  [node -> Route by Outcome]
+  [node -> Retainer: New/Used already said?]
+  [node -> Retainer: New or Used]
+agent: Got it. Was the vehicle new or used when you got it?
+user: No.
+agent: Sorry, was it new or used?
+user: Used.
+  [node -> Retainer: CPO Check]
+agent: Okay — is it certified pre-owned, also known as CPO?
+user: Hmm, it came with some kind of warranty, I think.
+agent: CPO means the manufacturer inspected and certified the used vehicle, and it came with an additional warranty at no extra cost to you. Does that sound like what you got, or are you still not sure?
+user: Honestly, I'm not sure.
+  [node -> Non-Retainer: Confirm]
+agent: I’ve got your name as Jane Test — is that the same name as it appears on your driver’s license?
+user: Yes, that's correct.
+agent: Great — let me confirm the spelling: J - A - N - E, T - E - S - T. Is that right?
+user: Yes, that's right.
+agent: And I’ve got your email as jane.test@acme.ai — is that right?
+user: Yes, that's correct.
+  [node -> Extract Confirmed Name (Non-Retainer)]
+  [tool Extract Confirmed Name (Non-Retainer) ]
+  [result {"confirmed_name":"Jane Test"}]
+  [node -> Non-Retainer: Business Hours? (deterministic)]
+  [tool Non-Retainer: Business Hours? (deterministic) {}]
+  [result {"nonret_hours":"open"}]
+  [node -> Non-Retainer: Route by Hours]
+  [node -> Non-Retainer: Offer Live Transfer]
+agent: Great news, we may be able to help. One of our Intake Analysts is available right now to go over your case and set up your consultation. Would you like me to connect you now?
+user: No, not right now, just send me the link.
+  [node -> Speak: Non-Retainer Close]
+agent: Great — we may still be able to help. We’ll text you a booking link shortly so you can set up a consultation with one of our Intake Analysts. Thanks for contacting Knight Law Group.
+  [node -> End: Non-Retainer]
+  [tool End: Non-Retainer {}]
